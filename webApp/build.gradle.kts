@@ -21,8 +21,20 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.shared)
+            // این خط برای رفع خطای Composition حیاتی است:
+            implementation(compose.runtime)
+       غ }
 
-            implementation(libs.compose.ui)
+        val jsMain by getting {
+            dependencies {
+                implementation(compose.html.core)
+            }
+        }
+
+        val wasmJsMain by getting {
+            dependencies {
+                implementation(compose.html.core)
+            }
         }
     }
 }
