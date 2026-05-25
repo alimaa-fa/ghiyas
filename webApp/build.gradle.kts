@@ -23,7 +23,7 @@ kotlin {
             implementation(projects.shared)
             // این خط برای رفع خطای Composition حیاتی است:
             implementation(compose.runtime)
-       غ }
+        }
 
         val jsMain by getting {
             dependencies {
