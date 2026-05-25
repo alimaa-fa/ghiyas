@@ -1,22 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ghias</title>
+    <title>قیاس</title>
+    
+    <style>
+        @font-face {
+            font-family: 'DimaWeb';
+            src: url('fonts/DimaWeb.ttf') format('truetype'); 
+            font-weight: normal;
+            font-style: normal;
+        }
+    </style>
+    
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
     <link type="text/css" rel="stylesheet" href="styles.css">
 </head>
-<body style="text-align: center; align-content: center">
-    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50" role="presentation">
-        <circle cx="25" cy="25" r="20" stroke="#ccc" stroke-width="4" fill="none"/>
-        <circle cx="25" cy="25" r="20" stroke="#333" stroke-width="4" fill="none" stroke-linecap="round"
-                stroke-dasharray="90 125">
-            <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s"
-                              repeatCount="indefinite"/>
-        </circle>
-    </svg>
-
-    <div id="root"></div>
+<body style="margin: 0; padding: 0; background-color: #F5F5F5; font-family: 'DimaWeb', Vazirmatn, sans-serif; text-align: center; align-content: center">
+    
+    <div id="root">
+        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 50 50" role="presentation" style="margin-top: 45vh;">
+            <circle cx="25" cy="25" r="20" stroke="#ccc" stroke-width="4" fill="none"/>
+            <circle cx="25" cy="25" r="20" stroke="#4CAF50" stroke-width="4" fill="none" stroke-linecap="round" stroke-dasharray="90 125">
+                <animateTransform attributeName="transform" type="rotate" from="0 25 25" to="360 25 25" dur="1s" repeatCount="indefinite"/>
+            </circle>
+        </svg>
+    </div>
 
     <script type="application/javascript" src="webApp.js"></script>
 </body>

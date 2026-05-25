@@ -7,33 +7,39 @@ import org.jetbrains.compose.web.dom.*
 import ir.ghias.alimaa.ui.components.GhiyasTopAppBar
 import ir.ghias.alimaa.ui.components.HeroBanner
 import ir.ghias.alimaa.ui.stages.InputStageScreen
+import ir.ghias.alimaa.ui.theme.AppStyleSheet // ایمپورت فایل استایل‌های جدید
 
 @Composable
 fun App() {
     var clearFormRequested by remember { mutableStateOf(false) }
 
+    // تزریق کدهای CSS سفارشی (مثل افکت شناور و فونت) به کل برنامه
+    Style(AppStyleSheet)
+
     Div(attrs = {
-        dir(DirType.Rtl) // اصلاح شد: استفاده از نوع داده صحیح به جای استرینگ
+        dir(DirType.Rtl)
         style {
-            property("margin", "0 auto") // اصلاح شد
-            maxWidth(480.px)
+            property("margin", "0 auto")
+            maxWidth(600.px) // افزایش عرض برای تناسب بهتر
             width(100.percent)
-            height(100.vh)
+            minHeight(100.vh) // استفاده از minHeight برای اسکرول روان‌تر
             backgroundColor(Color("#F5F5F5"))
             display(DisplayStyle.Flex)
             flexDirection(FlexDirection.Column)
-            fontFamily("system-ui, -apple-system, sans-serif")
+            // اعمال فونت فلاتری (وزیرمتن)
+            fontFamily("Vazirmatn", "system-ui", "-apple-system", "sans-serif")
+            property("box-shadow", "0 0 15px rgba(0,0,0,0.05)") // سایه نرم برای حالت دسکتاپ
         }
     }) {
         GhiyasTopAppBar(
             onClearClick = { clearFormRequested = true },
-            onHistoryClick = { /* TODO */ }
+            onHistoryClick = { /* TODO: اتصال منوی کشویی در فازهای بعدی */ }
         )
         
         Div(attrs = {
             style {
-                property("flex", "1") // اصلاح شد
-                property("overflow-y", "auto") // اصلاح شد
+                property("flex", "1")
+                property("overflow-y", "auto")
             }
         }) {
             HeroBanner()

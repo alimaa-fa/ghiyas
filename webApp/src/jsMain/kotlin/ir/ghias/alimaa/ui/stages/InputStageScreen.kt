@@ -5,6 +5,7 @@ import org.jetbrains.compose.web.attributes.*
 import org.jetbrains.compose.web.dom.*
 import androidx.compose.runtime.*
 import ir.ghias.alimaa.domain.UnitType
+import ir.ghias.alimaa.ui.theme.AppStyleSheet
 
 @Composable
 fun InputStageScreen(
@@ -35,91 +36,65 @@ fun InputStageScreen(
     }) {
         H3(attrs = {
             style {
-                marginTop(0.px)
-                marginBottom(20.px)
-                color(Color("#212121"))
-                fontSize(18.px)
-                fontWeight("bold")
+                marginTop(0.px); marginBottom(24.px)
+                color(Color("#212121")); fontSize(18.px); fontWeight("bold")
             }
-        }) {
-            Text("اطلاعات اولیه")
-        }
+        }) { Text("اطلاعات اولیه") }
 
         // فیلد ۱: اسم محاسبه
-        Div(attrs = { style { position(Position.Relative); marginBottom(20.px) } }) {
+        Div(attrs = { classes(AppStyleSheet.floatingContainer) }) {
             Input(type = InputType.Text, attrs = {
+                classes(AppStyleSheet.floatingInput)
+                classes("floating-input") // اسم ثابت برای پیدا شدن توسط CSS
                 value(calcName)
                 onInput { calcName = it.value }
-                placeholder("اسم محاسبه (اختیاری)")
-                style {
-                    width(100.percent); padding(12.px)
-                    border(1.px, LineStyle.Solid, Color("#BDBDBD"))
-                    borderRadius(8.px); fontSize(16.px)
-                    property("box-sizing", "border-box")
-                    fontFamily("inherit")
-                }
+                placeholder(" ") 
             })
+            Label(attrs = { 
+                classes(AppStyleSheet.floatingLabel)
+                classes("floating-label") // اسم ثابت
+            }) { Text("اسم محاسبه (اختیاری)") }
         }
 
         // فیلد ۲: دراپ‌داون نوع واحد
-        Div(attrs = { style { marginBottom(20.px) } }) {
-            // حل باگ بزرگ: افزودن صریح attrs =
-            Label(attrs = {
-                style {
-                    display(DisplayStyle.Block); marginBottom(8.px)
-                    color(Color("#757575")); fontSize(14.px)
-                }
-            }) { Text("نوع واحد") }
-            
+        Div(attrs = { style { position(Position.Relative); marginBottom(24.px) } }) {
             Select(attrs = {
-                style {
-                    width(100.percent); padding(12.px)
-                    border(1.px, LineStyle.Solid, Color("#BDBDBD"))
-                    borderRadius(8.px); fontSize(16.px)
-                    property("box-sizing", "border-box")
-                    fontFamily("inherit")
-                }
+                classes(AppStyleSheet.floatingInput)
+                classes("floating-input")
                 onChange { event ->
                     event.value?.let { selectedName ->
-                        UnitType.entries.find { it.name == selectedName }?.let { 
-                            selectedUnit = it 
-                        }
+                        UnitType.entries.find { it.name == selectedName }?.let { selectedUnit = it }
                     }
                 }
             }) {
                 UnitType.getOrderedValues().forEach { type ->
                     Option(value = type.name, attrs = {
                         if (type == selectedUnit) selected()
-                    }) {
-                        Text(type.displayName)
-                    }
+                    }) { Text(type.displayName) }
                 }
             }
+            Label(attrs = {
+                style {
+                    position(Position.Absolute); right(12.px); top((-10).px)
+                    fontSize(12.px); color(Color("#4CAF50")); backgroundColor(Color("white"))
+                    padding(0.px, 4.px); fontWeight("bold")
+                }
+            }) { Text("نوع واحد") }
         }
 
         // فیلد ۳: مقدار کل
-        Div(attrs = { style { marginBottom(12.px) } }) {
-            // حل باگ بزرگ: افزودن صریح attrs =
-            Label(attrs = {
-                style {
-                    display(DisplayStyle.Block); marginBottom(8.px)
-                    color(Color("#757575")); fontSize(14.px)
-                }
-            }) { 
-                Text(selectedUnit.dynamicLabel) 
-            }
-            
+        Div(attrs = { classes(AppStyleSheet.floatingContainer) }) {
             Input(type = InputType.Number, attrs = {
+                classes(AppStyleSheet.floatingInput)
+                classes("floating-input") // اسم ثابت
                 value(totalAmount)
                 onInput { totalAmount = it.value?.toString() ?: "" }
-                style {
-                    width(100.percent); padding(12.px)
-                    border(1.px, LineStyle.Solid, Color("#BDBDBD"))
-                    borderRadius(8.px); fontSize(16.px)
-                    property("box-sizing", "border-box")
-                    fontFamily("inherit")
-                }
+                placeholder(" ") 
             })
+            Label(attrs = { 
+                classes(AppStyleSheet.floatingLabel)
+                classes("floating-label") // اسم ثابت
+            }) { Text(selectedUnit.dynamicLabel) }
         }
     }
 }
