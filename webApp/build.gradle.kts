@@ -24,3 +24,14 @@ kotlin {
         }
     }
 }
+
+// راه حل ۱۰۰٪ استاندارد و سازگار با سیستم کش گریدل: استفاده از تسک اختصاصی Copy
+val copyFontsTask = tasks.register<Copy>("copyFontsTask") {
+    from("src/jsMain/resources/fonts")
+    into("build/kotlin-webpack/js/developmentExecutable/fonts")
+}
+
+// به گریدل می‌گوییم هر وقت تسک وب‌پک به طور کامل تمام شد، تسک کپی ما را اجرا کند (بدون دخالت در لاجیک وب‌پک)
+tasks.matching { it.name.contains("BrowserDevelopmentWebpack") }.configureEach {
+    finalizedBy(copyFontsTask)
+}
