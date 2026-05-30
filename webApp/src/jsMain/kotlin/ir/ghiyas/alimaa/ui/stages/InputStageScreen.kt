@@ -4,8 +4,9 @@ import org.jetbrains.compose.web.css.*
 import org.jetbrains.compose.web.attributes.*
 import org.jetbrains.compose.web.dom.*
 import androidx.compose.runtime.*
-import ir.ghiyas.alimaa.domain.UnitType
+import ir.ghiyas.alimaa.domain.models.UnitType
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
+import ir.ghiyas.alimaa.presentation.stages.input.InputStageViewModel
 
 private fun String.standardizeDigits(): String {
     var result = this
@@ -17,20 +18,18 @@ private fun String.standardizeDigits(): String {
     return result
 }
 
+
 @Composable
 fun InputStageScreen(
+    viewModel: InputStageViewModel,
     onClearRequested: Boolean,
     onClearComplete: () -> Unit
 ) {
-    var calcName by remember { mutableStateOf("") }
-    var selectedUnit by remember { mutableStateOf(UnitType.HAND_PIECE) }
-    var totalAmount by remember { mutableStateOf("") }
+    val state by viewModel.state.collectAsState()
 
     LaunchedEffect(onClearRequested) {
         if (onClearRequested) {
-            calcName = ""
-            selectedUnit = UnitType.HAND_PIECE
-            totalAmount = ""
+            viewModel.clearForm()
             onClearComplete()
         }
     }
@@ -61,8 +60,8 @@ fun InputStageScreen(
             Input(type = InputType.Text, attrs = {
                 classes(AppStyleSheet.floatingInput)
                 classes("floating-input") // اسم ثابت برای پیدا شدن توسط CSS
-                value(calcName)
-                onInput { calcName = it.value }
+                value(state.calculationName)
+                onInput { viewModel.onCalculationNameChange(it.value) }
                 placeholder(" ") 
             })
             Label(attrs = { 
@@ -78,13 +77,13 @@ fun InputStageScreen(
                 classes("floating-input")
                 onChange { event ->
                     event.value?.let { selectedName ->
-                        UnitType.entries.find { it.name == selectedName }?.let { selectedUnit = it }
+                        UnitType.entries.find { it.name == selectedName }?.let { viewModel.onUnitTypeChange(it) }
                     }
                 }
             }) {
                 UnitType.getOrderedValues().forEach { type ->
                     Option(value = type.name, attrs = {
-                        if (type == selectedUnit) selected()
+                        if (type == state.unitType) selected()
                     }) { Text(type.displayName) }
                 }
             }
@@ -103,14 +102,14 @@ fun InputStageScreen(
                 classes(AppStyleSheet.floatingInput)
                 classes("floating-input") // اسم ثابت
                 attr("inputmode", "decimal")
-                value(totalAmount)
-                onInput { totalAmount = it.value.standardizeDigits() }
+                value(state.totalAmount.toPersianDigits())
+                onInput { viewModel.onTotalAmountChange(it.value.standardizeDigits()) }
                 placeholder(" ") 
             })
             Label(attrs = { 
                 classes(AppStyleSheet.floatingLabel)
                 classes("floating-label") // اسم ثابت
-            }) { Text(selectedUnit.dynamicLabel) }
+            }) { Text(state.unitType.dynamicLabel) }
         }
     }
 }

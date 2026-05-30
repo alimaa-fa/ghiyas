@@ -1,6 +1,5 @@
 package ir.ghiyas.alimaa.presentation.stages.input
 
-import androidx.lifecycle.ViewModel
 import ir.ghiyas.alimaa.domain.models.UnitType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,7 +12,7 @@ data class InputStageState(
     val totalAmount: String = ""
 )
 
-class InputStageViewModel : ViewModel() {
+class InputStageViewModel {
     private val _state = MutableStateFlow(InputStageState())
     val state: StateFlow<InputStageState> = _state.asStateFlow()
 
@@ -30,6 +29,6 @@ class InputStageViewModel : ViewModel() {
     }
 
     fun clearForm() {
-        _state.update { InputStageState() }
+        _state.value = InputStageState()
     }
 }
