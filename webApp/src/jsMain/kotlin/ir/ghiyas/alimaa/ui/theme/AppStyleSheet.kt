@@ -17,7 +17,7 @@ object AppStyleSheet : StyleSheet() {
         // تنظیمات لیبل وقتی فیلد فعال است (موقعیت بالاتر برای جلوگیری از تلاقی با خط)
         ".floating-input:focus ~ .floating-label, .floating-input:not(:placeholder-shown) ~ .floating-label" style {
             top((-14).px) 
-            fontSize(16.px) // سایز لیبل شناور بزرگتر شد
+            fontSize(0.85.cssRem) // سایز لیبل شناور بزرگتر شد
             color(Color("#4CAF50"))
             fontWeight("bold")
         }
@@ -25,6 +25,13 @@ object AppStyleSheet : StyleSheet() {
         ".floating-input:focus" style {
             property("outline", "none")
             border(2.px, LineStyle.Solid, Color("#4CAF50"))
+        }
+
+        // Dropdown uniform font fix
+        "select.floating-input, select.floating-input option" style {
+            property("font-size", "1.1rem !important")
+            property("font-weight", "normal !important")
+            color(Color("#212121"))
         }
     }
 
@@ -38,7 +45,7 @@ object AppStyleSheet : StyleSheet() {
         padding(18.px, 16.px) // افزایش چشمگیر فضای داخلی و ارتفاع فیلد
         border(1.px, LineStyle.Solid, Color("#BDBDBD"))
         borderRadius(8.px)
-        fontSize(20.px) // سایز متن ورودی بسیار خواناتر شد
+        fontSize(1.1.cssRem) // سایز متن ورودی بسیار خواناتر شد
         property("box-sizing", "border-box")
         backgroundColor(Color("transparent"))
         fontFamily("inherit")
@@ -49,7 +56,7 @@ object AppStyleSheet : StyleSheet() {
         right(16.px)
         top(18.px) // تنظیم جایگاه اولیه متناسب با ارتفاع جدید فیلد
         color(Color("#757575"))
-        fontSize(18.px) // سایز اولیه لیبل ارتقا یافت
+        fontSize(1.1.cssRem) // سایز اولیه لیبل ارتقا یافت
         property("transition", "0.2s ease all")
         property("pointer-events", "none")
         backgroundColor(Color("white"))

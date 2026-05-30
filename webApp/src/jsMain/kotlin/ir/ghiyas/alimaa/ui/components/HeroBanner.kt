@@ -14,7 +14,7 @@ fun HeroBanner() {
             justifyContent(JustifyContent.Center)
             backgroundColor(Color("rgba(76, 175, 80, 0.15)"))
             borderRadius(16.px)
-            padding(24.px)
+            padding(32.px, 16.px)
             margin(16.px)
             textAlign("center")
         }
@@ -34,18 +34,18 @@ fun HeroBanner() {
             style {
                 margin(0.px)
                 color(Color("#212121"))
-                fontSize(22.px)
+                property("font-size", "clamp(1.2rem, 4vw, 1.8rem)")
                 fontWeight("bold")
             }
         }) {
-            Text("برنامه محاسبه گر محلی قیاس")
+            Text("برنامه محاسبه‌گر محلی قیاس")
         }
         
         Span({
             style {
                 marginTop(8.px)
                 color(Color("#757575"))
-                fontSize(14.px)
+                property("font-size", "clamp(0.9rem, 2vw, 1.1rem)")
             }
         }) {
             Text("برای شروع مقادیر درخواستی را وارد کنید")

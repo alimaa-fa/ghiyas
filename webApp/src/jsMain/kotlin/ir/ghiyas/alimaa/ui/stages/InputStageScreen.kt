@@ -7,6 +7,16 @@ import androidx.compose.runtime.*
 import ir.ghiyas.alimaa.domain.UnitType
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 
+private fun String.standardizeDigits(): String {
+    var result = this
+    result = result.replace('۰', '0').replace('۱', '1').replace('۲', '2').replace('۳', '3').replace('۴', '4')
+        .replace('۵', '5').replace('۶', '6').replace('۷', '7').replace('۸', '8').replace('۹', '9')
+        .replace('٠', '0').replace('١', '1').replace('٢', '2').replace('٣', '3').replace('٤', '4')
+        .replace('٥', '5').replace('٦', '6').replace('٧', '7').replace('٨', '8').replace('٩', '9')
+        .replace('٫', '.').replace('/', '.')
+    return result
+}
+
 @Composable
 fun InputStageScreen(
     onClearRequested: Boolean,
@@ -36,8 +46,13 @@ fun InputStageScreen(
     }) {
         H3(attrs = {
             style {
-                marginTop(0.px); marginBottom(24.px)
-                color(Color("#212121")); fontSize(18.px); fontWeight("bold")
+                color(Color("#2E7D32"))
+                fontWeight("bold")
+                fontSize(1.2.cssRem)
+                property("border-bottom", "2px solid #2E7D32")
+                paddingBottom(8.px)
+                marginBottom(24.px)
+                display(DisplayStyle.InlineBlock)
             }
         }) { Text("اطلاعات اولیه") }
 
@@ -84,11 +99,12 @@ fun InputStageScreen(
 
         // فیلد ۳: مقدار کل
         Div(attrs = { classes(AppStyleSheet.floatingContainer) }) {
-            Input(type = InputType.Number, attrs = {
+            Input(type = InputType.Text, attrs = {
                 classes(AppStyleSheet.floatingInput)
                 classes("floating-input") // اسم ثابت
+                attr("inputmode", "decimal")
                 value(totalAmount)
-                onInput { totalAmount = it.value?.toString() ?: "" }
+                onInput { totalAmount = it.value.standardizeDigits() }
                 placeholder(" ") 
             })
             Label(attrs = { 
