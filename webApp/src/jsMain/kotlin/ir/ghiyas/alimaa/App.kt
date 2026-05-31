@@ -9,18 +9,18 @@ import ir.ghiyas.alimaa.ui.components.HeroBanner
 import ir.ghiyas.alimaa.ui.stages.InputStageScreen
 import ir.ghiyas.alimaa.ui.stages.ExpenseStageScreen
 import ir.ghiyas.alimaa.ui.stages.AgricultureStageScreen
+import ir.ghiyas.alimaa.ui.stages.DistributionStageScreen
 import ir.ghiyas.alimaa.ui.stages.HistoryScreen
 import ir.ghiyas.alimaa.presentation.stages.input.InputStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureStageViewModel
+import ir.ghiyas.alimaa.presentation.stages.distribution.DistributionStageViewModel
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 
-// کامپوننت ردیف‌های کارت نتیجه
 @Composable
 fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight: Boolean = false) {
-    val isKg = baseUnit.contains("کیلو") || baseUnit.contains("گرم")
     val textColor = if (isHighlight) Color("#BF360C") else Color("#33691E")
     
     Div(attrs = {
@@ -42,7 +42,7 @@ fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight
                     property("direction", "ltr")
                     display(DisplayStyle.InlineBlock) 
                 }
-            }) { Text(rawValue.toGhiyasFormat(isKg)) }
+            }) { Text(rawValue.toGhiyasFormat(baseUnit)) } // استفاده از متد جدید تشخیص هوشمند اعشار و گردکردن
             Text(" $baseUnit")
         }
     }
@@ -56,9 +56,12 @@ fun App() {
     val inputViewModel = remember { InputStageViewModel() }
     val expenseViewModel = remember { ExpenseStageViewModel() }
     val agricultureViewModel = remember { AgricultureStageViewModel() } 
+    val distributionViewModel = remember { DistributionStageViewModel() }
     
     val inputState by inputViewModel.state.collectAsState()
     val snapshot by expenseViewModel.snapshot.collectAsState()
+    
+    val agricultureInputState by agricultureViewModel.inputState.collectAsState()
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"
@@ -86,9 +89,10 @@ fun App() {
                 clearFormRequested = true
                 expenseViewModel.clearForm()
                 agricultureViewModel.clearForm() 
+                distributionViewModel.clearForm()
             },
             onHistoryClick = { currentScreen = "history" },
-            onShareClick = null // اشتراک‌گذاری از هدر صفحه اصلی حذف شد
+            onShareClick = null
         )
         
         Div(attrs = {
@@ -101,14 +105,10 @@ fun App() {
             if (currentScreen == "main") {
                 HeroBanner()
                 
-                InputStageScreen(
-                    viewModel = inputViewModel,
-                    onClearRequested = clearFormRequested,
-                    onClearComplete = { clearFormRequested = false }
-                )
-                
+                InputStageScreen(viewModel = inputViewModel, onClearRequested = clearFormRequested, onClearComplete = { clearFormRequested = false })
                 ExpenseStageScreen(viewModel = expenseViewModel)
                 AgricultureStageScreen(viewModel = agricultureViewModel)
+                DistributionStageScreen(viewModel = distributionViewModel, agricultureInput = agricultureInputState)
 
                 Button(attrs = {
                     style {
@@ -132,7 +132,8 @@ fun App() {
                             baseUnit = inputState.unitType.displayName, 
                             currentYear = rawPersianYear, 
                             timestampLong = kotlin.js.Date().getTime().toLong(),
-                            agricultureInput = agricultureViewModel.inputState.value
+                            agricultureInput = agricultureInputState,
+                            distributionInput = distributionViewModel.state.value 
                         )
 
                         expenseViewModel.snapshot.value?.let { newRecord ->
@@ -168,7 +169,6 @@ fun App() {
                         
                         val dateTimeOptions = kotlin.js.json("year" to "numeric", "month" to "long", "day" to "numeric", "hour" to "2-digit", "minute" to "2-digit").unsafeCast<kotlin.js.Date.LocaleOptions>()
                         val liveTimeString = kotlin.js.Date(snapshot!!.timestamp).toLocaleString("fa-IR", dateTimeOptions)
-                        val isKg = snapshot!!.baseUnit.contains("کیلو") || snapshot!!.baseUnit.contains("گرم")
 
                         Div(attrs = { 
                             style { 
@@ -178,7 +178,7 @@ fun App() {
                             } 
                         }) {
                             P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) { Text("نام محاسبه: ${snapshot!!.calculationName}") }
-                            P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#424242")); fontSize(0.95.cssRem) } }) { Text("کل مقدار اولیه: ${snapshot!!.inputAmount.value.toGhiyasFormat(isKg)} ${snapshot!!.baseUnit}") }
+                            P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#424242")); fontSize(0.95.cssRem) } }) { Text("کل مقدار اولیه: ${snapshot!!.inputAmount.value.toGhiyasFormat(snapshot!!.baseUnit)} ${snapshot!!.baseUnit}") }
                             P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#757575")); fontSize(0.85.cssRem) } }) { Text("زمان ثبت: $liveTimeString") }
                         }
                         
@@ -187,26 +187,36 @@ fun App() {
                         }
 
                         if (snapshot!!.agricultureResults.isNotEmpty() || snapshot!!.nimehkariResults.isNotEmpty()) {
-                            Div(attrs = { 
-                                style { 
-                                    marginTop(16.px)
-                                    paddingTop(16.px)
-                                    property("border-top", "3px solid #AED581") 
-                                } 
-                            }) {
+                            Div(attrs = { style { marginTop(16.px); paddingTop(16.px); property("border-top", "3px solid #AED581") } }) {
                                 H4(attrs = { style { color(Color("#2E7D32")); property("margin", "0px 0px 12px 0px") } }) { Text("کسورات کشاورزی و نیمه‌کاری") }
                             }
-                            
                             snapshot!!.agricultureResults.forEach { item -> ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                            snapshot!!.nimehkariResults.forEach { item -> ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                        }
+
+                        // پیاده‌سازی نمایش درختی تفکیک‌شده با کادر جداگانه و فاصله واضح برای کل زیرمجموعه‌ها
+                        if (snapshot!!.finalSharesResults.isNotEmpty()) {
+                            Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) {
+                                H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") }
+                            }
                             
-                            snapshot!!.nimehkariResults.forEach { item -> 
-                                ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = item.label.startsWith("خالص")) 
+                            // رندر هر سهم درختی داخل کادر سفید جداگانه با فاصله‌گذاری شیک
+                            snapshot!!.finalSharesResults.forEach { item -> 
+                                Div(attrs = {
+                                    style {
+                                        backgroundColor(Color("white"))
+                                        property("border", "1px dashed #A5D6A7")
+                                        borderRadius(8.px)
+                                        padding(12.px)
+                                        property("margin", "8px 0px")
+                                        property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)")
+                                    }
+                                }) {
+                                    ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true)
+                                }
                             }
                         }
 
-                        // ----------------------------------------------------
-                        // دکمه جدید اشتراک‌گذاری متنی در انتهای کارت
-                        // ----------------------------------------------------
                         Button(attrs = {
                             style {
                                 width(100.percent)
@@ -220,9 +230,7 @@ fun App() {
                                 fontWeight("bold")
                                 property("cursor", "pointer")
                             }
-                            onClick {
-                                ir.ghiyas.alimaa.export.WebExportEngine.shareText(snapshot!!)
-                            }
+                            onClick { ir.ghiyas.alimaa.export.WebExportEngine.shareText(snapshot!!) }
                         }) { Text("کپی نتایج به صورت متنی") }
                     }
                 }

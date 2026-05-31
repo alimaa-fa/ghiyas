@@ -23,7 +23,7 @@ fun HistoryItemCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
     
-    val isKg = record.baseUnit.contains("کیلوگرم") || record.baseUnit.equals("kg", ignoreCase = true)
+    // متغیر isKg حذف شد زیرا تابع فرمت‌کننده حالا نام واحد را برای گردکردن هوشمند می‌پذیرد.
     val dateTimeOptions = kotlin.js.json("year" to "numeric", "month" to "long", "day" to "numeric", "hour" to "2-digit", "minute" to "2-digit").unsafeCast<kotlin.js.Date.LocaleOptions>()
     val liveTimeString = kotlin.js.Date(record.timestamp).toLocaleString("fa-IR", dateTimeOptions)
 
@@ -145,8 +145,9 @@ fun HistoryItemCard(
                 }
                 onClick { it.stopPropagation() }
             }) {
+                // ارسال مستقیم record.baseUnit برای تشخیص قوانین گردکردن
                 P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#424242")) } }) {
-                    Text("مقدار اولیه: ${record.inputAmount.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                    Text("مقدار اولیه: ${record.inputAmount.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                 }
                 
                 if (record.expensesResults.isNotEmpty()) {
@@ -155,7 +156,7 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             record.expensesResults.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                                 }
                             }
                         }
@@ -168,7 +169,7 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             record.agricultureResults.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                                 }
                             }
                         }
@@ -181,7 +182,7 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             record.nimehkariResults.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                                 }
                             }
                         }
@@ -194,7 +195,7 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             record.finalSharesResults.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                                 }
                             }
                         }

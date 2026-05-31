@@ -104,15 +104,14 @@ object WebExportEngine {
             boxSizing = "border-box"
         }
 
-        // Header
-        val isKg = record.baseUnit.contains("کیلو") || record.baseUnit.contains("گرم")
+        // جایگزینی isKg با ارسال مستقیم baseUnit برای سازگاری با تابع گرد کردن بومی
         val header = document.createElement("div") as HTMLDivElement
         header.style.textAlign = "center"
         header.style.marginBottom = "15px"
         header.innerHTML = """
             <h2 style="margin: 0; padding: 0;">${record.calculationName}</h2>
             <div style="font-size: 14px; color: #666;">${record.persianYear}</div>
-            <div style="font-size: 16px; margin-top: 10px; font-weight: bold;">مقدار کل: <bdi>${record.inputAmount.value.toGhiyasFormat(isKg)}</bdi> ${record.baseUnit}</div>
+            <div style="font-size: 16px; margin-top: 10px; font-weight: bold;">مقدار کل: <bdi>${record.inputAmount.value.toGhiyasFormat(record.baseUnit)}</bdi> ${record.baseUnit}</div>
         """.trimIndent()
         container.appendChild(header)
 
@@ -141,7 +140,7 @@ object WebExportEngine {
                 row.style.padding = "4px 0"
                 row.innerHTML = """
                     <span style="flex: 1;">${item.label}</span>
-                    <span style="flex: 1; text-align: left;"><bdi>${item.value.value.toGhiyasFormat(isKg)}</bdi> ${record.baseUnit}</span>
+                    <span style="flex: 1; text-align: left;"><bdi>${item.value.value.toGhiyasFormat(record.baseUnit)}</bdi> ${record.baseUnit}</span>
                 """.trimIndent()
                 section.appendChild(row)
             }

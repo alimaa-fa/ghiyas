@@ -7,6 +7,7 @@ import org.jetbrains.compose.web.dom.*
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseCategoryState
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
+import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 
 private fun String.standardizeDigits(): String {
     var result = this
@@ -51,7 +52,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
             }
         }) { Text("مرحله دوم: خرجکرد") }
 
-        // Main Checkbox
         Label(attrs = {
             style {
                 display(DisplayStyle.Flex)
@@ -71,7 +71,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
         }
 
         if (inputState.isCalculated) {
-            // Global Fixed
             Div(attrs = {
                 style {
                     marginBottom(24.px)
@@ -85,7 +84,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
                 CustomNumberInput("مبلغ مقطوع کل", inputState.globalFixedExpense_Input) { v -> viewModel.updateGlobalFixedExpense(v) }
             }
 
-            // Tekani
             ExpenseCategoryView(
                 title = "تکانی",
                 mizanLabel = "میزان تکانی",
@@ -93,7 +91,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
                 onStateChange = { viewModel.updateTekani { _ -> it } }
             )
 
-            // Jamkoni
             ExpenseCategoryView(
                 title = "جمع‌کنی",
                 mizanLabel = "میزان جمع‌کنی",
@@ -101,7 +98,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
                 onStateChange = { viewModel.updateJamkoni { _ -> it } }
             )
 
-            // Kooleh
             ExpenseCategoryView(
                 title = "کوله‌کشی",
                 mizanLabel = "میزان کوله‌کشی",
@@ -109,7 +105,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
                 onStateChange = { viewModel.updateKooleh { _ -> it } }
             )
 
-            // Sarkari (Custom)
             Div(attrs = {
                 style {
                     marginBottom(32.px)
@@ -120,7 +115,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
             }) {
                 H4(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("سرکاری") }
 
-                // Checkboxes for Sarkari
                 Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(12.px); marginBottom(16.px) } }) {
                     Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
                         Input(type = InputType.Checkbox, attrs = {
@@ -156,7 +150,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
                     }
                 }
 
-                // Row for Mizan and Tedad
                 Div(attrs = {
                     style {
                         display(DisplayStyle.Flex)
@@ -195,7 +188,6 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
                 }
             }
 
-            // Global Extra
             Div(attrs = {
                 style {
                     marginBottom(32.px)
@@ -255,7 +247,6 @@ fun ExpenseCategoryView(
             }
         }
 
-        // Side-by-Side Flexbox
         Div(attrs = {
             style {
                 display(DisplayStyle.Flex)

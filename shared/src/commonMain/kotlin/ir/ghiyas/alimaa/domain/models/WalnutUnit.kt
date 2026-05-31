@@ -3,10 +3,12 @@ package ir.ghiyas.alimaa.domain.models
 data class WalnutUnit(val value: Double) {
     operator fun plus(other: WalnutUnit): WalnutUnit = WalnutUnit(this.value + other.value)
     
-    // این خط برای پشتیبانی از کسورات ماژول ۳ و ۴ اضافه شد
     operator fun minus(other: WalnutUnit): WalnutUnit = WalnutUnit(this.value - other.value) 
     
     operator fun div(divisor: Double): WalnutUnit = WalnutUnit(this.value / divisor)
+    
+    // این خط برای پشتیبانی از محاسبات موتور قیاس اضافه شد
+    operator fun times(multiplier: Double): WalnutUnit = WalnutUnit(this.value * multiplier)
     
     override fun toString(): String {
         val str = value.toString()

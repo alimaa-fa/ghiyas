@@ -9,17 +9,16 @@ object TextExportFormatter {
     fun formatRecord(record: CalculationHistoryRecord): String {
         val sb = StringBuilder()
         
-        val isKg = record.baseUnit.contains("کیلوگرم") || record.baseUnit.equals("kg", ignoreCase = true)
-        
         sb.appendLine("عنوان: ${record.calculationName}")
         sb.appendLine("تاریخ و زمان: ${formatTimestampToPersianDateTime(record.timestamp)}")
-        sb.appendLine("مقدار کل: ${record.inputAmount.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+        // ارسال مستقیم نام واحد (String) به جای Boolean
+        sb.appendLine("مقدار کل: ${record.inputAmount.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
         sb.appendLine("-------------------")
         
         if (record.expensesResults.isNotEmpty()) {
             sb.appendLine("هزینه‌ها:")
             record.expensesResults.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
@@ -27,7 +26,7 @@ object TextExportFormatter {
         if (record.agricultureResults.isNotEmpty()) {
             sb.appendLine("کشاورزی:")
             record.agricultureResults.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
@@ -35,7 +34,7 @@ object TextExportFormatter {
         if (record.nimehkariResults.isNotEmpty()) {
             sb.appendLine("نیمه‌کاری:")
             record.nimehkariResults.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
@@ -43,7 +42,7 @@ object TextExportFormatter {
         if (record.finalSharesResults.isNotEmpty()) {
             sb.appendLine("سهم‌های نهایی:")
             record.finalSharesResults.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(isKg)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
