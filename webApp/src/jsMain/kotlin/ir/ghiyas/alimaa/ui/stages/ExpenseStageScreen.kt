@@ -7,7 +7,6 @@ import org.jetbrains.compose.web.dom.*
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseCategoryState
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
-import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 
 private fun String.standardizeDigits(): String {
     var result = this
@@ -28,14 +27,8 @@ fun String.toPersianDigits(): String {
 }
 
 @Composable
-fun ExpenseStageScreen(
-    viewModel: ExpenseStageViewModel,
-    baseUnit: String,
-    calculationName: String,
-    totalInputAmount: String
-) {
+fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
     val inputState by viewModel.inputState.collectAsState()
-    val snapshot by viewModel.snapshot.collectAsState()
 
     Div(attrs = {
         style {
@@ -64,7 +57,7 @@ fun ExpenseStageScreen(
                 display(DisplayStyle.Flex)
                 alignItems(AlignItems.Center)
                 marginBottom(24.px)
-                cursor("pointer")
+                property("cursor", "pointer")
                 fontWeight("bold")
                 fontSize(1.1.cssRem)
             }
@@ -129,7 +122,7 @@ fun ExpenseStageScreen(
 
                 // Checkboxes for Sarkari
                 Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(12.px); marginBottom(16.px) } }) {
-                    Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); cursor("pointer") } }) {
+                    Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
                         Input(type = InputType.Checkbox, attrs = {
                             checked(inputState.sarkari.isFixed)
                             onChange { checked -> viewModel.updateSarkari { it.copy(isFixed = checked.value) } }
@@ -139,7 +132,7 @@ fun ExpenseStageScreen(
                     }
                     
                     if (!inputState.sarkari.isFixed) {
-                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); cursor("pointer") } }) {
+                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
                             Input(type = InputType.Checkbox, attrs = {
                                 checked(inputState.sarkari.hasExtra)
                                 onChange { checked -> viewModel.updateSarkari { it.copy(hasExtra = checked.value) } }
@@ -153,7 +146,7 @@ fun ExpenseStageScreen(
                         }
                     }
 
-                    Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); cursor("pointer") } }) {
+                    Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
                         Input(type = InputType.Checkbox, attrs = {
                             checked(inputState.sarkari.isHalfKari)
                             onChange { checked -> viewModel.updateSarkari { it.copy(isHalfKari = checked.value) } }
@@ -216,113 +209,6 @@ fun ExpenseStageScreen(
                 CustomNumberInput("مبلغ اضافی متفرقه", inputState.extraExpense_Input) { v -> viewModel.updateExtraExpense(v) }
             }
         }
-
-        // Calculate Button
-        Button(attrs = {
-            style {
-                width(100.percent)
-                padding(16.px)
-                backgroundColor(Color("#2E7D32"))
-                color(Color("white"))
-                border(0.px)
-                borderRadius(8.px)
-                fontSize(1.1.cssRem)
-                fontWeight("bold")
-                cursor("pointer")
-                marginTop(16.px)
-            }
-            onClick {
-                val yearOptions = kotlin.js.json("year" to "numeric").unsafeCast<kotlin.js.Date.LocaleOptions>()
-                val rawPersianYear = kotlin.js.Date().toLocaleDateString("fa-IR", yearOptions).trim()
-                val currentUnixTimestamp = kotlin.js.Date().getTime().toLong()
-
-                viewModel.calculateAndSnapshot(calculationName, baseUnit, rawPersianYear, currentUnixTimestamp)
-
-                val newRecord = viewModel.snapshot.value
-                if (newRecord != null) {
-                    val recordWithId = newRecord.copy(id = currentUnixTimestamp.toString())
-                    ir.ghiyas.alimaa.data.LocalStorageRepository.saveRecord(recordWithId)
-                }
-            }
-        }) {
-            Text("محاسبه کن")
-        }
-
-        // Results Card
-        if (snapshot != null) {
-            Div(attrs = {
-                style {
-                    marginTop(32.px)
-                    padding(24.px)
-                    backgroundColor(Color("#F1F8E9"))
-                    borderRadius(12.px)
-                    border(1.px, LineStyle.Solid, Color("#C5E1A5"))
-                }
-            }) {
-                Div(attrs = {
-                    style {
-                        backgroundColor(Color("#F5F5F5"))
-                        color(Color("#1B5E20"))
-                        padding(14.px, 24.px)
-                        borderRadius(8.px)
-                        textAlign("center")
-                        fontWeight("bold")
-                        fontSize(1.25.cssRem)
-                        marginBottom(20.px)
-                        property("border", "1px solid #C8E6C9")
-                        property("border-left", "5px solid #2E7D32")
-                    }
-                }) { Text("نتایج محاسبات نهایی خرجکرد") }
-                
-                val dateTimeOptions = kotlin.js.json("year" to "numeric", "month" to "long", "day" to "numeric", "hour" to "2-digit", "minute" to "2-digit").unsafeCast<kotlin.js.Date.LocaleOptions>()
-                val liveTimeString = kotlin.js.Date(snapshot!!.timestamp).toLocaleString("fa-IR", dateTimeOptions)
-
-                Div(attrs = { style { marginBottom(16.px); paddingBottom(16.px); property("border-bottom", "2px dashed #C8E6C9") } }) {
-                    val isKg = snapshot!!.baseUnit.contains("کیلو") || snapshot!!.baseUnit.contains("گرم")
-                    P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) {
-                        Text("نام محاسبه: ${snapshot!!.calculationName}")
-                    }
-                    P(attrs = { style { margin(8.px, 0.px, 0.px, 0.px); color(Color("#424242")); fontSize(0.95.cssRem) } }) {
-                        val amt = snapshot!!.inputAmount.value.toGhiyasFormat(isKg)
-                        Text("کل مقدار اولیه: $amt ${snapshot!!.baseUnit}")
-                    }
-                    P(attrs = { style { margin(8.px, 0.px, 0.px, 0.px); color(Color("#757575")); fontSize(0.85.cssRem) } }) {
-                        Text("زمان ثبت: $liveTimeString")
-                    }
-                }
-                
-                snapshot!!.expensesResults.forEach { item ->
-                    val rawValue = item.value.value
-                    val isKg = snapshot!!.baseUnit.contains("کیلو") || snapshot!!.baseUnit.contains("گرم")
-
-                    Div(attrs = {
-                        style {
-                            display(DisplayStyle.Flex)
-                            alignItems(AlignItems.Center)
-                            padding(12.px, 0.px)
-                            property("border-bottom", "1px dashed #AED581")
-                            fontSize(1.1.cssRem)
-                            color(Color("#33691E"))
-                        }
-                    }) {
-                        Span(attrs = { style { flex(1) } }) { Text(item.label) }
-                        Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { 
-                            Span(attrs = {
-                                style {
-                                    fontFamily("Vazirmatn", "system-ui", "sans-serif")
-                                    fontWeight("bold")
-                                    property("direction", "ltr")
-                                    display(DisplayStyle.InlineBlock)
-                                }
-                            }) {
-                                Text(rawValue.toGhiyasFormat(isKg))
-                            }
-                            Text(" ${snapshot!!.baseUnit}")
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -344,7 +230,7 @@ fun ExpenseCategoryView(
         H4(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text(title) }
 
         Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(12.px); marginBottom(16.px) } }) {
-            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); cursor("pointer") } }) {
+            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
                 Input(type = InputType.Checkbox, attrs = {
                     checked(state.isFixed)
                     onChange { onStateChange(state.copy(isFixed = it.value)) }
@@ -354,7 +240,7 @@ fun ExpenseCategoryView(
             }
             
             if (!state.isFixed) {
-                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); cursor("pointer") } }) {
+                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
                     Input(type = InputType.Checkbox, attrs = {
                         checked(state.hasExtra)
                         onChange { onStateChange(state.copy(hasExtra = it.value)) }

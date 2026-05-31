@@ -4,6 +4,8 @@ import ir.ghiyas.alimaa.domain.models.CalculationHistoryRecord
 import ir.ghiyas.alimaa.domain.models.ResultItem
 import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.domain.strategy.KharjkardStrategy
+import ir.ghiyas.alimaa.domain.strategy.AgricultureStrategy
+import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureInputState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -89,56 +91,95 @@ class ExpenseStageViewModel {
         calculationName: String, 
         baseUnit: String, 
         currentYear: String, 
-        timestampLong: Long
+        timestampLong: Long,
+        agricultureInput: AgricultureInputState // ورودی جدید از ماژول ۳
     ) {
         // ۱. اجرای استراتژی اصلی محاسبات خرجکرد
         val output = KharjkardStrategy.calculate(_inputState.value, totalWalnuts)
 
-        // ۲. تبدیل و نگاشت خروجی‌های ساختاریافته به مدل نمایشی کارت نتایج
-        val resultsList = mutableListOf<ResultItem>()
+        val expensesList = mutableListOf<ResultItem>()
+        var totalExpensesValue = 0.0 // نگهدارنده مجموع کل هزینه‌ها
         
+        // اگر تیک خرجکرد خورده باشد، لیست را پر می‌کنیم و جمع می‌زنیم
         if (_inputState.value.isCalculated) {
             if (output.globalFixed.value > 0) {
-                resultsList.add(ResultItem("خرج کل به صورت مقطوع", output.globalFixed))
+                expensesList.add(ResultItem("خرج کل به صورت مقطوع", output.globalFixed))
             }
             
-            resultsList.add(ResultItem("کل تکانی", output.totalTekani))
-            resultsList.add(ResultItem("سهم هر تکان", output.perPersonTekani))
+            expensesList.add(ResultItem("کل تکانی", output.totalTekani))
+            expensesList.add(ResultItem("سهم هر تکان", output.perPersonTekani))
             
-            resultsList.add(ResultItem("کل جمع‌کنی", output.totalJamkoni))
-            resultsList.add(ResultItem("سهم هر جمع‌کن", output.perPersonJamkoni))
+            expensesList.add(ResultItem("کل جمع‌کنی", output.totalJamkoni))
+            expensesList.add(ResultItem("سهم هر جمع‌کن", output.perPersonJamkoni))
             
-            resultsList.add(ResultItem("کل کوله‌کشی", output.totalKooleh))
-            resultsList.add(ResultItem("سهم هر کوله‌کش", output.perPersonKooleh))
+            expensesList.add(ResultItem("کل کوله‌کشی", output.totalKooleh))
+            expensesList.add(ResultItem("سهم هر کوله‌کش", output.perPersonKooleh))
             
-            resultsList.add(ResultItem("کل سرکاری", output.totalSarkari))
+            expensesList.add(ResultItem("کل سرکاری", output.totalSarkari))
             
             if (_inputState.value.sarkari.isHalfKari) {
-                resultsList.add(ResultItem("سهم سرکاری (گروه ۱)", output.perPersonSarkariGroup1))
-                resultsList.add(ResultItem("سهم سرکاری (گروه ۲)", output.perPersonSarkariGroup2))
+                expensesList.add(ResultItem("سهم سرکاری (گروه ۱)", output.perPersonSarkariGroup1))
+                expensesList.add(ResultItem("سهم سرکاری (گروه ۲)", output.perPersonSarkariGroup2))
             } else {
-                resultsList.add(ResultItem("سهم هر سرکار", output.perPersonSarkari))
+                expensesList.add(ResultItem("سهم هر سرکار", output.perPersonSarkari))
             }
             
             if (output.extraExpense.value > 0) {
-                resultsList.add(ResultItem("خرج اضافی متفرقه", output.extraExpense))
+                expensesList.add(ResultItem("خرج اضافی متفرقه", output.extraExpense))
             }
+
+            // جمع کل هزینه‌ها برای کسر از استخر ماژول بعد
+            totalExpensesValue = output.globalFixed.value + 
+                                 output.totalTekani.value + 
+                                 output.totalJamkoni.value + 
+                                 output.totalKooleh.value + 
+                                 output.totalSarkari.value + 
+                                 output.extraExpense.value
         }
 
-        // ۳. الصاق خودکار سال به عنوان و ایجاد کپسول تاریخچه
+        // ۲. محاسبه استخر و اجرای ماژول کشاورزی/نیمه‌کاری
+        // اگر خرجکرد صفر باشد، دقیقاً کل بار (totalWalnuts) به ماژول ۳ می‌رود
+        val remainingForStage3 = totalWalnuts - WalnutUnit(totalExpensesValue)
+
+        val agriInput = AgricultureStrategy.Input(
+            remainingFromStage2 = remainingForStage3,
+            isKeshavarzi = agricultureInput.isKeshavarzi,
+            keshavarziRatioInput = agricultureInput.keshavarziRatioInput,
+            isNimehkari = agricultureInput.isNimehkari
+        )
+        
+        val agriOutput = AgricultureStrategy.calculate(agriInput)
+
+        val agricultureResultsList = mutableListOf<ResultItem>()
+        if (agricultureInput.isKeshavarzi) {
+            agricultureResultsList.add(ResultItem("کسر سهم کشاورز", agriOutput.keshavarziTotal))
+        }
+
+        val nimehkariResultsList = mutableListOf<ResultItem>()
+        if (agricultureInput.isNimehkari) {
+            val partnerName = if (agricultureInput.partner1Name.isNotBlank()) "(${agricultureInput.partner1Name})" else ""
+            nimehkariResultsList.add(ResultItem("کسر سهم نیمه‌کاری $partnerName", agriOutput.nimehkariTotal))
+        }
+
+        // نشان دادن خطِ باقی‌مانده نهایی فقط در صورتی که یکی از این دو تیک خورده باشد
+        if (agricultureInput.isKeshavarzi || agricultureInput.isNimehkari) {
+            nimehkariResultsList.add(ResultItem("خالص باقی‌مانده نهایی", agriOutput.remainingForStage4))
+        }
+
+        // ۳. الصاق خودکار سال به عنوان و ایجاد کپسول تاریخچه یکپارچه
         val finalName = if (calculationName.isNotBlank()) "$calculationName - $currentYear" else "بدون نام - $currentYear"
 
         val record = CalculationHistoryRecord(
-            id = "temp_id", // در فاز پیاده‌سازی دیتابیس با شناسه یکتا جایگزین می‌شود
+            id = timestampLong.toString(), // ذخیره با تایم‌استمپ یونیک
             timestamp = timestampLong,
             calculationName = finalName,
             persianYear = currentYear,
             baseUnit = baseUnit,
             inputAmount = totalWalnuts,
-            expensesResults = resultsList,
-            agricultureResults = emptyList(),
-            nimehkariResults = emptyList(),
-            finalSharesResults = emptyList()
+            expensesResults = expensesList,
+            agricultureResults = agricultureResultsList,
+            nimehkariResults = nimehkariResultsList,
+            finalSharesResults = emptyList() // آماده برای دریافت نتایج ماژول ۴ در قدم‌های بعدی
         )
         
         _snapshot.value = record
