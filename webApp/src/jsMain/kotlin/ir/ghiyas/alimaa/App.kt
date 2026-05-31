@@ -8,6 +8,7 @@ import ir.ghiyas.alimaa.ui.components.GhiyasTopAppBar
 import ir.ghiyas.alimaa.ui.components.HeroBanner
 import ir.ghiyas.alimaa.ui.stages.InputStageScreen
 import ir.ghiyas.alimaa.ui.stages.ExpenseStageScreen
+import ir.ghiyas.alimaa.ui.stages.HistoryScreen
 import ir.ghiyas.alimaa.presentation.stages.input.InputStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseStageViewModel
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
@@ -15,12 +16,14 @@ import ir.ghiyas.alimaa.domain.models.WalnutUnit
 
 @Composable
 fun App() {
+    var currentScreen by remember { mutableStateOf("main") }
     var clearFormRequested by remember { mutableStateOf(false) }
 
     val inputViewModel = remember { InputStageViewModel() }
     val expenseViewModel = remember { ExpenseStageViewModel() }
     
     val inputState by inputViewModel.state.collectAsState()
+    val snapshot by expenseViewModel.snapshot.collectAsState()
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"
@@ -48,7 +51,10 @@ fun App() {
                 clearFormRequested = true
                 expenseViewModel.clearForm()
             },
-            onHistoryClick = { /* TODO */ }
+            onHistoryClick = { currentScreen = "history" },
+            onShareClick = if (currentScreen == "main" && snapshot != null) {
+                { ir.ghiyas.alimaa.export.WebExportEngine.shareText(snapshot!!) }
+            } else null
         )
         
         Div(attrs = {
@@ -58,20 +64,24 @@ fun App() {
                 paddingBottom(32.px)
             }
         }) {
-            HeroBanner()
-            
-            InputStageScreen(
-                viewModel = inputViewModel,
-                onClearRequested = clearFormRequested,
-                onClearComplete = { clearFormRequested = false }
-            )
-            
-            ExpenseStageScreen(
-                viewModel = expenseViewModel,
-                baseUnit = inputState.unitType.displayName,
-                calculationName = inputState.calculationName,
-                totalInputAmount = inputState.totalAmount
-            )
+            if (currentScreen == "main") {
+                HeroBanner()
+                
+                InputStageScreen(
+                    viewModel = inputViewModel,
+                    onClearRequested = clearFormRequested,
+                    onClearComplete = { clearFormRequested = false }
+                )
+                
+                ExpenseStageScreen(
+                    viewModel = expenseViewModel,
+                    baseUnit = inputState.unitType.displayName,
+                    calculationName = inputState.calculationName,
+                    totalInputAmount = inputState.totalAmount
+                )
+            } else if (currentScreen == "history") {
+                HistoryScreen(onBack = { currentScreen = "main" })
+            }
         }
     }
 }

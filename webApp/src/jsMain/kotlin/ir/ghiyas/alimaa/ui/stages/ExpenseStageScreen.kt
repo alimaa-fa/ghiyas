@@ -7,6 +7,7 @@ import org.jetbrains.compose.web.dom.*
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseCategoryState
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
+import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 
 private fun String.standardizeDigits(): String {
     var result = this
@@ -236,6 +237,12 @@ fun ExpenseStageScreen(
                 val currentUnixTimestamp = kotlin.js.Date().getTime().toLong()
 
                 viewModel.calculateAndSnapshot(calculationName, baseUnit, rawPersianYear, currentUnixTimestamp)
+
+                val newRecord = viewModel.snapshot.value
+                if (newRecord != null) {
+                    val recordWithId = newRecord.copy(id = currentUnixTimestamp.toString())
+                    ir.ghiyas.alimaa.data.LocalStorageRepository.saveRecord(recordWithId)
+                }
             }
         }) {
             Text("محاسبه کن")
@@ -271,11 +278,12 @@ fun ExpenseStageScreen(
                 val liveTimeString = kotlin.js.Date(snapshot!!.timestamp).toLocaleString("fa-IR", dateTimeOptions)
 
                 Div(attrs = { style { marginBottom(16.px); paddingBottom(16.px); property("border-bottom", "2px dashed #C8E6C9") } }) {
+                    val isKg = snapshot!!.baseUnit.contains("کیلو") || snapshot!!.baseUnit.contains("گرم")
                     P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) {
                         Text("نام محاسبه: ${snapshot!!.calculationName}")
                     }
                     P(attrs = { style { margin(8.px, 0.px, 0.px, 0.px); color(Color("#424242")); fontSize(0.95.cssRem) } }) {
-                        val amt = snapshot!!.inputAmount.value.toString()
+                        val amt = snapshot!!.inputAmount.value.toGhiyasFormat(isKg)
                         Text("کل مقدار اولیه: $amt ${snapshot!!.baseUnit}")
                     }
                     P(attrs = { style { margin(8.px, 0.px, 0.px, 0.px); color(Color("#757575")); fontSize(0.85.cssRem) } }) {
@@ -285,46 +293,20 @@ fun ExpenseStageScreen(
                 
                 snapshot!!.expensesResults.forEach { item ->
                     val rawValue = item.value.value
-
-                    val roundedValue = when {
-                        snapshot!!.baseUnit.contains("کیلو") || snapshot!!.baseUnit.contains("گرم") -> {
-                            (kotlin.math.round(rawValue * 1000.0) / 1000.0).toString()
-                        }
-                        snapshot!!.baseUnit.contains("متر") || snapshot!!.baseUnit.contains("سانت") || snapshot!!.baseUnit.contains("ساعت") -> {
-                            (kotlin.math.round(rawValue * 100.0) / 100.0).toString()
-                        }
-                        snapshot!!.baseUnit.contains("تومان") || snapshot!!.baseUnit.contains("ریال") -> {
-                            kotlin.math.round(rawValue).toLong().toString()
-                        }
-                        else -> {
-                            val shifted = rawValue * 10.0
-                            val truncated = kotlin.math.floor(shifted)
-                            val remainder = shifted - truncated
-                            val finalShifted = if (remainder >= 0.79) truncated + 1.0 else truncated
-                            (finalShifted / 10.0).toString()
-                        }
-                    }.removeSuffix(".0")
-
-                    fun formatNumber(numStr: String): String {
-                        var res = numStr
-                        val eng = arrayOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".")
-                        val per = arrayOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹", "٫")
-                        for (i in eng.indices) { res = res.replace(eng[i], per[i]) }
-                        return res
-                    }
+                    val isKg = snapshot!!.baseUnit.contains("کیلو") || snapshot!!.baseUnit.contains("گرم")
 
                     Div(attrs = {
                         style {
                             display(DisplayStyle.Flex)
-                            justifyContent(JustifyContent.SpaceBetween)
+                            alignItems(AlignItems.Center)
                             padding(12.px, 0.px)
                             property("border-bottom", "1px dashed #AED581")
                             fontSize(1.1.cssRem)
                             color(Color("#33691E"))
                         }
                     }) {
-                        Span { Text(item.label) }
-                        Span(attrs = { style { fontWeight("bold") } }) { 
+                        Span(attrs = { style { flex(1) } }) { Text(item.label) }
+                        Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { 
                             Span(attrs = {
                                 style {
                                     fontFamily("Vazirmatn", "system-ui", "sans-serif")
@@ -333,7 +315,7 @@ fun ExpenseStageScreen(
                                     display(DisplayStyle.InlineBlock)
                                 }
                             }) {
-                                Text(formatNumber(roundedValue))
+                                Text(rawValue.toGhiyasFormat(isKg))
                             }
                             Text(" ${snapshot!!.baseUnit}")
                         }

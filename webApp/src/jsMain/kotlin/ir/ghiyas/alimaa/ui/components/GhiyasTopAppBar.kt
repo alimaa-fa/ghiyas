@@ -7,7 +7,8 @@ import androidx.compose.runtime.Composable
 @Composable
 fun GhiyasTopAppBar(
     onClearClick: () -> Unit,
-    onHistoryClick: () -> Unit
+    onHistoryClick: () -> Unit,
+    onShareClick: (() -> Unit)? = null
 ) {
     Div(attrs = {
         style {
@@ -47,6 +48,15 @@ fun GhiyasTopAppBar(
                 gap(16.px)
             }
         }) {
+            if (onShareClick != null) {
+                Span(attrs = {
+                    style { cursor("pointer"); fontSize(20.px) }
+                    title("اشتراک‌گذاری نتایج")
+                    onClick { onShareClick() }
+                }) {
+                    Text("📤")
+                }
+            }
             Span(attrs = {
                 style { cursor("pointer"); fontSize(20.px) }
                 title("پاک کردن فرم")
