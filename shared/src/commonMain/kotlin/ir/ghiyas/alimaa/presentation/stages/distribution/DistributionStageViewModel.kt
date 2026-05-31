@@ -14,9 +14,10 @@ data class ShareholderInput(val name: String = "", val ghiyasInput: String = "")
 data class PoolDistributionState(
     val mode: DistributionMode = DistributionMode.MODE_B_SIMPLE,
     val groupName: String = "",                           
-    val modeBState: ModeBState = ModeBState(), // اضافه شدن استیت پیشرفته نفری                  
+    val modeBState: ModeBState = ModeBState(),                  
     val shareholders: List<ShareholderInput> = listOf(ShareholderInput()), 
-    val defaultStrategyTitle: String = ""                 
+    val defaultStrategyTitle: String = "",
+    val calculateZivar: Boolean = true
 )
 
 data class DistributionStageState(
@@ -48,6 +49,7 @@ class DistributionStageViewModel {
     fun updateMode(target: PoolTarget, mode: DistributionMode) { updatePoolState(target) { it.copy(mode = mode) } }
     fun updateGroupName(target: PoolTarget, name: String) { updatePoolState(target) { it.copy(groupName = name) } }
     fun updateDefaultStrategy(target: PoolTarget, title: String) { updatePoolState(target) { it.copy(defaultStrategyTitle = title) } }
+    fun updateCalculateZivar(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(calculateZivar = isChecked) } }
     
     fun addShareholder(target: PoolTarget) { updatePoolState(target) { it.copy(shareholders = it.shareholders + ShareholderInput()) } }
     fun updateShareholder(target: PoolTarget, index: Int, name: String, ghiyasInput: String) {
@@ -65,7 +67,6 @@ class DistributionStageViewModel {
         }
     }
 
-    // --- توابع اختصاصی مدیریت درخت Mode B ---
     fun updateModeBState(target: PoolTarget, update: (ModeBState) -> ModeBState) {
         updatePoolState(target) { it.copy(modeBState = update(it.modeBState)) }
     }

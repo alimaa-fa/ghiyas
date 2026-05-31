@@ -8,6 +8,7 @@ import ir.ghiyas.alimaa.domain.strategy.AgricultureStrategy
 import ir.ghiyas.alimaa.domain.strategy.DistributionEngine
 import ir.ghiyas.alimaa.domain.strategy.DistributionInput
 import ir.ghiyas.alimaa.domain.strategy.Shareholder
+import ir.ghiyas.alimaa.domain.strategy.DistributionMode
 import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureInputState
 import ir.ghiyas.alimaa.presentation.stages.distribution.DistributionStageState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -109,46 +110,57 @@ class ExpenseStageViewModel {
         val poolAmount = agriOutput.remainingForStage4
 
         if (agricultureInput.isNimehkari) {
-            // رفع باگ وحشتناک: استخرهای شرکا با هم فرق دارند و جمعاً باید کل بار را شامل شوند!
-            val p1Pool = agriOutput.nimehkariTotal // ۱۲۰ تا برای شریک ۱ (کسر سهم نیمه‌کاری)
-            val p2Pool = agriOutput.remainingForStage4 // ۱۲۰ تا برای شریک ۲ (باقی‌مانده)
-            
             val p1State = distributionInput.partner1PoolState
-            val p1Input = DistributionInput(
-                poolAmount = p1Pool, // تخصیص صحیح استخر شریک ۱
-                mode = p1State.mode, groupName = p1State.groupName,
-                modeBState = p1State.modeBState,
-                shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                defaultStrategyTitle = p1State.defaultStrategyTitle,
-                defaultLabel = "نیمه اول"
-            )
-            // اصلاح فرمت نام‌گذاری برای جلوگیری از [] []
-            val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " (نیمه ${agricultureInput.partner1Name})" else " (نیمه اول)"
-            val p1Results = DistributionEngine.calculate(p1Input).map { ResultItem(it.label + p1NameSuffix, it.value) }
-            finalSharesList.addAll(p1Results)
+            
+            // ترفند ردگیری ماکروی سراسری در شریک اول
+            val p1Strategy = ir.ghiyas.alimaa.domain.strategy.DefaultCalculationsRegistry.strategies.find { it.title == p1State.defaultStrategyTitle }
+            val isP1GlobalMacro = p1State.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
 
-            val p2State = distributionInput.partner2PoolState
-            val p2Input = DistributionInput(
-                poolAmount = p2Pool, // تخصیص صحیح استخر شریک ۲
-                mode = p2State.mode, groupName = p2State.groupName,
-                modeBState = p2State.modeBState,
-                shareholders = p2State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                defaultStrategyTitle = p2State.defaultStrategyTitle,
-                defaultLabel = "نیمه دوم"
-            )
-            // اصلاح فرمت نام‌گذاری
-            val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " (نیمه ${agricultureInput.partner2Name})" else " (نیمه دوم)"
-            val p2Results = DistributionEngine.calculate(p2Input).map { ResultItem(it.label + p2NameSuffix, it.value) }
-            finalSharesList.addAll(p2Results)
+            if (isP1GlobalMacro) {
+                // اگر ماکروی سراسری انتخاب شده بود، کل استخرها یکجا به همان پاس داده شده و پردازش شریک دوم متوقف میشود
+                val p1Input = DistributionInput(
+                    poolAmount = agriOutput.remainingForStage4, // SourcePool
+                    mode = p1State.mode, groupName = p1State.groupName, modeBState = p1State.modeBState,
+                    shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
+                    defaultStrategyTitle = p1State.defaultStrategyTitle, defaultLabel = "سهم یکجا کل",
+                    calculateZivar = p1State.calculateZivar, isNimehkari = true, nimehkariPool = agriOutput.nimehkariTotal // NimehkariPool
+                )
+                val results = DistributionEngine.calculate(p1Input)
+                finalSharesList.addAll(results)
+            } else {
+                // تقسیم کلاسیک دو استخری مجزا در صورت عدم وجود ماکروی سراسری گیرنده
+                val p1Pool = agriOutput.nimehkariTotal 
+                val p2Pool = agriOutput.remainingForStage4 
+                
+                val p1Input = DistributionInput(
+                    poolAmount = p1Pool, mode = p1State.mode, groupName = p1State.groupName, modeBState = p1State.modeBState,
+                    shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
+                    defaultStrategyTitle = p1State.defaultStrategyTitle, defaultLabel = "نیمه اول",
+                    calculateZivar = p1State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal
+                )
+                val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " (نیمه ${agricultureInput.partner1Name})" else " (نیمه اول)"
+                val p1Results = DistributionEngine.calculate(p1Input).map { ResultItem(it.label + p1NameSuffix, it.value) }
+                finalSharesList.addAll(p1Results)
+
+                val p2State = distributionInput.partner2PoolState
+                val p2Input = DistributionInput(
+                    poolAmount = p2Pool, mode = p2State.mode, groupName = p2State.groupName, modeBState = p2State.modeBState,
+                    shareholders = p2State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
+                    defaultStrategyTitle = p2State.defaultStrategyTitle, defaultLabel = "نیمه دوم",
+                    calculateZivar = p2State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal
+                )
+                val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " (نیمه ${agricultureInput.partner2Name})" else " (نیمه دوم)"
+                val p2Results = DistributionEngine.calculate(p2Input).map { ResultItem(it.label + p2NameSuffix, it.value) }
+                finalSharesList.addAll(p2Results)
+            }
             
         } else {
             val mainState = distributionInput.mainPoolState
             val distInput = DistributionInput(
-                poolAmount = poolAmount, mode = mainState.mode, groupName = mainState.groupName,
-                modeBState = mainState.modeBState,
+                poolAmount = poolAmount, mode = mainState.mode, groupName = mainState.groupName, modeBState = mainState.modeBState,
                 shareholders = mainState.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                defaultStrategyTitle = mainState.defaultStrategyTitle,
-                defaultLabel = "سهم کل یکجا"
+                defaultStrategyTitle = mainState.defaultStrategyTitle, defaultLabel = "سهم کل یکجا",
+                calculateZivar = mainState.calculateZivar, isNimehkari = false, nimehkariPool = WalnutUnit.ZERO
             )
             val results = DistributionEngine.calculate(distInput)
             finalSharesList.addAll(results)

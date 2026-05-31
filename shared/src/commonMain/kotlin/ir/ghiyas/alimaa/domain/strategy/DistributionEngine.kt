@@ -9,7 +9,6 @@ enum class DistributionMode {
 
 data class Shareholder(val name: String, val ghiyas: Double)
 
-// ساختار نود بازگشتی برای تقسیم درختی
 data class PersonNode(
     val id: String,
     val name: String = "",
@@ -26,7 +25,7 @@ data class PersonNode(
 data class ModeBState(
     val countInput: String = "",
     val isBoyGirlSplit: Boolean = false,
-    val isDetailed: Boolean = false, // چک‌باکس تقسیم جزئی اصلی
+    val isDetailed: Boolean = false,
     val children: List<PersonNode> = emptyList()
 )
 
@@ -34,22 +33,20 @@ data class DistributionInput(
     val poolAmount: WalnutUnit,
     val mode: DistributionMode,
     val groupName: String = "", 
-    val modeBState: ModeBState = ModeBState(), // جایگزین ورودی‌های ساده قبلی
+    val modeBState: ModeBState = ModeBState(),
     val shareholders: List<Shareholder> = emptyList(),
     val defaultStrategyTitle: String = "",
-    val defaultLabel: String = "سهم یکجا"
+    val defaultLabel: String = "سهم یکجا",
+    val calculateZivar: Boolean = true,
+    val isNimehkari: Boolean = false,
+    val nimehkariPool: WalnutUnit = WalnutUnit.ZERO
 )
 
 object DistributionEngine {
     
-    // تابع بازگشتی (Recursive) برای پردازش درخت
     private fun processModeBTree(
-        pool: WalnutUnit,
-        parentName: String,
-        countInput: String,
-        isBoyGirlSplit: Boolean,
-        isDetailed: Boolean,
-        children: List<PersonNode>
+        pool: WalnutUnit, parentName: String, countInput: String,
+        isBoyGirlSplit: Boolean, isDetailed: Boolean, children: List<PersonNode>
     ): List<ResultItem> {
         val count = countInput.toDoubleOrNull() ?: 1.0
         val validCount = if (count > 0) count else 1.0
@@ -77,14 +74,10 @@ object DistributionEngine {
                     val typePrefix = if (child.isFemale) "سهم دختر" else "سهم پسر"
                     results.add(ResultItem("$typePrefix $fullLabel", childPool))
                 } else {
-                    // شیرجه به عمق درخت (Recursion)
                     results.addAll(
                         processModeBTree(
-                            pool = childPool,
-                            parentName = fullLabel,
-                            countInput = child.subCountInput,
-                            isBoyGirlSplit = child.isSubBoyGirlSplit,
-                            isDetailed = child.isDetailedFurther,
+                            pool = childPool, parentName = fullLabel, countInput = child.subCountInput,
+                            isBoyGirlSplit = child.isSubBoyGirlSplit, isDetailed = child.isDetailedFurther,
                             children = child.subNodes
                         )
                     )
@@ -102,12 +95,8 @@ object DistributionEngine {
             }
             DistributionMode.MODE_B_SIMPLE -> {
                 processModeBTree(
-                    pool = input.poolAmount,
-                    parentName = "", 
-                    countInput = input.modeBState.countInput,
-                    isBoyGirlSplit = input.modeBState.isBoyGirlSplit,
-                    isDetailed = input.modeBState.isDetailed,
-                    children = input.modeBState.children
+                    pool = input.poolAmount, parentName = "", countInput = input.modeBState.countInput,
+                    isBoyGirlSplit = input.modeBState.isBoyGirlSplit, isDetailed = input.modeBState.isDetailed, children = input.modeBState.children
                 )
             }
             DistributionMode.MODE_C_GHIYAS -> {
@@ -122,7 +111,7 @@ object DistributionEngine {
             }
             DistributionMode.MODE_DEFAULT_MAKER -> {
                 val strategy = DefaultCalculationsRegistry.strategies.find { it.title == input.defaultStrategyTitle }
-                strategy?.calculate(input.poolAmount) ?: emptyList()
+                strategy?.calculate(input) ?: emptyList()
             }
         }
     }

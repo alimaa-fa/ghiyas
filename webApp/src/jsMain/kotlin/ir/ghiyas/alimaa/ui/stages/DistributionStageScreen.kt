@@ -47,7 +47,6 @@ private fun DistTextInput(label: String, value: String, isNumber: Boolean = fals
     }
 }
 
-// کامپوننت گرافیکیِ بازگشتی برای رندر درخت تسهیم
 @Composable
 fun RecursivePersonNode(
     node: PersonNode,
@@ -59,7 +58,7 @@ fun RecursivePersonNode(
         style {
             padding(12.px)
             marginTop(8.px)
-            property("border-left", "4px solid #81C784") // رفع خطای borderLeft
+            property("border-left", "4px solid #81C784")
             backgroundColor(Color("#F8FBF8"))
             borderRadius(4.px)
         }
@@ -71,7 +70,6 @@ fun RecursivePersonNode(
             Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem) } }) {
                 Input(type = InputType.Checkbox, attrs = {
                     checked(node.isFemale)
-                    // رفع خطای تداخل لامبدا با تعریف صریح event
                     onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isFemale = event.value) } }
                     style { marginRight(4.px) }
                 })
@@ -89,7 +87,6 @@ fun RecursivePersonNode(
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px) } }) {
             Input(type = InputType.Checkbox, attrs = {
                 checked(node.isSubDivided)
-                // رفع خطای تداخل لامبدا
                 onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isSubDivided = event.value) } }
                 style { marginRight(8.px) }
             })
@@ -107,7 +104,6 @@ fun RecursivePersonNode(
                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
                     Input(type = InputType.Checkbox, attrs = {
                         checked(node.isDetailedFurther)
-                        // رفع خطای تداخل لامبدا
                         onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isDetailedFurther = event.value) } }
                         style { marginRight(8.px) }
                     })
@@ -119,7 +115,6 @@ fun RecursivePersonNode(
                         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
                             Input(type = InputType.Checkbox, attrs = {
                                 checked(node.isSubBoyGirlSplit)
-                                // رفع خطای تداخل لامبدا
                                 onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isSubBoyGirlSplit = event.value) } }
                                 style { marginRight(8.px) }
                             })
@@ -179,8 +174,28 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
         if (agricultureInput.isNimehkari) {
             val p1Name = if (agricultureInput.partner1Name.isNotBlank()) agricultureInput.partner1Name else "شریک ۱"
             val p2Name = if (agricultureInput.partner2Name.isNotBlank()) agricultureInput.partner2Name else "شریک ۲"
+            
             PoolSettingsCard("تنظیمات سهم $p1Name", PoolTarget.PARTNER_1, state.partner1PoolState, viewModel)
-            PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel)
+            
+            // قفل هوشمند: اگر سهم شریک اول از نوع ماکروی سراسری بود، پنل دوم محو شده و پیام جایگزین میشود
+            val p1Strategy = DefaultCalculationsRegistry.strategies.find { it.title == state.partner1PoolState.defaultStrategyTitle }
+            val isP1GlobalMacro = state.partner1PoolState.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
+
+            if (isP1GlobalMacro) {
+                Div(attrs = {
+                    style {
+                        marginBottom(24.px); padding(20.px)
+                        border(2.px, LineStyle.Dashed, Color("#90CAF9"))
+                        borderRadius(12.px); backgroundColor(Color("#E3F2FD"))
+                        color(Color("#0D47A1")); textAlign("center"); fontWeight("bold")
+                        fontSize(1.05.cssRem)
+                    }
+                }) {
+                    Text("🔒 تنظیمات سهم $p2Name به صورت خودکار توسط محاسبه یکپارچه (${p1Strategy.title}) مدیریت و تسهیم می‌شود.")
+                }
+            } else {
+                PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel)
+            }
         } else {
             PoolSettingsCard("تنظیمات تسهیم کل بار", PoolTarget.MAIN, state.mainPoolState, viewModel)
         }
@@ -234,7 +249,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontWeight("bold"); marginTop(16.px) } }) {
                         Input(type = InputType.Checkbox, attrs = {
                             checked(bState.isDetailed)
-                            // تعریف صریح event
                             onChange { event -> viewModel.updateModeBState(target) { st -> st.copy(isDetailed = event.value) } }
                             style { marginRight(12.px); width(20.px); height(20.px) }
                         })
@@ -246,7 +260,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontWeight("bold"); marginTop(16.px) } }) {
                                 Input(type = InputType.Checkbox, attrs = {
                                     checked(bState.isBoyGirlSplit)
-                                    // تعریف صریح event
                                     onChange { event -> viewModel.updateModeBState(target) { st -> st.copy(isBoyGirlSplit = event.value) } }
                                     style { marginRight(12.px); width(20.px); height(20.px) }
                                 })
@@ -306,6 +319,17 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) selected(); disabled() }) { Text("محاسبات پیش‌فرض سازنده را انتخاب کنید...") }
                         DefaultCalculationsRegistry.strategies.forEach { strategy ->
                             Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) selected() }) { Text(strategy.title) }
+                        }
+                    }
+                    
+                    if (state.defaultStrategyTitle == "دانگ ماریکی(کِجِینو)") {
+                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(16.px); fontWeight("bold") } }) {
+                            Input(type = InputType.Checkbox, attrs = {
+                                checked(state.calculateZivar)
+                                onChange { event -> viewModel.updateCalculateZivar(target, event.value) }
+                                style { marginRight(8.px); width(20.px); height(20.px) }
+                            })
+                            Text("سهم زیور/نواب حساب شود؟")
                         }
                     }
                 }

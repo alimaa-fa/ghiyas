@@ -42,7 +42,7 @@ fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight
                     property("direction", "ltr")
                     display(DisplayStyle.InlineBlock) 
                 }
-            }) { Text(rawValue.toGhiyasFormat(baseUnit)) } // استفاده از متد جدید تشخیص هوشمند اعشار و گردکردن
+            }) { Text(rawValue.toGhiyasFormat(baseUnit)) }
             Text(" $baseUnit")
         }
     }
@@ -112,16 +112,9 @@ fun App() {
 
                 Button(attrs = {
                     style {
-                        width(100.percent)
-                        padding(16.px)
-                        property("margin", "16px 0px")
-                        backgroundColor(Color("#2E7D32"))
-                        color(Color("white"))
-                        border(0.px)
-                        borderRadius(8.px)
-                        fontSize(1.1.cssRem)
-                        fontWeight("bold")
-                        property("cursor", "pointer")
+                        width(100.percent); padding(16.px); property("margin", "16px 0px")
+                        backgroundColor(Color("#2E7D32")); color(Color("white")); border(0.px); borderRadius(8.px)
+                        fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer")
                     }
                     onClick {
                         val yearOptions = kotlin.js.json("year" to "numeric").unsafeCast<kotlin.js.Date.LocaleOptions>()
@@ -145,25 +138,15 @@ fun App() {
                 if (snapshot != null) {
                     Div(attrs = { 
                         style { 
-                            property("margin", "16px")
-                            padding(24.px)
-                            backgroundColor(Color("#F1F8E9"))
-                            borderRadius(12.px)
-                            border(1.px, LineStyle.Solid, Color("#C5E1A5")) 
+                            property("margin", "16px"); padding(24.px); backgroundColor(Color("#F1F8E9"))
+                            borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")) 
                         } 
                     }) {
                         Div(attrs = { 
                             style { 
-                                backgroundColor(Color("#F5F5F5"))
-                                color(Color("#1B5E20"))
-                                padding(14.px, 24.px)
-                                borderRadius(8.px)
-                                textAlign("center")
-                                fontWeight("bold")
-                                fontSize(1.25.cssRem)
-                                marginBottom(20.px)
-                                property("border", "1px solid #C8E6C9")
-                                property("border-left", "5px solid #2E7D32") 
+                                backgroundColor(Color("#F5F5F5")); color(Color("#1B5E20")); padding(14.px, 24.px)
+                                borderRadius(8.px); textAlign("center"); fontWeight("bold"); fontSize(1.25.cssRem)
+                                marginBottom(20.px); property("border", "1px solid #C8E6C9"); property("border-left", "5px solid #2E7D32") 
                             } 
                         }) { Text("نتایج محاسبات نهایی قیاس") }
                         
@@ -172,9 +155,7 @@ fun App() {
 
                         Div(attrs = { 
                             style { 
-                                marginBottom(16.px)
-                                paddingBottom(16.px)
-                                property("border-bottom", "2px dashed #C8E6C9") 
+                                marginBottom(16.px); paddingBottom(16.px); property("border-bottom", "2px dashed #C8E6C9") 
                             } 
                         }) {
                             P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) { Text("نام محاسبه: ${snapshot!!.calculationName}") }
@@ -194,21 +175,20 @@ fun App() {
                             snapshot!!.nimehkariResults.forEach { item -> ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
                         }
 
-                        // پیاده‌سازی نمایش درختی تفکیک‌شده با کادر جداگانه و فاصله واضح برای کل زیرمجموعه‌ها
                         if (snapshot!!.finalSharesResults.isNotEmpty()) {
                             Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) {
                                 H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") }
                             }
                             
-                            // رندر هر سهم درختی داخل کادر سفید جداگانه با فاصله‌گذاری شیک
                             snapshot!!.finalSharesResults.forEach { item -> 
+                                // تشخیص هوشمند ردیف‌های مربوط به نیمه‌کاری (گروه دوم برکت و کرامت) بر اساس نشانه 🌾
+                                val isNimehkariRow = item.label.startsWith("🌾")
                                 Div(attrs = {
                                     style {
-                                        backgroundColor(Color("white"))
-                                        property("border", "1px dashed #A5D6A7")
-                                        borderRadius(8.px)
-                                        padding(12.px)
-                                        property("margin", "8px 0px")
+                                        backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")) // رنگ پس‌زمینه گرم متمایز
+                                        property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7") // حاشیه کهربایی برای تمایز فیزیکی
+                                        borderRadius(8.px); padding(12.px)
+                                        property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px") // اعمال فاصله واضح قبل از شروع گروه دوم
                                         property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)")
                                     }
                                 }) {
@@ -219,16 +199,10 @@ fun App() {
 
                         Button(attrs = {
                             style {
-                                width(100.percent)
-                                padding(12.px)
-                                property("margin-top", "24px")
-                                backgroundColor(Color("white"))
-                                color(Color("#2E7D32"))
-                                property("border", "2px solid #2E7D32")
-                                borderRadius(8.px)
-                                fontSize(1.1.cssRem)
-                                fontWeight("bold")
-                                property("cursor", "pointer")
+                                width(100.percent); padding(12.px); property("margin-top", "24px")
+                                backgroundColor(Color("white")); color(Color("#2E7D32"))
+                                property("border", "2px solid #2E7D32"); borderRadius(8.px)
+                                fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer")
                             }
                             onClick { ir.ghiyas.alimaa.export.WebExportEngine.shareText(snapshot!!) }
                         }) { Text("کپی نتایج به صورت متنی") }
