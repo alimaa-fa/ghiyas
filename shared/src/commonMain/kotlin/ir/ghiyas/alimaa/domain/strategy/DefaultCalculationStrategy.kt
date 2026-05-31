@@ -12,6 +12,7 @@ object DefaultCalculationsRegistry {
     val strategies: List<DefaultCalculationStrategy> = listOf(
         AsadCalculationStrategy,
         DongMarikiCalculationStrategy,
-        AbdolrahimCalculationStrategy // ثبت پادشاه جدید محاسبات پیش‌فرض عبدالرحیم
+        AbdolrahimCalculationStrategy,
+        MohammadRahimCalculationStrategy // ثبت پروفایل محمد رحیم
     )
 }
