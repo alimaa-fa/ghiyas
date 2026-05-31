@@ -109,31 +109,35 @@ class ExpenseStageViewModel {
         val poolAmount = agriOutput.remainingForStage4
 
         if (agricultureInput.isNimehkari) {
-            val halfPool = poolAmount / 2.0
+            // رفع باگ وحشتناک: استخرهای شرکا با هم فرق دارند و جمعاً باید کل بار را شامل شوند!
+            val p1Pool = agriOutput.nimehkariTotal // ۱۲۰ تا برای شریک ۱ (کسر سهم نیمه‌کاری)
+            val p2Pool = agriOutput.remainingForStage4 // ۱۲۰ تا برای شریک ۲ (باقی‌مانده)
             
-            // پردازش استخر اول و الصاق هوشمند نام شریک به برچسب نتایج
             val p1State = distributionInput.partner1PoolState
             val p1Input = DistributionInput(
-                poolAmount = halfPool, mode = p1State.mode, groupName = p1State.groupName,
-                peopleCountInput = p1State.peopleCountInput, isBoyGirlSplit = p1State.isBoyGirlSplit,
+                poolAmount = p1Pool, // تخصیص صحیح استخر شریک ۱
+                mode = p1State.mode, groupName = p1State.groupName,
+                modeBState = p1State.modeBState,
                 shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                 defaultStrategyTitle = p1State.defaultStrategyTitle,
                 defaultLabel = "نیمه اول"
             )
-            val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " [${agricultureInput.partner1Name}]" else " [شریک ۱]"
+            // اصلاح فرمت نام‌گذاری برای جلوگیری از [] []
+            val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " (نیمه ${agricultureInput.partner1Name})" else " (نیمه اول)"
             val p1Results = DistributionEngine.calculate(p1Input).map { ResultItem(it.label + p1NameSuffix, it.value) }
             finalSharesList.addAll(p1Results)
 
-            // پردازش استخر دوم و الصاق هوشمند نام شریک به برچسب نتایج
             val p2State = distributionInput.partner2PoolState
             val p2Input = DistributionInput(
-                poolAmount = halfPool, mode = p2State.mode, groupName = p2State.groupName,
-                peopleCountInput = p2State.peopleCountInput, isBoyGirlSplit = p2State.isBoyGirlSplit,
+                poolAmount = p2Pool, // تخصیص صحیح استخر شریک ۲
+                mode = p2State.mode, groupName = p2State.groupName,
+                modeBState = p2State.modeBState,
                 shareholders = p2State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                 defaultStrategyTitle = p2State.defaultStrategyTitle,
                 defaultLabel = "نیمه دوم"
             )
-            val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " [${agricultureInput.partner2Name}]" else " [شریک ۲]"
+            // اصلاح فرمت نام‌گذاری
+            val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " (نیمه ${agricultureInput.partner2Name})" else " (نیمه دوم)"
             val p2Results = DistributionEngine.calculate(p2Input).map { ResultItem(it.label + p2NameSuffix, it.value) }
             finalSharesList.addAll(p2Results)
             
@@ -141,7 +145,7 @@ class ExpenseStageViewModel {
             val mainState = distributionInput.mainPoolState
             val distInput = DistributionInput(
                 poolAmount = poolAmount, mode = mainState.mode, groupName = mainState.groupName,
-                peopleCountInput = mainState.peopleCountInput, isBoyGirlSplit = mainState.isBoyGirlSplit,
+                modeBState = mainState.modeBState,
                 shareholders = mainState.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                 defaultStrategyTitle = mainState.defaultStrategyTitle,
                 defaultLabel = "سهم کل یکجا"
