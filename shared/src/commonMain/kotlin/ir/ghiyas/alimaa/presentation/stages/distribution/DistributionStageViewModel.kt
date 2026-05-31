@@ -17,7 +17,9 @@ data class PoolDistributionState(
     val modeBState: ModeBState = ModeBState(),                  
     val shareholders: List<ShareholderInput> = listOf(ShareholderInput()), 
     val defaultStrategyTitle: String = "",
-    val calculateZivar: Boolean = true
+    val calculateZivar: Boolean = true,
+    val targetGroup: String = "کل عبدالرحیمی‌ها", // وضعیت پیش‌فرض گروه هدف
+    val transferDadallah: Boolean = false        // وضعیت پیش‌فرض تیک انتقال دادالله
 )
 
 data class DistributionStageState(
@@ -50,6 +52,8 @@ class DistributionStageViewModel {
     fun updateGroupName(target: PoolTarget, name: String) { updatePoolState(target) { it.copy(groupName = name) } }
     fun updateDefaultStrategy(target: PoolTarget, title: String) { updatePoolState(target) { it.copy(defaultStrategyTitle = title) } }
     fun updateCalculateZivar(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(calculateZivar = isChecked) } }
+    fun updateTargetGroup(target: PoolTarget, group: String) { updatePoolState(target) { it.copy(targetGroup = group) } } // متد به‌روزرسانی گروه هدف
+    fun updateTransferDadallah(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(transferDadallah = isChecked) } } // متد به‌روزرسانی تیک انتقال سهم
     
     fun addShareholder(target: PoolTarget) { updatePoolState(target) { it.copy(shareholders = it.shareholders + ShareholderInput()) } }
     fun updateShareholder(target: PoolTarget, index: Int, name: String, ghiyasInput: String) {

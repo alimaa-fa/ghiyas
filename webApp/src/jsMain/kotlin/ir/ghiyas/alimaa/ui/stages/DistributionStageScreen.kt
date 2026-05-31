@@ -175,9 +175,8 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
             val p1Name = if (agricultureInput.partner1Name.isNotBlank()) agricultureInput.partner1Name else "شریک ۱"
             val p2Name = if (agricultureInput.partner2Name.isNotBlank()) agricultureInput.partner2Name else "شریک ۲"
             
-            PoolSettingsCard("تنظیمات سهم $p1Name", PoolTarget.PARTNER_1, state.partner1PoolState, viewModel)
+            PoolSettingsCard("تنظیمات سهم $p1Name", PoolTarget.PARTNER_1, state.partner1PoolState, viewModel, agricultureInput)
             
-            // قفل هوشمند: اگر سهم شریک اول از نوع ماکروی سراسری بود، پنل دوم محو شده و پیام جایگزین میشود
             val p1Strategy = DefaultCalculationsRegistry.strategies.find { it.title == state.partner1PoolState.defaultStrategyTitle }
             val isP1GlobalMacro = state.partner1PoolState.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
 
@@ -194,16 +193,22 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
                     Text("🔒 تنظیمات سهم $p2Name به صورت خودکار توسط محاسبه یکپارچه (${p1Strategy.title}) مدیریت و تسهیم می‌شود.")
                 }
             } else {
-                PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel)
+                PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel, agricultureInput)
             }
         } else {
-            PoolSettingsCard("تنظیمات تسهیم کل بار", PoolTarget.MAIN, state.mainPoolState, viewModel)
+            PoolSettingsCard("تنظیمات تسهیم کل بار", PoolTarget.MAIN, state.mainPoolState, viewModel, agricultureInput)
         }
     }
 }
 
 @Composable
-fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionState, viewModel: DistributionStageViewModel) {
+fun PoolSettingsCard(
+    title: String, 
+    target: PoolTarget, 
+    state: PoolDistributionState, 
+    viewModel: DistributionStageViewModel,
+    agricultureInput: AgricultureInputState
+) {
     Div(attrs = {
         style {
             marginBottom(24.px); padding(16.px)
@@ -322,6 +327,7 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         }
                     }
                     
+                    // تنظیمات اختصاصی مربوط به دانگ ماریکی و عبدالرحیم
                     if (state.defaultStrategyTitle == "دانگ ماریکی(کِجِینو)") {
                         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(16.px); fontWeight("bold") } }) {
                             Input(type = InputType.Checkbox, attrs = {
@@ -330,6 +336,40 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                 style { marginRight(8.px); width(20.px); height(20.px) }
                             })
                             Text("سهم زیور/نواب حساب شود؟")
+                        }
+                    }
+                    
+                    if (state.defaultStrategyTitle == "عبدالرحیم(کِجینو)") {
+                        // ۱. ابزار انتخابی گروه هدف (Dropdown)
+                        H6(attrs = { style { marginTop(16.px); marginBottom(6.px); color(Color("#424242")) } }) { Text("انتخاب گروه هدف عبدالرحیم:") }
+                        Select(attrs = {
+                            style { width(100.percent); padding(10.px); borderRadius(8.px); marginBottom(12.px); border(1.px, LineStyle.Solid, Color("#2E7D32")) }
+                            onChange { event -> viewModel.updateTargetGroup(target, event.value ?: "کل عبدالرحیمی‌ها") }
+                        }) {
+                            Option(value = "کل عبدالرحیمی‌ها", attrs = { if (state.targetGroup == "کل عبدالرحیمی‌ها") selected() }) { Text("کل عبدالرحیمی‌ها") }
+                            Option(value = "مابین نوری و صغری", attrs = { if (state.targetGroup == "مابین نوری و صغری") selected() }) { Text("مابین نوری و صغری") }
+                        }
+
+                        // ۲. چک‌باکس محاسبه سهم زیور
+                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginBottom(12.px); fontWeight("bold") } }) {
+                            Input(type = InputType.Checkbox, attrs = {
+                                checked(state.calculateZivar)
+                                onChange { event -> viewModel.updateCalculateZivar(target, event.value) }
+                                style { marginRight(8.px); width(20.px); height(20.px) }
+                            })
+                            Text("سهم زیور(نواب) حساب شود؟")
+                        }
+
+                        // ۳. چک‌باکس انتقال سهم دادالله (نمایش مشروط فقط در صورت فعال بودن نیمه‌کاری ماژول ۳)
+                        if (agricultureInput.isNimehkari) {
+                            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("pointer", "cursor"); fontWeight("bold") } }) {
+                                Input(type = InputType.Checkbox, attrs = {
+                                    checked(state.transferDadallah)
+                                    onChange { event -> viewModel.updateTransferDadallah(target, event.value) }
+                                    style { marginRight(8.px); width(20.px); height(20.px) }
+                                })
+                                Text("سهم دادالله(نیمه‌کاری) به عبدالرحیم منتقل شود؟")
+                            }
                         }
                     }
                 }

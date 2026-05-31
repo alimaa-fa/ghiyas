@@ -39,7 +39,9 @@ data class DistributionInput(
     val defaultLabel: String = "سهم یکجا",
     val calculateZivar: Boolean = true,
     val isNimehkari: Boolean = false,
-    val nimehkariPool: WalnutUnit = WalnutUnit.ZERO
+    val nimehkariPool: WalnutUnit = WalnutUnit.ZERO,
+    val targetGroup: String = "کل عبدالرحیمی‌ها", // فیلد جدید گروه هدف عبدالرحیم
+    val transferDadallah: Boolean = false        // فیلد جدید تیک انتقال سهم دادالله
 )
 
 object DistributionEngine {
