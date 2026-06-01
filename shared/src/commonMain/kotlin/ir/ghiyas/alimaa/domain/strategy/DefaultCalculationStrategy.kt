@@ -13,6 +13,7 @@ object DefaultCalculationsRegistry {
         AsadCalculationStrategy,
         DongMarikiCalculationStrategy,
         AbdolrahimCalculationStrategy,
-        MohammadRahimCalculationStrategy // ثبت پروفایل محمد رحیم
+        MohammadRahimCalculationStrategy,
+        SoghraNouriIslamabadStrategy // ثبت پروفایل جدید صغری-نوری اسلام‌آباد
     )
 }
