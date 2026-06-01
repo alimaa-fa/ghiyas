@@ -15,6 +15,8 @@ import ir.ghiyas.alimaa.presentation.stages.input.InputStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.distribution.DistributionStageViewModel
+import ir.ghiyas.alimaa.presentation.calculator.CalculatorViewModel
+import ir.ghiyas.alimaa.ui.calculator.FloatingCalculatorWidget
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
@@ -57,9 +59,11 @@ fun App() {
     val expenseViewModel = remember { ExpenseStageViewModel() }
     val agricultureViewModel = remember { AgricultureStageViewModel() } 
     val distributionViewModel = remember { DistributionStageViewModel() }
+    val calculatorViewModel = remember { CalculatorViewModel() } 
     
     val inputState by inputViewModel.state.collectAsState()
     val snapshot by expenseViewModel.snapshot.collectAsState()
+    val calcState by calculatorViewModel.state.collectAsState() // رهگیری وضعیت ماشین‌حساب
     
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
 
@@ -69,6 +73,9 @@ fun App() {
     }
 
     Style(AppStyleSheet)
+
+    // محاسبه‌ی دینامیک پدینگِ پایین فرم برای جلوگیری از پنهان شدن محتوا زیر ماشین‌حساب
+    val mainPaddingBottom = if (calcState.isVisible && !calcState.isFullScreen) 440.px else 32.px
 
     Div(attrs = {
         dir(DirType.Rtl)
@@ -95,11 +102,13 @@ fun App() {
             onShareClick = null
         )
         
+        // کانتینر اسکرول‌شونده اصلی
         Div(attrs = {
             style {
                 property("flex", "1")
                 property("overflow-y", "auto")
-                paddingBottom(32.px)
+                paddingBottom(mainPaddingBottom) // تزریق پدینگ هوشمند
+                property("transition", "padding-bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)") // انیمیشن ملایم نرم شدن اسکرول
             }
         }) {
             if (currentScreen == "main") {
@@ -181,14 +190,13 @@ fun App() {
                             }
                             
                             snapshot!!.finalSharesResults.forEach { item -> 
-                                // تشخیص هوشمند ردیف‌های مربوط به نیمه‌کاری (گروه دوم برکت و کرامت) بر اساس نشانه 🌾
                                 val isNimehkariRow = item.label.startsWith("🌾")
                                 Div(attrs = {
                                     style {
-                                        backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")) // رنگ پس‌زمینه گرم متمایز
-                                        property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7") // حاشیه کهربایی برای تمایز فیزیکی
+                                        backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")) 
+                                        property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7") 
                                         borderRadius(8.px); padding(12.px)
-                                        property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px") // اعمال فاصله واضح قبل از شروع گروه دوم
+                                        property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px") 
                                         property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)")
                                     }
                                 }) {
@@ -213,5 +221,7 @@ fun App() {
                 HistoryScreen(onBack = { currentScreen = "main" })
             }
         }
+        
+        FloatingCalculatorWidget(calculatorViewModel)
     }
 }
