@@ -2,8 +2,12 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>قیاس</title>
+    
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2E7D32">
+    <link rel="apple-touch-icon" href="/icon-192.png">
     
     <style>
         @font-face {
@@ -21,5 +25,34 @@
     <div id="root"></div>
 
     <script type="application/javascript" src="webApp.js"></script>
+
+    <script>
+        // ۱. قفل کردن حافظه دائمی (جلوگیری از پاک شدن کش توسط پاکسازی خودکار سیستم‌عامل)
+        if (navigator.storage && navigator.storage.persist) {
+            navigator.storage.persist().then(granted => {
+                console.log("وضعیت حافظه دائمی (LocalStorage/Cache):", granted ? "مقاوم شد" : "معمولی");
+            });
+        }
+
+        // ۲. به تاخیر انداختن رویداد نصب پیش‌فرض مرورگر و سپردن کنترل آن به کاتلین
+        window.deferredInstallPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            window.deferredInstallPrompt = e;
+            // شلیک رویداد سفارشی تا رابط کاربری ما در کاتلین (بنر نصب) روشن شود
+            window.dispatchEvent(new Event('pwa-ready-to-install'));
+        });
+
+        // ۳. ثبت سرویس ورکر برای عملکرد ۱۰۰٪ آفلاین
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('سرویس ورکر با موفقیت ثبت شد. Scope:', reg.scope);
+                }).catch(err => {
+                    console.error('خطا در ثبت سرویس ورکر:', err);
+                });
+            });
+        }
+    </script>
 </body>
 </html>

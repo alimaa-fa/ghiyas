@@ -20,6 +20,8 @@ import ir.ghiyas.alimaa.ui.calculator.FloatingCalculatorWidget
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
+// اضافه کردن رفرنس منیجر نصب
+import ir.ghiyas.alimaa.core.pwa.PwaManager
 
 @Composable
 fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight: Boolean = false) {
@@ -63,9 +65,12 @@ fun App() {
     
     val inputState by inputViewModel.state.collectAsState()
     val snapshot by expenseViewModel.snapshot.collectAsState()
-    val calcState by calculatorViewModel.state.collectAsState() // رهگیری وضعیت ماشین‌حساب
+    val calcState by calculatorViewModel.state.collectAsState()
     
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
+
+    // وضعیت نصب PWA
+    val isStandalone = remember { PwaManager.isStandalone() }
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"
@@ -91,6 +96,32 @@ fun App() {
             property("box-shadow", "0 0 15px rgba(0,0,0,0.05)")
         }
     }) {
+        // بنر هوشمند نصب PWA (فقط اگر برنامه نصب نشده باشد نمایش داده می‌شود)
+        if (!isStandalone) {
+            Div(attrs = {
+                style {
+                    backgroundColor(Color("#E3F2FD"))
+                    color(Color("#0D47A1"))
+                    padding(10.px, 16.px)
+                    display(DisplayStyle.Flex)
+                    justifyContent(JustifyContent.SpaceBetween)
+                    alignItems(AlignItems.Center)
+                    property("border-bottom", "1px solid #90CAF9")
+                }
+            }) {
+                Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) {
+                    Text("برای استفاده کاملاً آفلاین، قیاس را نصب کنید 📥")
+                }
+                Button(attrs = {
+                    style {
+                        backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(6.px)
+                        padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer")
+                    }
+                    onClick { PwaManager.requestInstall() }
+                }) { Text("نصب اپلیکیشن") }
+            }
+        }
+
         GhiyasTopAppBar(
             onClearClick = { 
                 clearFormRequested = true
@@ -107,8 +138,8 @@ fun App() {
             style {
                 property("flex", "1")
                 property("overflow-y", "auto")
-                paddingBottom(mainPaddingBottom) // تزریق پدینگ هوشمند
-                property("transition", "padding-bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)") // انیمیشن ملایم نرم شدن اسکرول
+                paddingBottom(mainPaddingBottom) // تزریق پدینگ هوشمند ماشین‌حساب
+                property("transition", "padding-bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)")
             }
         }) {
             if (currentScreen == "main") {
