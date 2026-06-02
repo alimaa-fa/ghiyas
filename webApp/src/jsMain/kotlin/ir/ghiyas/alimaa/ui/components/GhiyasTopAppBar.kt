@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun GhiyasTopAppBar(
+    onMenuClick: () -> Unit, // افزوده شدن رویداد کلیک منو
     onClearClick: () -> Unit,
     onHistoryClick: () -> Unit,
     onShareClick: (() -> Unit)? = null
@@ -21,7 +22,6 @@ fun GhiyasTopAppBar(
             property("box-shadow", "0 2px 4px rgba(0,0,0,0.2)")
         }
     }) {
-        // اولین آیتم در DOM: چون RTL هستیم، این در سمت "راست" صفحه می‌افتد
         Div(attrs = {
             style {
                 display(DisplayStyle.Flex)
@@ -31,8 +31,9 @@ fun GhiyasTopAppBar(
         }) {
             Span(attrs = {
                 style { cursor("pointer"); fontSize(24.px) }
+                onClick { onMenuClick() } // فعال‌سازی باز شدن Drawer
             }) {
-                Text("☰") // منوی همبرگری
+                Text("☰") 
             }
             Span(attrs = {
                 style { fontSize(20.px); fontWeight("bold") }
@@ -41,7 +42,6 @@ fun GhiyasTopAppBar(
             }
         }
 
-        // دومین آیتم در DOM: با کمک SpaceBetween به سمت "چپ" هول داده می‌شود
         Div(attrs = {
             style {
                 display(DisplayStyle.Flex)

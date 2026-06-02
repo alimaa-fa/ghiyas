@@ -33,6 +33,15 @@ object AppStyleSheet : StyleSheet() {
             property("font-weight", "normal !important")
             color(Color("#212121"))
         }
+
+        // مخفی کردن اسکرول‌بار مرورگر برای نوار تب‌ها (حفظ ظاهر نیتیو)
+        ".hide-scrollbar::-webkit-scrollbar" style {
+            display(DisplayStyle.None)
+        }
+        ".hide-scrollbar" style {
+            property("-ms-overflow-style", "none") // IE and Edge
+            property("scrollbar-width", "none") // Firefox
+        }
     }
 
     val floatingContainer by style {
@@ -61,5 +70,76 @@ object AppStyleSheet : StyleSheet() {
         property("pointer-events", "none")
         backgroundColor(Color("white"))
         padding(0.px, 6.px)
+    }
+
+    // --- کلاس‌های معماری جدید (منوی کشویی و تب‌ها) ---
+
+    val drawerOverlay by style {
+        position(Position.Absolute) // اتصال به کادر ۶۰۰ پیکسلی
+        top(0.px); left(0.px); right(0.px); bottom(0.px)
+        backgroundColor(Color("rgba(0,0,0,0.5)"))
+        property("z-index", "1000")
+        property("transition", "opacity 0.3s ease")
+    }
+
+    val drawerPanel by style {
+        position(Position.Absolute) // اتصال به کادر ۶۰۰ پیکسلی
+        top(0.px); bottom(0.px); right(0.px)
+        width(280.px)
+        backgroundColor(Color("white"))
+        property("z-index", "1001")
+        property("box-shadow", "-2px 0 8px rgba(0,0,0,0.2)")
+        property("transition", "transform 0.3s ease")
+        property("overflow-y", "auto")
+    }
+
+    val drawerMenuItem by style {
+        padding(14.px, 16.px)
+        borderRadius(8.px)
+        cursor("pointer")
+        color(Color("#424242"))
+        fontSize(1.05.cssRem)
+        property("transition", "background-color 0.2s")
+        hover {
+            backgroundColor(Color("#F1F8E9"))
+            color(Color("#2E7D32"))
+        }
+    }
+
+    val tabContainer by style {
+        display(DisplayStyle.Flex)
+        backgroundColor(Color("white"))
+        position(Position.Sticky)
+        top(0.px)
+        property("z-index", "50")
+        
+        // تغییرات جدید: هم‌عرض شدن با کادرها، گرد شدن گوشه‌ها و قابلیت اسکرول
+        property("margin", "0px 16px 16px 16px") // ایجاد حاشیه در اطراف کادر تب
+        borderRadius(12.px) // گرد کردن گوشه‌ها
+        property("overflow-x", "auto") // فعال‌سازی اسکرول افقی
+        property("white-space", "nowrap") // جلوگیری از شکستن خط تب‌ها
+        property("box-shadow", "0 2px 8px rgba(0,0,0,0.06)") // اضافه کردن سایه ملایم
+    }
+
+    val tabItem by style {
+        flex(1)
+        textAlign("center")
+        padding(14.px, 16.px)
+        cursor("pointer")
+        fontWeight("bold")
+        fontSize(0.9.cssRem)
+        property("transition", "0.2s all")
+        property("min-width", "max-content") // جلوگیری از فشرده شدن متن در حالت اسکرول
+    }
+
+    val tabActive by style {
+        color(Color("#2E7D32"))
+        property("border-bottom", "3px solid #2E7D32")
+        backgroundColor(Color("#F1F8E9"))
+    }
+
+    val tabInactive by style {
+        color(Color("#757575"))
+        property("border-bottom", "3px solid transparent")
     }
 }
