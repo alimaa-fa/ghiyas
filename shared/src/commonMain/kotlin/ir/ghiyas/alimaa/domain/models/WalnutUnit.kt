@@ -1,5 +1,8 @@
 package ir.ghiyas.alimaa.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class WalnutUnit(val value: Double) {
     operator fun plus(other: WalnutUnit): WalnutUnit = WalnutUnit(this.value + other.value)
     
