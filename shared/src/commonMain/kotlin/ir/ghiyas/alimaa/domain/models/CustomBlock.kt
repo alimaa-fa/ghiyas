@@ -10,82 +10,68 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 @JsonClassDiscriminator("blockType")
 sealed class CustomBlock {
     abstract val block_id: String
-    abstract val system_alias: String // متغیر پنهان سیستمی برای فرمول‌نویسی (مثل: var_12345)
-    abstract val isInteractive: Boolean // آیا در زمان اجرا کاربر باید با آن تعامل کند؟
+    abstract val system_alias: String
+    abstract val isInteractive: Boolean
 }
 
 @Serializable
-@SerialName("STAGE")
-data class StageBlock(
-    override val block_id: String,
-    override val system_alias: String,
-    override val isInteractive: Boolean = false,
-    val name: String,
-    val description: String = "",
-    val isRequired: Boolean = false, // اجباری یا اختیاری بودن عبور از مرحله
-    val childBlocks: List<CustomBlock> = emptyList()
-) : CustomBlock()
-
-enum class LogicType { CALCULATE_ONLY, VISIBILITY_ONLY }
+@SerialName("BASE_INPUT")
+data class BaseInputBlock(override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = true, val nameLabel: String = "نام محاسبه", val amountLabel: String = "مقدار کل محصول", val childBlocks: List<CustomBlock> = emptyList()) : CustomBlock()
 
 @Serializable
-@SerialName("CONDITION")
-data class ConditionGate(
-    override val block_id: String,
-    override val system_alias: String,
-    override val isInteractive: Boolean = true,
-    val title: String,
-    val logicType: LogicType,
-    val isCheckedByDefault: Boolean = false,
-    val childBlocks: List<CustomBlock> = emptyList()
-) : CustomBlock()
+@SerialName("STAGE")
+data class StageBlock(override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = false, val name: String, val description: String = "", val isRequired: Boolean = false, val accordionGuide: String = "", val childBlocks: List<CustomBlock> = emptyList()) : CustomBlock()
 
-enum class DistributionType { SHARE_BASED, COUNT_BASED, PERCENTAGE, CUSTOM_UNIT }
+// اصلاح شرط: تغییر به دو چک‌باکس مستقل (محاسبه شود / ظاهر شود)
+@Serializable
+@SerialName("CONDITION")
+data class ConditionGate(override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = true, val title: String, val isCalculateEnabled: Boolean = true, val isVisibleEnabled: Boolean = true, val childBlocks: List<CustomBlock> = emptyList()) : CustomBlock()
+
+enum class DistributionType { HEADCOUNT_BASED, GHIYAS_BASED, PERCENTAGE, CUSTOM_UNIT }
+enum class UIElementType { TEXT_FIELD, NUMBER_FIELD, HEADER_TITLE, SEPARATOR_LINE, ACCORDION_GUIDE, TEXT_WARNING }
+
+// ساختارهای داخلی برای شریک و وارث
+@Serializable
+data class BuilderPersonNode(
+    val id: String, val name: String = "", val weightInput: String = "1",
+    val isFemale: Boolean = false, val isSubDivided: Boolean = false,
+    val subCountInput: String = "", val isDetailedFurther: Boolean = false,
+    val isSubBoyGirlSplit: Boolean = false, val subNodes: List<BuilderPersonNode> = emptyList()
+)
+
+@Serializable
+data class BuilderShareholder(val id: String, val name: String = "", val shareInput: String = "")
 
 @Serializable
 @SerialName("MEMBER")
 data class MemberBlock(
-    override val block_id: String,
-    override val system_alias: String,
-    override val isInteractive: Boolean = true,
-    val title: String,
-    val distributionType: DistributionType,
-    val customUnitDecimals: Int? = null,
-    val childBlocks: List<CustomBlock> = emptyList() // وراث فقط توسعه طولی می‌گیرند
+    override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = true,
+    val title: String, val distributionType: DistributionType, 
+    val customUnitDecimals: Int = 0, val isRoundingEnabled: Boolean = false,
+    val totalHeadcountInput: String = "", val isDetailedHeadcount: Boolean = false, val isBoyGirlSplit: Boolean = false,
+    val headcountNodes: List<BuilderPersonNode> = emptyList(),
+    val ghiyasShareholders: List<BuilderShareholder> = emptyList(),
+    val percentageShareholders: List<BuilderShareholder> = emptyList(),
+    val childBlocks: List<CustomBlock> = emptyList()
 ) : CustomBlock()
 
 @Serializable
 @SerialName("PARTNER")
 data class PartnerBlock(
-    override val block_id: String,
-    override val system_alias: String,
-    override val isInteractive: Boolean = true,
-    val title: String,
-    val distributionType: DistributionType,
-    val customUnitDecimals: Int? = null,
-    val siblingBlocks: List<CustomBlock> = emptyList() // شرکا توسعه عرضی (هم‌رده) می‌گیرند
+    override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = true,
+    val title: String, val distributionType: DistributionType, 
+    val customUnitDecimals: Int = 0, val isRoundingEnabled: Boolean = false,
+    val totalHeadcountInput: String = "", val isDetailedHeadcount: Boolean = false, val isBoyGirlSplit: Boolean = false,
+    val headcountNodes: List<BuilderPersonNode> = emptyList(),
+    val ghiyasShareholders: List<BuilderShareholder> = emptyList(),
+    val percentageShareholders: List<BuilderShareholder> = emptyList(),
+    val siblingBlocks: List<CustomBlock> = emptyList()
 ) : CustomBlock()
 
 @Serializable
 @SerialName("FORMULA")
-data class FormulaBlock(
-    override val block_id: String,
-    override val system_alias: String,
-    override val isInteractive: Boolean = false, // خود فرمول پنهان است، نتیجه‌اش نمایان می‌شود
-    val outputName: String,
-    val rawFormula: String,
-    val attachedConditionId: String? = null // اتصال به یک دروازه شرطی
-) : CustomBlock()
-
-enum class UIElementType { HEADER, ACCORDION_GUIDE, TEXT_INPUT, NUMBER_INPUT, WARNING_ALERT }
+data class FormulaBlock(override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = false, val outputName: String, val rawFormula: String, val attachedConditionId: String = "NONE") : CustomBlock()
 
 @Serializable
 @SerialName("UI_ELEMENT")
-data class UIElementBlock(
-    override val block_id: String,
-    override val system_alias: String,
-    override val isInteractive: Boolean,
-    val elementType: UIElementType,
-    val labelOrContent: String,
-    val isRequired: Boolean = false // کاربر در هنگام ساخت می‌تواند فیلد را اجباری یا اختیاری کند
-) : CustomBlock()
+data class UIElementBlock(override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = true, val elementType: UIElementType, val elementTitle: String = "", val elementContent: String = "", val isRequired: Boolean = false) : CustomBlock()

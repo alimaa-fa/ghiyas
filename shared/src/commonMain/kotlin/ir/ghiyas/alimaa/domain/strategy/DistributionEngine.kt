@@ -4,7 +4,7 @@ import ir.ghiyas.alimaa.domain.models.ResultItem
 import ir.ghiyas.alimaa.domain.models.WalnutUnit
 
 enum class DistributionMode {
-    MODE_A_NO_BREAKDOWN, MODE_B_SIMPLE, MODE_C_GHIYAS, MODE_DEFAULT_MAKER
+    MODE_A_NO_BREAKDOWN, MODE_B_SIMPLE, MODE_C_GHIYAS, MODE_DEFAULT_MAKER, MODE_CUSTOM_BUILDER
 }
 
 data class Shareholder(val name: String, val ghiyas: Double)
@@ -36,12 +36,13 @@ data class DistributionInput(
     val modeBState: ModeBState = ModeBState(),
     val shareholders: List<Shareholder> = emptyList(),
     val defaultStrategyTitle: String = "",
+    val customProfileId: String = "", // اضافه شده برای دریافت آیدی الگوی اختصاصی از UI
     val defaultLabel: String = "سهم یکجا",
     val calculateZivar: Boolean = true,
     val isNimehkari: Boolean = false,
     val nimehkariPool: WalnutUnit = WalnutUnit.ZERO,
-    val targetGroup: String = "کل عبدالرحیمی‌ها", // فیلد جدید گروه هدف عبدالرحیم
-    val transferDadallah: Boolean = false        // فیلد جدید تیک انتقال سهم دادالله
+    val targetGroup: String = "کل عبدالرحیمی‌ها",
+    val transferDadallah: Boolean = false
 )
 
 object DistributionEngine {
@@ -114,6 +115,12 @@ object DistributionEngine {
             DistributionMode.MODE_DEFAULT_MAKER -> {
                 val strategy = DefaultCalculationsRegistry.strategies.find { it.title == input.defaultStrategyTitle }
                 strategy?.calculate(input) ?: emptyList()
+            }
+            DistributionMode.MODE_CUSTOM_BUILDER -> {
+                // فاز ۴ و ۵: اجرای موتور مفسر درخت (AST Interpreter) برای پروفایل اختصاصی
+                // در حال حاضر که موتور مفسر وصل نیست، یک خروجی یکجا برمی‌گردانیم تا سیستم کرش نکند
+                val name = if (input.groupName.isNotBlank()) input.groupName else "سهم محاسبات اختصاصی (در حال توسعه)"
+                listOf(ResultItem(name, input.poolAmount))
             }
         }
     }
