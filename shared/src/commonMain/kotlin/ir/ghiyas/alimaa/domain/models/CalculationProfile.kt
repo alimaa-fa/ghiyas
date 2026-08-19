@@ -2,11 +2,6 @@ package ir.ghiyas.alimaa.domain.models
 
 import kotlinx.serialization.Serializable
 
-enum class ProfileIntegrationType { 
-    DEPENDENT_STEP_4, // اجرا به عنوان موتور تسهیم در مرحله ۴
-    STANDALONE_MAIN_TAB // اجرا به صورت صفر-تا-صد در تب اختصاصی
-}
-
 @Serializable
 data class CalculationProfile(
     val profile_id: String,

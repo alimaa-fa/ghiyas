@@ -10,6 +10,23 @@ class BuilderViewModel {
     private val _state = MutableStateFlow(BuilderState())
     val state: StateFlow<BuilderState> = _state.asStateFlow()
 
+    // پاکسازی بوم برای ساخت الگوی جدید
+    fun clearForNewProfile() { _state.update { BuilderState() } }
+    
+    // بارگذاری الگو برای ویرایش
+    fun loadProfileForEdit(profile: CustomProfile) {
+        _state.update {
+            BuilderState(
+                editingProfileId = profile.id,
+                profileName = profile.name,
+                profileDescription = profile.description,
+                integrationType = profile.integrationType,
+                nimehkariMacroEnabled = profile.nimehkariMacroEnabled,
+                rootBlocks = profile.rootBlocks
+            )
+        }
+    }
+
     fun updateProfileName(name: String) { _state.update { it.copy(profileName = name) } }
     fun updateProfileDescription(desc: String) { _state.update { it.copy(profileDescription = desc) } }
     fun updateIntegrationType(type: ProfileIntegrationType) { _state.update { it.copy(integrationType = type) } }
@@ -165,7 +182,8 @@ class BuilderViewModel {
             return
         }
 
-        val profileId = "prof_${kotlin.random.Random.nextLong(100000, 999999)}"
+        // اگر در حال ویرایش هستیم همان آیدی قبلی حفظ شود، در غیر این صورت جدید ساخته شود
+        val profileId = currentState.editingProfileId ?: "prof_${kotlin.random.Random.nextLong(100000, 999999)}"
 
         val customProfile = CustomProfile(
             id = profileId,

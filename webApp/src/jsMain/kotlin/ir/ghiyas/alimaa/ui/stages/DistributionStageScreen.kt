@@ -11,6 +11,8 @@ import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureInputState
 import ir.ghiyas.alimaa.domain.strategy.DistributionMode
 import ir.ghiyas.alimaa.domain.strategy.DefaultCalculationsRegistry
 import ir.ghiyas.alimaa.domain.strategy.PersonNode
+import ir.ghiyas.alimaa.domain.models.CustomProfile
+import ir.ghiyas.alimaa.domain.models.ProfileIntegrationType
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 
 private fun String.standardizeDigitsLocal(): String {
@@ -18,7 +20,6 @@ private fun String.standardizeDigitsLocal(): String {
     result = result.replace('۰', '0').replace('۱', '1').replace('۲', '2').replace('۳', '3').replace('۴', '4').replace('۵', '5').replace('۶', '6').replace('۷', '7').replace('۸', '8').replace('۹', '9').replace('٫', '.')
     return result
 }
-
 private fun String.toPersianDigitsLocal(): String {
     var result = this
     val english = arrayOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".")
@@ -43,6 +44,7 @@ private fun DistTextInput(label: String, value: String, isNumber: Boolean = fals
 
 @Composable
 fun RecursivePersonNode(node: PersonNode, path: List<String>, target: PoolTarget, viewModel: DistributionStageViewModel) {
+    // ... [محتوای این تابع دقیقاً مشابه قبل است، هیچ تغییری ندارد]
     Div(attrs = { style { padding(12.px); marginTop(8.px); property("border-left", "4px solid #81C784"); backgroundColor(Color("#F8FBF8")); borderRadius(4.px) } }) {
         Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(8.px) } }) {
             Div(attrs = { style { flex(2) } }) { DistTextInput("نام شخص", node.name, false) { v -> viewModel.updatePersonNode(target, path) { it.copy(name = v) } } }
@@ -92,7 +94,7 @@ fun RecursivePersonNode(node: PersonNode, path: List<String>, target: PoolTarget
 }
 
 @Composable
-fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureInput: AgricultureInputState, onNavigateToBuilder: () -> Unit) {
+fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureInput: AgricultureInputState, customProfiles: List<CustomProfile>, onNavigateToBuilder: () -> Unit) {
     val state by viewModel.state.collectAsState()
 
     Div(attrs = { style { backgroundColor(Color("white")); borderRadius(16.px); padding(24.px); margin(16.px); property("box-shadow", "0 4px 8px rgba(0,0,0,0.1)") } }) {
@@ -102,7 +104,7 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
             val p1Name = if (agricultureInput.partner1Name.isNotBlank()) agricultureInput.partner1Name else "شریک ۱"
             val p2Name = if (agricultureInput.partner2Name.isNotBlank()) agricultureInput.partner2Name else "شریک ۲"
             
-            PoolSettingsCard("تنظیمات سهم $p1Name", PoolTarget.PARTNER_1, state.partner1PoolState, viewModel, agricultureInput, onNavigateToBuilder)
+            PoolSettingsCard("تنظیمات سهم $p1Name", PoolTarget.PARTNER_1, state.partner1PoolState, viewModel, agricultureInput, customProfiles, onNavigateToBuilder)
             
             val p1Strategy = DefaultCalculationsRegistry.strategies.find { it.title == state.partner1PoolState.defaultStrategyTitle }
             val isP1GlobalMacro = state.partner1PoolState.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
@@ -112,10 +114,10 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
                     Text("🔒 تنظیمات سهم $p2Name به صورت خودکار توسط محاسبه یکپارچه (${p1Strategy.title}) مدیریت و تسهیم می‌شود.")
                 }
             } else {
-                PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel, agricultureInput, onNavigateToBuilder)
+                PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel, agricultureInput, customProfiles, onNavigateToBuilder)
             }
         } else {
-            PoolSettingsCard("تنظیمات تسهیم کل بار", PoolTarget.MAIN, state.mainPoolState, viewModel, agricultureInput, onNavigateToBuilder)
+            PoolSettingsCard("تنظیمات تسهیم کل بار", PoolTarget.MAIN, state.mainPoolState, viewModel, agricultureInput, customProfiles, onNavigateToBuilder)
         }
     }
 }
@@ -123,12 +125,12 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
 @Composable
 fun PoolSettingsCard(
     title: String, target: PoolTarget, state: PoolDistributionState, 
-    viewModel: DistributionStageViewModel, agricultureInput: AgricultureInputState, onNavigateToBuilder: () -> Unit
+    viewModel: DistributionStageViewModel, agricultureInput: AgricultureInputState, 
+    customProfiles: List<CustomProfile>, onNavigateToBuilder: () -> Unit
 ) {
     Div(attrs = { style { marginBottom(24.px); padding(16.px); border(1.px, LineStyle.Solid, Color("#AED581")); borderRadius(12.px); backgroundColor(Color("#F1F8E9")) } }) {
         H4(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#1B5E20")) } }) { Text(title) }
 
-        // اضافه شدن گزینه «محاسبات اختصاصی» دقیقاً در داخل دکمه‌های استراتژی
         Div(attrs = { style { display(DisplayStyle.Flex); flexWrap(FlexWrap.Wrap); gap(8.px); marginBottom(24.px) } }) {
             val modes = listOf(
                 DistributionMode.MODE_B_SIMPLE to "بر اساس نفر",
@@ -154,12 +156,23 @@ fun PoolSettingsCard(
             when (state.mode) {
                 DistributionMode.MODE_CUSTOM_BUILDER -> {
                     H5(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("انتخاب محاسبات اختصاصی (وابسته)") }
+                    
+                    // لیست الگوها فیلتر و رندر می‌شود
+                    val dependentProfiles = customProfiles.filter { it.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4 }
+                    
                     Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { e -> viewModel.updateCustomProfile(target, e.value ?: "") } }) {
-                        Option(value = "", attrs = { attr("disabled", "true"); attr("selected", "true") }) { Text("یک الگوی اختصاصی انتخاب کنید...") }
-                        Option(value = "no_data") { Text("هنوز الگویی ساخته نشده است.") }
+                        if (dependentProfiles.isEmpty()) {
+                            Option(value = "", attrs = { attr("disabled", "true"); attr("selected", "true") }) { Text("هنوز هیچ الگوی وابسته‌ای ساخته نشده است.") }
+                        } else {
+                            Option(value = "", attrs = { attr("disabled", "true"); if(state.customProfileId.isEmpty()) attr("selected", "true") }) { Text("یک الگوی اختصاصی انتخاب کنید...") }
+                            dependentProfiles.forEach { prof ->
+                                Option(value = prof.id, attrs = { if(state.customProfileId == prof.id) attr("selected", "true") }) { Text(prof.name) }
+                            }
+                        }
                     }
                     Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") }
                 }
+                // ... سایر حالت‌ها دقیقاً مطابق قبل هستند و تغییری نکرده‌اند ...
                 DistributionMode.MODE_A_NO_BREAKDOWN -> {
                     DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) }
                     P(attrs = { style { fontSize(0.85.cssRem); color(Color("#757575")); marginTop(8.px) } }) { Text("در این حالت کل سهم این بخش بدون تغییر به نام وارد شده اختصاص می‌یابد.") }

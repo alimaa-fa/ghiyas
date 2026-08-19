@@ -46,8 +46,8 @@ fun App() {
     val distributionViewModel = remember { DistributionStageViewModel() }
     val calculatorViewModel = remember { CalculatorViewModel() } 
     val builderViewModel = remember { ir.ghiyas.alimaa.presentation.builder.BuilderViewModel() }
+    val dynamicPlayerViewModel = remember { ir.ghiyas.alimaa.presentation.player.DynamicPlayerViewModel() }
     
-    // واکشی زنده لیست الگوها از دیتابیس محلی
     var customProfiles by remember { mutableStateOf(emptyList<ir.ghiyas.alimaa.domain.models.CustomProfile>()) }
     LaunchedEffect(currentScreen, currentMainTab) {
         if (currentScreen == "main") {
@@ -87,7 +87,7 @@ fun App() {
                     HeroBanner()
                     Div(attrs = { classes(AppStyleSheet.tabContainer); classes("hide-scrollbar") }) {
                         Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "default_pipeline") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "default_pipeline" } }) { Text("محاسبات پیش‌فرض") }
-                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "standalone_runner") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "standalone_runner" } }) { Text("محاسبات اختصاصی") }
+                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "standalone_runner") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "standalone_runner" } }) { Text("مدیریت الگوها") }
                         Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "irrigation_calendar") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "irrigation_calendar" } }) { Text("تقویم آبیاری") }
                     }
 
@@ -96,7 +96,7 @@ fun App() {
                             InputStageScreen(viewModel = inputViewModel, onClearRequested = clearFormRequested, onClearComplete = { clearFormRequested = false })
                             ExpenseStageScreen(viewModel = expenseViewModel)
                             AgricultureStageScreen(viewModel = agricultureViewModel)
-                            DistributionStageScreen(viewModel = distributionViewModel, agricultureInput = agricultureInputState, onNavigateToBuilder = { currentScreen = "builder" })
+                            DistributionStageScreen(viewModel = distributionViewModel, agricultureInput = agricultureInputState, customProfiles = customProfiles, onNavigateToBuilder = { builderViewModel.clearForNewProfile(); currentScreen = "builder" })
 
                             Button(attrs = {
                                 style { property("width", "calc(100% - 32px)"); padding(16.px); property("margin", "0px 16px 16px 16px"); backgroundColor(Color("#2E7D32")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer") }
@@ -136,20 +136,27 @@ fun App() {
                             }
                         }
                         "standalone_runner" -> {
-                            val standaloneProfiles = customProfiles.filter { it.integrationType == ProfileIntegrationType.STANDALONE_MAIN_TAB }
                             Div(attrs = { style { padding(24.px) } }) {
-                                if (standaloneProfiles.isEmpty()) {
-                                    Div(attrs = { style { textAlign("center"); color(Color("#757575")); marginBottom(24.px) } }) { Text("هنوز هیچ الگوی مستقلی نساخته‌اید.") }
+                                H4(attrs = { style { color(Color("#1B5E20")); marginTop(0.px) } }) { Text("مدیریت الگوهای اختصاصی:") }
+                                if (customProfiles.isEmpty()) {
+                                    Div(attrs = { style { textAlign("center"); color(Color("#757575")); marginBottom(24.px) } }) { Text("هنوز هیچ الگویی نساخته‌اید.") }
                                 } else {
-                                    H4(attrs = { style { color(Color("#1B5E20")) } }) { Text("محاسبات اختصاصی شما:") }
-                                    standaloneProfiles.forEach { prof ->
-                                        Div(attrs = { style { backgroundColor(Color("white")); padding(16.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(12.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center) } }) {
-                                            Span(attrs = { style { fontWeight("bold"); color(Color("#2E7D32")) } }) { Text(prof.name) }
-                                            Button(attrs = { style { backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px, 16.px); cursor("pointer") } }) { Text("▶ اجرا") }
+                                    customProfiles.forEach { prof ->
+                                        Div(attrs = { style { backgroundColor(Color("white")); padding(16.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(12.px); display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(12.px) } }) {
+                                            Span(attrs = { style { fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) { 
+                                                Text(prof.name + if(prof.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4) " (وابسته)" else " (مستقل)") 
+                                            }
+                                            Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px) } }) {
+                                                if(prof.integrationType == ProfileIntegrationType.STANDALONE_MAIN_TAB) {
+                                                    Button(attrs = { style { flex(1); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { dynamicPlayerViewModel.loadProfile(prof.id); currentScreen = "dynamic_player" } }) { Text("▶ اجرا") }
+                                                }
+                                                Button(attrs = { style { flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { builderViewModel.loadProfileForEdit(prof); currentScreen = "builder" } }) { Text("✏️ ویرایش") }
+                                                Button(attrs = { style { flex(1); backgroundColor(Color("#F44336")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { ir.ghiyas.alimaa.data.CustomProfileRepository.deleteProfile(prof.id); try { customProfiles = ir.ghiyas.alimaa.data.CustomProfileRepository.getAllProfiles() } catch (e:Exception) {} } }) { Text("🗑️ حذف") }
+                                            }
                                         }
                                     }
                                 }
-                                Button(attrs = { style { width(100.percent); padding(16.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer"); marginTop(16.px) }; onClick { currentScreen = "builder" } }) { Text("➕ ساخت محاسبه اختصاصی جدید") }
+                                Button(attrs = { style { width(100.percent); padding(16.px); backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer"); marginTop(16.px) }; onClick { builderViewModel.clearForNewProfile(); currentScreen = "builder" } }) { Text("➕ ساخت الگوی جدید") }
                             }
                         }
                         "irrigation_calendar" -> { Div(attrs = { style { padding(32.px); textAlign("center"); color(Color("#757575")) } }) { Text("تقویم آبیاری (به زودی)") } }
@@ -157,6 +164,9 @@ fun App() {
                 }
                 "history" -> { HistoryScreen(onBack = { currentScreen = "main" }) }
                 "builder" -> { ir.ghiyas.alimaa.ui.builder.BuilderScreen(viewModel = builderViewModel, onBack = { currentScreen = "main" }) }
+                "dynamic_player" -> { 
+                    ir.ghiyas.alimaa.ui.player.DynamicPlayerScreen(viewModel = dynamicPlayerViewModel, onBack = { currentScreen = "main"; dynamicPlayerViewModel.clearState() }) 
+                }
             }
         }
         FloatingCalculatorWidget(calculatorViewModel)

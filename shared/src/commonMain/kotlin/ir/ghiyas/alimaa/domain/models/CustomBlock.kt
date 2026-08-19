@@ -22,7 +22,6 @@ data class BaseInputBlock(override val block_id: String, override val system_ali
 @SerialName("STAGE")
 data class StageBlock(override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = false, val name: String, val description: String = "", val isRequired: Boolean = false, val accordionGuide: String = "", val childBlocks: List<CustomBlock> = emptyList()) : CustomBlock()
 
-// اصلاح شرط: تغییر به دو چک‌باکس مستقل (محاسبه شود / ظاهر شود)
 @Serializable
 @SerialName("CONDITION")
 data class ConditionGate(override val block_id: String, override val system_alias: String, override val isInteractive: Boolean = true, val title: String, val isCalculateEnabled: Boolean = true, val isVisibleEnabled: Boolean = true, val childBlocks: List<CustomBlock> = emptyList()) : CustomBlock()
@@ -30,17 +29,21 @@ data class ConditionGate(override val block_id: String, override val system_alia
 enum class DistributionType { HEADCOUNT_BASED, GHIYAS_BASED, PERCENTAGE, CUSTOM_UNIT }
 enum class UIElementType { TEXT_FIELD, NUMBER_FIELD, HEADER_TITLE, SEPARATOR_LINE, ACCORDION_GUIDE, TEXT_WARNING }
 
-// ساختارهای داخلی برای شریک و وارث
 @Serializable
 data class BuilderPersonNode(
     val id: String, val name: String = "", val weightInput: String = "1",
     val isFemale: Boolean = false, val isSubDivided: Boolean = false,
     val subCountInput: String = "", val isDetailedFurther: Boolean = false,
-    val isSubBoyGirlSplit: Boolean = false, val subNodes: List<BuilderPersonNode> = emptyList()
+    val isSubBoyGirlSplit: Boolean = false,
+    val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟", // اضافه شده
+    val subNodes: List<BuilderPersonNode> = emptyList()
 )
 
 @Serializable
-data class BuilderShareholder(val id: String, val name: String = "", val shareInput: String = "")
+data class BuilderShareholder(
+    val id: String, val name: String = "", val shareInput: String = "",
+    val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟" // اضافه شده
+)
 
 @Serializable
 @SerialName("MEMBER")
