@@ -44,7 +44,6 @@ private fun DistTextInput(label: String, value: String, isNumber: Boolean = fals
 
 @Composable
 fun RecursivePersonNode(node: PersonNode, path: List<String>, target: PoolTarget, viewModel: DistributionStageViewModel) {
-    // ... [محتوای این تابع دقیقاً مشابه قبل است، هیچ تغییری ندارد]
     Div(attrs = { style { padding(12.px); marginTop(8.px); property("border-left", "4px solid #81C784"); backgroundColor(Color("#F8FBF8")); borderRadius(4.px) } }) {
         Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(8.px) } }) {
             Div(attrs = { style { flex(2) } }) { DistTextInput("نام شخص", node.name, false) { v -> viewModel.updatePersonNode(target, path) { it.copy(name = v) } } }
@@ -155,9 +154,17 @@ fun PoolSettingsCard(
         Div(attrs = { style { padding(16.px); backgroundColor(Color("white")); borderRadius(8.px); property("border", "1px dashed #C5E1A5") } }) {
             when (state.mode) {
                 DistributionMode.MODE_CUSTOM_BUILDER -> {
+                    
+                    // افزودن بنر هشدار نسخه آزمایشی
+                    Div(attrs = { style { backgroundColor(Color("#FFF3E0")); border(1.px, LineStyle.Solid, Color("#FFB74D")); property("border-right", "4px solid #F57C00"); padding(12.px); borderRadius(8.px); marginBottom(16.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px) } }) {
+                        Span(attrs = { style { fontSize(1.5.cssRem) } }) { Text("⚠️") }
+                        P(attrs = { style { margin(0.px); color(Color("#E65100")); fontSize(0.9.cssRem); fontWeight("bold"); lineHeight("1.6") } }) {
+                            Text("نسخه آزمایشی: قابلیت ساخت محاسبه اختصاصی در حال توسعه است و در به‌روزرسانی‌های آینده نهایی خواهد شد. لطفاً برای دریافت نتایج دقیق، از تب‌های پیش‌فرض استفاده کنید.")
+                        }
+                    }
+
                     H5(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("انتخاب محاسبات اختصاصی (وابسته)") }
                     
-                    // لیست الگوها فیلتر و رندر می‌شود
                     val dependentProfiles = customProfiles.filter { it.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4 }
                     
                     Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { e -> viewModel.updateCustomProfile(target, e.value ?: "") } }) {
@@ -172,7 +179,7 @@ fun PoolSettingsCard(
                     }
                     Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") }
                 }
-                // ... سایر حالت‌ها دقیقاً مطابق قبل هستند و تغییری نکرده‌اند ...
+                
                 DistributionMode.MODE_A_NO_BREAKDOWN -> {
                     DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) }
                     P(attrs = { style { fontSize(0.85.cssRem); color(Color("#757575")); marginTop(8.px) } }) { Text("در این حالت کل سهم این بخش بدون تغییر به نام وارد شده اختصاص می‌یابد.") }

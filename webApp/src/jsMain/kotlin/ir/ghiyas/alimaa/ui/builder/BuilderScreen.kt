@@ -83,6 +83,14 @@ fun BuilderScreen(viewModel: BuilderViewModel, onBack: () -> Unit) {
             Text("⬅ بازگشت به داشبورد")
         }
 
+        // --- بنر هشدار نسخه آزمایشی ---
+        Div(attrs = { style { backgroundColor(Color("#FFF3E0")); border(1.px, LineStyle.Solid, Color("#FFB74D")); property("border-right", "4px solid #F57C00"); padding(12.px); borderRadius(8.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px) } }) {
+            Span(attrs = { style { fontSize(1.5.cssRem) } }) { Text("⚠️") }
+            P(attrs = { style { margin(0.px); color(Color("#E65100")); fontSize(0.9.cssRem); fontWeight("bold"); lineHeight("1.6") } }) {
+                Text("نسخه آزمایشی: بوم سازنده محاسبات اختصاصی در حال توسعه است. ممکن است برخی ویژگی‌ها نهایی نشده باشند. پس از تست، از تب‌های پیش‌فرض برای محاسبات نهایی استفاده کنید.")
+            }
+        }
+
         Div(attrs = { style { backgroundColor(Color("white")); padding(20.px); borderRadius(12.px); property("box-shadow", "0 2px 8px rgba(0,0,0,0.05)"); border(1.px, LineStyle.Solid, Color("#E0E0E0")); property("box-sizing", "border-box"); width(100.percent) } }) {
             H3(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#2E7D32")) } }) { Text("تنظیمات اولیه الگو") }
             
@@ -208,7 +216,7 @@ fun RenderBlockRecursively(block: CustomBlock, viewModel: BuilderViewModel, dept
                             } else {
                                 if (currentSum > maxLimit) { P(attrs = { style { color(Color("#D32F2F")); fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("خطا: مجموع وزن افراد ($currentSum) از حد مجاز ($maxLimit) فراتر رفته است!") } }
                                 headcountNodes.forEach { node -> RecursiveBuilderPersonNode(node, listOf(node.id), block.block_id, viewModel) }
-                                if (currentSum + 0.5 <= maxLimit) { Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); border(1.px, LineStyle.Dashed, Color("#4CAF50")); borderRadius(8.px); padding(12.px); fontWeight("bold"); cursor("pointer"); marginTop(16.px) }; onClick { viewModel.addHeadcountNode(block.block_id, emptyList()) } }) { Text("+ افزودن شخص جدید") } }
+                                if (currentSum + 0.5 <= maxLimit) { Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); border(1.px, LineStyle.Dashed, Color("#4CAF50")); borderRadius(8.px); padding(12.px); fontWeight("bold"); cursor("pointer"); marginTop(16.px) }; onClick { viewModel.addHeadcountNode(block.block_id, emptyList()) } }) { Text("+ افزود شخص جدید") } }
                             }
                         }
                         DistributionType.GHIYAS_BASED -> {

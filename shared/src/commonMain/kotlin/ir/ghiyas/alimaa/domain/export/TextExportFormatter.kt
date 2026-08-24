@@ -48,8 +48,7 @@ object TextExportFormatter {
         }
         
         sb.appendLine(AppLinksConfig.appName)
-        sb.appendLine("ایتا: ${AppLinksConfig.eitaaLink}")
-        sb.appendLine("بله: ${AppLinksConfig.baleLink}")
+        sb.appendLine("لینک ایتا: https://eitaa.com/ghiyas_app")
         
         return sb.toString()
     }
