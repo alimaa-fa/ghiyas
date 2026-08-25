@@ -7,14 +7,18 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.w3c.dom.events.Event
 
 /**
- * مدیریت چرخه حیات PWA، سرویس‌ورکر، اعتبارسنجی خودکار نسخه و SDK ایتا.
+ * مدیریت یکپارچه چرخه حیات PWA، تشخیص به‌روزرسانی نسخه و SDK پیام‌رسان ایتا.
  */
 object PwaManager {
 
     private val _isInstallable = MutableStateFlow(false)
     val isInstallable: StateFlow<Boolean> = _isInstallable.asStateFlow()
 
+    private val _hasUpdateAvailable = MutableStateFlow(false)
+    val hasUpdateAvailable: StateFlow<Boolean> = _hasUpdateAvailable.asStateFlow()
+
     private var deferredPrompt: dynamic = null
+    private var waitingWorker: dynamic = null
 
     fun initialize() {
         initEitaaWebApp()
@@ -31,7 +35,7 @@ object PwaManager {
                 eitaa.WebApp.expand()
             }
         } catch (_: Throwable) {
-            // در مرورگرهای معمولی بدون خطا رد می‌شود
+            // در مرورگرهای استاندارد بدون خطا رد می‌شود
         }
     }
 
@@ -39,11 +43,26 @@ object PwaManager {
         val nav = window.navigator.asDynamic()
         if (nav.serviceWorker != null) {
             nav.serviceWorker.register("./sw.js").then({ reg: dynamic ->
-                // اجبار مرورگر به چک کردن نسخه جدید سرور در هر ورود
-                reg.update()
+                // بررسی نسخه جدید هنگام لود
+                reg.addEventListener("updatefound", {
+                    val newWorker = reg.installing
+                    if (newWorker != null) {
+                        newWorker.addEventListener("statechange", {
+                            if (newWorker.state == "installed" && nav.serviceWorker.controller != null) {
+                                waitingWorker = newWorker
+                                _hasUpdateAvailable.value = true
+                            }
+                        })
+                    }
+                })
+
+                if (reg.waiting != null && nav.serviceWorker.controller != null) {
+                    waitingWorker = reg.waiting
+                    _hasUpdateAvailable.value = true
+                }
             })
 
-            // رفرش خودکار و نامحسوس صفحه به محض نصب و فعال‌سازی سرویس‌ورکر جدید
+            // بازنشانی ایمن پس از تعویض کنترلر
             var refreshing = false
             nav.serviceWorker.addEventListener("controllerchange", {
                 if (!refreshing) {
@@ -61,7 +80,7 @@ object PwaManager {
                 storage.persist()
             }
         } catch (_: Throwable) {
-            // در صورت عدم پشتیبانی مرورگر نادیده گرفته می‌شود
+            // مرورگرهایی که پشتیبانی نمی‌کنند
         }
     }
 
@@ -83,6 +102,17 @@ object PwaManager {
             deferredPrompt.prompt()
             deferredPrompt = null
             _isInstallable.value = false
+        }
+    }
+
+    /**
+     * فعال‌سازی و اعمال نسخه جدید نرم‌افزار به درخواست کاربر
+     */
+    fun applyUpdate() {
+        if (waitingWorker != null) {
+            waitingWorker.postMessage(kotlin.js.json("type" to "SKIP_WAITING"))
+        } else {
+            window.location.reload()
         }
     }
 }

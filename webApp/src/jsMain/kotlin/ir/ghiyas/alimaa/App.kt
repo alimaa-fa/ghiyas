@@ -65,8 +65,9 @@ fun App() {
     val calcState by calculatorViewModel.state.collectAsState()
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     
-    // دریافت وضعیت قابلیت نصب به جای تابع منسوخ قبلی
+    // وضعیت دسترسی به نسخه جدید و وضعیت قابلیت نصب
     val isInstallable by PwaManager.isInstallable.collectAsState()
+    val hasUpdateAvailable by PwaManager.hasUpdateAvailable.collectAsState()
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"
@@ -78,8 +79,15 @@ fun App() {
 
     Div(attrs = { dir(DirType.Rtl); style { property("margin", "0 auto"); maxWidth(600.px); width(100.percent); height(100.vh); position(Position.Relative); property("overflow", "hidden"); backgroundColor(Color("#F5F5F5")); display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); fontFamily("Vazirmatn", "system-ui", "-apple-system", "sans-serif"); property("box-shadow", "0 0 15px rgba(0,0,0,0.05)") } }) {
         
-        // نمایش نوار نصب فقط در صورتی که برنامه قابل نصب باشد
-        if (isInstallable) {
+        // ۱. نوار اعلان نسخه جدید نرم‌افزار
+        if (hasUpdateAvailable) {
+            Div(attrs = { style { backgroundColor(Color("#FFF3E0")); color(Color("#E65100")); padding(10.px, 16.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); property("border-bottom", "1px solid #FFE0B2") } }) {
+                Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("نسخه جدید قیاس آماده است 🚀") }
+                Button(attrs = { style { backgroundColor(Color("#EF6C00")); color(Color("white")); border(0.px); borderRadius(6.px); padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { PwaManager.applyUpdate() } }) { Text("بروزرسانی") }
+            }
+        }
+        // ۲. نوار اعلان نصب اپلیکیشن
+        else if (isInstallable) {
             Div(attrs = { style { backgroundColor(Color("#E3F2FD")); color(Color("#0D47A1")); padding(10.px, 16.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); property("border-bottom", "1px solid #90CAF9") } }) {
                 Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("برای استفاده کاملاً آفلاین، قیاس را نصب کنید 📥") }
                 Button(attrs = { style { backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(6.px); padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { PwaManager.promptInstall() } }) { Text("نصب اپلیکیشن") }

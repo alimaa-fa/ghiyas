@@ -19,25 +19,47 @@ html, body {
     overflow: hidden;
     font-family: 'DimaWeb', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
     font-size: 15px;
-    line-height: 1.4;
+    line-height: 1.5;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     background-color: #F5F5F5;
     color: #212121;
 }
 
-/* جلوگیری از شکست خط و تنظیم اندازه برچسب فیلدها */
+/* مدیریت شکست متن در عناوین و گزینه‌های چندخطی */
+label, p, h1, h2, h3, h4, h5, h6 {
+    white-space: normal;
+    word-break: break-word;
+}
+
+/* ورودی‌ها و مهار برچسب‌های فیلدهای فشرده */
 input, select, textarea, button {
     font-family: inherit !important;
-    font-size: 0.92rem !important;
+    font-size: 0.95rem !important;
+    max-width: 100%;
 }
 
-/* مهار متن‌های شناور و لیبل‌های داخل کادرهای دوتایی */
-label, span {
-    white-space: nowrap;
+/* جلوگیری از تغییر ابعاد چک‌باکس‌ها هنگام شکست خط عنوان */
+input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
 }
 
-/* حفظ قابلیت اسکرول نرم در تب‌ها */
+/* اصلاح فیلدهای تودرتو و لیست اشخاص */
+.person-row-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+}
+
+.person-row-container input {
+    flex: 1;
+    min-width: 0;
+}
+
 .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
