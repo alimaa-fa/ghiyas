@@ -1,9 +1,8 @@
-const CACHE_NAME = 'ghiyas-core-v15';
+const CACHE_NAME = 'ghiyas-core-v16';
 const ASSETS_TO_CACHE = [
   './',
-  './index.html',
   './manifest.json',
-  './styles.css?v=15',
+  './styles.css?v=16',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
@@ -11,7 +10,6 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // ❌ دستور skipWaiting حذف شد تا سرویس‌ورکر در صف انتظار بماند و دکمه آپدیت ظاهر شود
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -38,8 +36,8 @@ self.addEventListener('fetch', (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== location.origin) return;
 
-  // استراتژی Network-First برای HTML تا مرورگر همیشه متوجه آپدیت‌ها بشود
-  if (event.request.mode === 'navigate') {
+  // استراتژی Network-First برای HTML و CSS (دریافت آپدیت در لحظه)
+  if (event.request.mode === 'navigate' || requestUrl.pathname.endsWith('.html') || requestUrl.pathname.endsWith('.css')) {
     event.respondWith(
       fetch(event.request).then((networkResponse) => {
         return caches.open(CACHE_NAME).then((cache) => {
@@ -47,13 +45,13 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         });
       }).catch(() => {
-        return caches.match('./index.html');
+        return caches.match(event.request).then((response) => response || caches.match('./index.html'));
       })
     );
     return;
   }
 
-  // استراتژی Cache-First برای بقیه فایل‌ها جهت لود سریع آفلاین
+  // استراتژی Cache-First برای جاوااسکریپت و فونت‌ها
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       return cachedResponse || fetch(event.request).then((networkResponse) => {
@@ -66,7 +64,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// این پیام با زدن دکمه «بروزرسانی» از سمت کاتلین ارسال می‌شود
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();

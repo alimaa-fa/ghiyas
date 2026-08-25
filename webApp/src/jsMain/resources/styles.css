@@ -17,12 +17,17 @@ html, body {
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    /* جلوگیری از زوم شدن خودکار فونت در وب‌ویوی ایتا و اندروید */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     font-family: 'DimaWeb', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #F5F5F5;
     color: #212121;
+}
+
+/* حل نقطه‌ای مشکل مخفی شدن متن در نیمه‌کاری بدون آسیب به چک‌باکس‌ها */
+input[type="text"], input[type="number"], input[type="decimal"] {
+    min-height: 56px !important;
+    line-height: normal !important;
 }
 
 .hide-scrollbar {
