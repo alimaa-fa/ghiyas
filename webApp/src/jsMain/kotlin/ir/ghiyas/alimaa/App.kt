@@ -48,6 +48,11 @@ fun App() {
     val builderViewModel = remember { ir.ghiyas.alimaa.presentation.builder.BuilderViewModel() }
     val dynamicPlayerViewModel = remember { ir.ghiyas.alimaa.presentation.player.DynamicPlayerViewModel() }
     
+    // راه‌اندازی اولیه PWA Manager و ایتا SDK در زمان اجرای برنامه
+    LaunchedEffect(Unit) {
+        PwaManager.initialize()
+    }
+
     var customProfiles by remember { mutableStateOf(emptyList<ir.ghiyas.alimaa.domain.models.CustomProfile>()) }
     LaunchedEffect(currentScreen, currentMainTab) {
         if (currentScreen == "main") {
@@ -59,7 +64,9 @@ fun App() {
     val snapshot by expenseViewModel.snapshot.collectAsState()
     val calcState by calculatorViewModel.state.collectAsState()
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
-    val isStandalone = remember { PwaManager.isStandalone() }
+    
+    // دریافت وضعیت قابلیت نصب به جای تابع منسوخ قبلی
+    val isInstallable by PwaManager.isInstallable.collectAsState()
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"
@@ -70,10 +77,12 @@ fun App() {
     val mainPaddingBottom = if (calcState.isVisible && !calcState.isFullScreen) 440.px else 32.px
 
     Div(attrs = { dir(DirType.Rtl); style { property("margin", "0 auto"); maxWidth(600.px); width(100.percent); height(100.vh); position(Position.Relative); property("overflow", "hidden"); backgroundColor(Color("#F5F5F5")); display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); fontFamily("Vazirmatn", "system-ui", "-apple-system", "sans-serif"); property("box-shadow", "0 0 15px rgba(0,0,0,0.05)") } }) {
-        if (!isStandalone) {
+        
+        // نمایش نوار نصب فقط در صورتی که برنامه قابل نصب باشد
+        if (isInstallable) {
             Div(attrs = { style { backgroundColor(Color("#E3F2FD")); color(Color("#0D47A1")); padding(10.px, 16.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); property("border-bottom", "1px solid #90CAF9") } }) {
                 Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("برای استفاده کاملاً آفلاین، قیاس را نصب کنید 📥") }
-                Button(attrs = { style { backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(6.px); padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { PwaManager.requestInstall() } }) { Text("نصب اپلیکیشن") }
+                Button(attrs = { style { backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(6.px); padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { PwaManager.promptInstall() } }) { Text("نصب اپلیکیشن") }
             }
         }
 
