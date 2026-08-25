@@ -7,20 +7,41 @@ import org.jetbrains.compose.web.dom.*
 import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureStageViewModel
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 
-// کامپوننت اختصاصی برای ورودی‌های متنی که باگ استایل شناور در آن حل شده است
+// کامپوننت اختصاصی برای ورودی‌های متنی که باگ استایل شناور و ناپدید شدن متن در آن ریشه‌کن شد
 @Composable
 fun CustomTextInput(label: String, value: String, onValueChange: (String) -> Unit) {
-    Div(attrs = { classes(AppStyleSheet.floatingContainer); style { marginBottom(0.px) } }) {
+    Div(attrs = { 
+        classes(AppStyleSheet.floatingContainer)
+        style { 
+            marginBottom(0.px)
+            position(Position.Relative)
+            width(100.percent)
+        } 
+    }) {
         Input(type = InputType.Text, attrs = {
             classes(AppStyleSheet.floatingInput)
-            classes("floating-input") // این کلاس باگ روی هم افتادن را حل می‌کند
+            classes("floating-input") 
             value(value)
             onInput { event -> onValueChange(event.value) }
             placeholder(" ") 
+            style {
+                property("min-height", "56px")
+                // باز کردن یک فضای اختصاصی و امن در پایین کادر برای متنی که تایپ می‌کنید
+                padding(24.px, 12.px, 8.px, 12.px) 
+                width(100.percent)
+                boxSizing("border-box")
+            }
         })
         Label(attrs = { 
             classes(AppStyleSheet.floatingLabel)
             classes("floating-label")
+            style {
+                // راز حل مشکل: لیبل تحت هیچ شرایطی نباید دوخطی شود تا روی متن سایه نیندازد!
+                whiteSpace("nowrap") 
+                property("text-overflow", "ellipsis")
+                overflow("hidden")
+                property("max-width", "calc(100% - 24px)")
+            }
         }) { Text(label) }
     }
 }
@@ -58,7 +79,7 @@ fun AgricultureStageScreen(viewModel: AgricultureStageViewModel) {
                     onChange { viewModel.updateIsKeshavarzi(it.value) }
                     style { marginRight(12.px); width(20.px); height(20.px) }
                 })
-                Text("کشاورزی حساب شود؟") // متن اصلاح شد
+                Text("کشاورزی حساب شود؟") 
             }
 
             if (inputState.isKeshavarzi) {
@@ -83,10 +104,10 @@ fun AgricultureStageScreen(viewModel: AgricultureStageViewModel) {
 
             if (inputState.isNimehkari) {
                 Div(attrs = { style { marginTop(16.px); display(DisplayStyle.Flex); flexDirection(FlexDirection.Row); gap(12.px) } }) {
-                    Div(attrs = { style { flex(1) } }) {
+                    Div(attrs = { style { flex(1); property("min-width", "0") } }) {
                         CustomTextInput("نام شریک ۱ (اختیاری)", inputState.partner1Name) { v -> viewModel.updatePartner1Name(v) }
                     }
-                    Div(attrs = { style { flex(1) } }) {
+                    Div(attrs = { style { flex(1); property("min-width", "0") } }) {
                         CustomTextInput("نام شریک ۲ (اختیاری)", inputState.partner2Name) { v -> viewModel.updatePartner2Name(v) }
                     }
                 }
