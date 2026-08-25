@@ -4,4 +4,16 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    font-size: 16px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+input, textarea, button, select {
+    font-family: inherit;
 }
