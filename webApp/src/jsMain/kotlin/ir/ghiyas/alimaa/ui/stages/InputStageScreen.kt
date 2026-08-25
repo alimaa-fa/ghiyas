@@ -26,6 +26,9 @@ fun InputStageScreen(
     onClearComplete: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
+    
+    // وضعیت باز یا بسته بودن آکاردئونِ راهنما
+    var isGuideOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(onClearRequested) {
         if (onClearRequested) {
@@ -100,11 +103,12 @@ fun InputStageScreen(
         if (state.unitType == UnitType.CUSTOM) {
             Div(attrs = {
                 style {
-                    border { width(1.px); style(LineStyle.Dashed); color(Color("#BDBDBD")) }
-                    borderRadius(8.px)
-                    padding(16.px, 16.px, 8.px, 16.px)
-                    marginBottom(24.px)
-                    backgroundColor(Color("#FAFAFA"))
+                    // استفاده از property برای جلوگیری از خطای Type Mismatch در کامپایلر
+                    property("border", "1px dashed #BDBDBD")
+                    property("border-radius", "8px")
+                    property("padding", "16px 16px 8px 16px")
+                    property("margin-bottom", "24px")
+                    property("background-color", "#FAFAFA")
                 }
             }) {
                 // دراپ‌داون قوانین اعشار
@@ -113,8 +117,9 @@ fun InputStageScreen(
                         classes(AppStyleSheet.floatingInput)
                         classes("floating-input")
                         style {
-                            borderColor(Color("#FF9800")) // حاشیه نارنجی
+                            property("border-color", "#FF9800")
                             property("border-width", "2px")
+                            property("border-style", "solid")
                         }
                         onChange { event ->
                             event.value?.let { selectedName ->
@@ -132,38 +137,44 @@ fun InputStageScreen(
                     }
                 }
 
-                // آکاردئون راهنمای قوانین (DOM Native)
-                Details(attrs = {
+                // آکاردئون راهنمای قوانین (پیاده‌سازی امن با Div و State)
+                Div(attrs = {
                     style {
-                        backgroundColor(Color("#FFF8E1")) // پس‌زمینه کرم روشن
-                        borderRadius(8.px)
-                        padding(12.px)
+                        property("background-color", "#FFF8E1")
+                        property("border-radius", "8px")
+                        property("padding", "12px")
                     }
                 }) {
-                    Summary(attrs = {
-                        style {
-                            color(Color("#E65100"))
-                            fontWeight("bold")
-                            cursor("pointer")
-                            display(DisplayStyle.Flex)
-                            alignItems(AlignItems.Center)
-                        }
-                    }) {
-                        Text("💡 راهنمای قوانین گرد کردن (بستن)")
-                    }
-                    
+                    // هدر آکاردئون
                     Div(attrs = {
                         style {
-                            marginTop(12.px)
-                            fontSize(0.9.cssRem)
-                            color(Color("#424242"))
-                            lineHeight("1.8")
+                            property("color", "#E65100")
+                            property("font-weight", "bold")
+                            property("cursor", "pointer")
+                            property("display", "flex")
+                            property("align-items", "center")
                         }
+                        // تغییر وضعیت باز و بسته شدن با کلیک
+                        onClick { isGuideOpen = !isGuideOpen }
                     }) {
-                        P(attrs = { style { margin(0.px); fontWeight("bold") } }) { Text("قانون گرد کردن نمایشی:") }
-                        P(attrs = { style { margin(4.px, 0.px) } }) { Text("در ۱ رقم اعشار : اگر رقم صدم ۸ و ۹ بود دهم یک بالا برود.") }
-                        P(attrs = { style { margin(4.px, 0.px) } }) { Text("در ۲ رقم اگر رقم هزارم ۸ و ۹ بود صدم یکی بالا برود.") }
-                        P(attrs = { style { margin(4.px, 0.px) } }) { Text("در ۳ رقم اگر رقم ده هزارم ۸ و ۹ بود هزارم یکی بالا برود.") }
+                        Text(if (isGuideOpen) "💡 راهنمای قوانین گرد کردن (بستن)" else "💡 راهنمای قوانین گرد کردن (باز کردن)")
+                    }
+                    
+                    // محتوای داخل آکاردئون
+                    if (isGuideOpen) {
+                        Div(attrs = {
+                            style {
+                                property("margin-top", "12px")
+                                property("font-size", "0.9rem")
+                                property("color", "#424242")
+                                property("line-height", "1.8")
+                            }
+                        }) {
+                            P(attrs = { style { property("margin", "0px"); property("font-weight", "bold") } }) { Text("قانون گرد کردن نمایشی:") }
+                            P(attrs = { style { property("margin", "4px 0px") } }) { Text("در ۱ رقم اعشار : اگر رقم صدم ۸ و ۹ بود دهم یک بالا برود.") }
+                            P(attrs = { style { property("margin", "4px 0px") } }) { Text("در ۲ رقم اگر رقم هزارم ۸ و ۹ بود صدم یکی بالا برود.") }
+                            P(attrs = { style { property("margin", "4px 0px") } }) { Text("در ۳ رقم اگر رقم ده هزارم ۸ و ۹ بود هزارم یکی بالا برود.") }
+                        }
                     }
                 }
             }
@@ -174,7 +185,7 @@ fun InputStageScreen(
             Input(type = InputType.Text, attrs = {
                 classes(AppStyleSheet.floatingInput)
                 classes("floating-input")
-                attr("inputmode", "decimal") // باز کردن کیبورد عددی در موبایل
+                attr("inputmode", "decimal") 
                 value(state.totalAmount.toPersianDigits())
                 onInput { viewModel.onTotalAmountChange(it.value.standardizeDigits()) }
                 placeholder(" ") 
