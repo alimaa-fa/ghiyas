@@ -6,75 +6,23 @@
     font-display: swap;
 }
 
-* {
-    box-sizing: border-box !important;
-    -webkit-tap-highlight-color: transparent;
-}
-
+/* ریست کردن تنظیمات پایه بدون دستکاری استایل‌های کاتلین */
 html, body {
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
-    font-family: 'DimaWeb', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-    font-size: 15px;
-    line-height: 1.5;
+    /* جلوگیری از زوم شدن خودکار فونت در وب‌ویوی ایتا و اندروید */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    font-family: 'DimaWeb', 'Vazirmatn', -apple-system, sans-serif;
     background-color: #F5F5F5;
     color: #212121;
 }
 
-/* ۱. حل قطعی مشکل ناپدید شدن متن با ارتفاع استاندارد ۵۶ پیکسل */
-input[type="text"], input[type="number"], input[type="decimal"], select {
-    font-family: inherit !important;
-    font-size: 1rem !important;
-    height: 56px !important;
-    min-height: 56px !important;
-    padding: 24px 12px 6px 12px !important; /* فضای تفکیک‌شده: بالا برای لیبل، پایین برای متن تایپ‌شده */
-    max-width: 100%;
-    line-height: 1.2 !important;
-}
-
-/* ۲. اجرای دستور صریح: لغو سه‌نقطه و اجازه شکستن متن به خط دوم */
-label, span, p, h4, .floating-label {
-    white-space: normal !important;
-    word-break: break-word !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
-    line-height: 1.2 !important;
-}
-
-/* انیمیشن حرکتی (Marquee) برای لیبل‌های فوکوس‌شده به عنوان جایگزین سه‌نقطه */
-@keyframes scrollText {
-    0% { transform: translateX(0); }
-    50% { transform: translateX(15px); }
-    100% { transform: translateX(0); }
-}
-input:focus + label, .animated-label:focus-within {
-    animation: scrollText 3s linear infinite;
-}
-
-/* ۳. حل مشکل مچاله شدن چک‌باکس‌ها با انتقال خودکار به سطر دوم (Wrap) */
-.person-row-container, .flex-row-wrap {
-    display: flex;
-    flex-wrap: wrap !important; /* کلید حل مشکل فرم اشخاص: شکستن ردیف در صورت کمبود فضا */
-    align-items: center;
-    gap: 12px;
-    width: 100%;
-}
-
-.person-row-container input[type="text"] {
-    flex: 1 1 calc(100% - 60px) !important;
-    min-width: 200px !important;
-}
-
-input[type="checkbox"] {
-    flex-shrink: 0;
-    width: 20px;
-    height: 20px;
-    cursor: pointer;
+* {
+    -webkit-tap-highlight-color: transparent;
 }
 
 .hide-scrollbar {

@@ -1,17 +1,15 @@
-const CACHE_NAME = 'ghiyas-core-v12';
+const CACHE_NAME = 'ghiyas-core-v14';
+// فایل‌های اصلی (HTML و CSS) از اینجا حذف شدند تا همیشه اول از شبکه چک شوند
 const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
   './manifest.json',
-  './styles.css?v=12',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
   './fonts/DimaWeb.ttf'
 ];
 
-// نصب اولیه و ذخیره کلیه فایل‌ها در کش آفلاین
 self.addEventListener('install', (event) => {
+  self.skipWaiting(); // جایگزینی فوری سرویس‌ورکر جدید
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -19,7 +17,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// فعال‌سازی و پاک‌سازی کش‌های منسوخ قبلی
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -34,49 +31,40 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// استراتژی کش پایدار برای لود ۱۰۰٪ آفلاین
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  
+  const url = new URL(event.request.url);
+  if (url.origin !== location.origin) return;
 
-  const requestUrl = new URL(event.request.url);
-  // نادیده گرفتن درخواست‌های خارج از دامنه اپلیکیشن
-  if (requestUrl.origin !== location.origin) {
+  // ۱. استراتژی Network-First برای HTML و CSS (آپدیت در لحظه)
+  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('.css')) {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, response.clone());
+          return response;
+        });
+      }).catch(() => caches.match(event.request)) // فال‌بک به نسخه آفلاین در صورت قطعی اینترنت
+    );
     return;
   }
 
+  // ۲. استراتژی Cache-First برای جاوااسکریپت، عکس‌ها و فونت‌ها (سرعت لود بالا)
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // به‌روزرسانی نامحسوس کش در پس‌زمینه در صورت وجود اینترنت
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
+        // آپدیت نامحسوس در پس‌زمینه
+        fetch(event.request).then((res) => {
+          caches.open(CACHE_NAME).then((c) => c.put(event.request, res));
         }).catch(() => {});
         return cachedResponse;
       }
-
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200) {
-          return networkResponse;
-        }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+        const clone = networkResponse.clone();
+        caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
         return networkResponse;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
       });
     })
   );
-});
-
-// دریافت دستور کاربر برای فعال‌سازی نسخه جدید
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });
