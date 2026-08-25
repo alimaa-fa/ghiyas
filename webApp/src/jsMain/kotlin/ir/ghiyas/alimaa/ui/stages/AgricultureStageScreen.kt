@@ -7,7 +7,6 @@ import org.jetbrains.compose.web.dom.*
 import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureStageViewModel
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 
-// کامپوننت اختصاصی برای ورودی‌های متنی که باگ استایل شناور و ناپدید شدن متن در آن ریشه‌کن شد
 @Composable
 fun CustomTextInput(label: String, value: String, onValueChange: (String) -> Unit) {
     Div(attrs = { 
@@ -25,9 +24,9 @@ fun CustomTextInput(label: String, value: String, onValueChange: (String) -> Uni
             onInput { event -> onValueChange(event.value) }
             placeholder(" ") 
             style {
-                property("min-height", "56px")
-                // باز کردن یک فضای اختصاصی و امن در پایین کادر برای متنی که تایپ می‌کنید
-                padding(24.px, 12.px, 8.px, 12.px) 
+                // افزایش ارتفاع و پدینگ برای جا دادن لیبل‌های دو خطی بدون سایه انداختن روی متن
+                property("min-height", "64px")
+                padding(32.px, 12.px, 8.px, 12.px) 
                 width(100.percent)
                 boxSizing("border-box")
             }
@@ -36,11 +35,10 @@ fun CustomTextInput(label: String, value: String, onValueChange: (String) -> Uni
             classes(AppStyleSheet.floatingLabel)
             classes("floating-label")
             style {
-                // راز حل مشکل: لیبل تحت هیچ شرایطی نباید دوخطی شود تا روی متن سایه نیندازد!
-                whiteSpace("nowrap") 
-                property("text-overflow", "ellipsis")
-                overflow("hidden")
-                property("max-width", "calc(100% - 24px)")
+                // حذف سه‌نقطه و اجازه شکستن آزادانه متن به خط دوم طبق دستور شما
+                whiteSpace("normal") 
+                property("word-break", "break-word")
+                property("max-width", "100%")
             }
         }) { Text(label) }
     }
@@ -84,7 +82,6 @@ fun AgricultureStageScreen(viewModel: AgricultureStageViewModel) {
 
             if (inputState.isKeshavarzi) {
                 Div(attrs = { style { marginTop(16.px) } }) {
-                    // استفاده از اینپوت عددی استاندارد که در ماژول قبلی ساختیم
                     CustomNumberInput("نسبت سهم کشاورز", inputState.keshavarziRatioInput) { v -> viewModel.updateKeshavarziRatio(v) }
                     Span(attrs = { style { fontSize(0.85.cssRem); color(Color("#757575")) } }) { Text("مثال: ۴ یعنی ۱/۴ کل بار کسر می‌شود") }
                 }
