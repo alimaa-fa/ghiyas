@@ -1,6 +1,7 @@
 package ir.ghiyas.alimaa.presentation.stages.input
 
 import ir.ghiyas.alimaa.domain.models.UnitType
+import ir.ghiyas.alimaa.domain.models.DecimalDisplayRule
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,6 +10,7 @@ import kotlinx.coroutines.flow.update
 data class InputStageState(
     val calculationName: String = "",
     val unitType: UnitType = UnitType.HAND_PIECE,
+    val customDecimalRule: DecimalDisplayRule = DecimalDisplayRule.NONE, // قانون سفارشی
     val totalAmount: String = ""
 )
 
@@ -22,6 +24,10 @@ class InputStageViewModel {
 
     fun onUnitTypeChange(type: UnitType) {
         _state.update { it.copy(unitType = type) }
+    }
+
+    fun onCustomDecimalRuleChange(rule: DecimalDisplayRule) {
+        _state.update { it.copy(customDecimalRule = rule) }
     }
 
     fun onTotalAmountChange(amount: String) {

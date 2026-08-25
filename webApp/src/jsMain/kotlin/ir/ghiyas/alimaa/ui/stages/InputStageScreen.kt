@@ -5,6 +5,7 @@ import org.jetbrains.compose.web.attributes.*
 import org.jetbrains.compose.web.dom.*
 import androidx.compose.runtime.*
 import ir.ghiyas.alimaa.domain.models.UnitType
+import ir.ghiyas.alimaa.domain.models.DecimalDisplayRule
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 import ir.ghiyas.alimaa.presentation.stages.input.InputStageViewModel
 
@@ -17,7 +18,6 @@ private fun String.standardizeDigits(): String {
         .replace('٫', '.').replace('/', '.')
     return result
 }
-
 
 @Composable
 fun InputStageScreen(
@@ -59,19 +59,19 @@ fun InputStageScreen(
         Div(attrs = { classes(AppStyleSheet.floatingContainer) }) {
             Input(type = InputType.Text, attrs = {
                 classes(AppStyleSheet.floatingInput)
-                classes("floating-input") // اسم ثابت برای پیدا شدن توسط CSS
+                classes("floating-input")
                 value(state.calculationName)
                 onInput { viewModel.onCalculationNameChange(it.value) }
                 placeholder(" ") 
             })
             Label(attrs = { 
                 classes(AppStyleSheet.floatingLabel)
-                classes("floating-label") // اسم ثابت
+                classes("floating-label")
             }) { Text("اسم محاسبه (اختیاری)") }
         }
 
         // فیلد ۲: دراپ‌داون نوع واحد
-        Div(attrs = { style { position(Position.Relative); marginBottom(24.px) } }) {
+        Div(attrs = { style { position(Position.Relative); marginBottom(if (state.unitType == UnitType.CUSTOM) 12.px else 24.px) } }) {
             Select(attrs = {
                 classes(AppStyleSheet.floatingInput)
                 classes("floating-input")
@@ -96,19 +96,92 @@ fun InputStageScreen(
             }) { Text("نوع واحد") }
         }
 
+        // رندر شرطی: تنظیمات واحد سفارشی (فقط اگر واحد سفارشی انتخاب شود به DOM اضافه می‌شود)
+        if (state.unitType == UnitType.CUSTOM) {
+            Div(attrs = {
+                style {
+                    border { width(1.px); style(LineStyle.Dashed); color(Color("#BDBDBD")) }
+                    borderRadius(8.px)
+                    padding(16.px, 16.px, 8.px, 16.px)
+                    marginBottom(24.px)
+                    backgroundColor(Color("#FAFAFA"))
+                }
+            }) {
+                // دراپ‌داون قوانین اعشار
+                Div(attrs = { style { position(Position.Relative); marginBottom(16.px) } }) {
+                    Select(attrs = {
+                        classes(AppStyleSheet.floatingInput)
+                        classes("floating-input")
+                        style {
+                            borderColor(Color("#FF9800")) // حاشیه نارنجی
+                            property("border-width", "2px")
+                        }
+                        onChange { event ->
+                            event.value?.let { selectedName ->
+                                DecimalDisplayRule.entries.find { it.name == selectedName }?.let { 
+                                    viewModel.onCustomDecimalRuleChange(it) 
+                                }
+                            }
+                        }
+                    }) {
+                        DecimalDisplayRule.entries.forEach { rule ->
+                            Option(value = rule.name, attrs = {
+                                if (rule == state.customDecimalRule) selected()
+                            }) { Text(rule.displayName) }
+                        }
+                    }
+                }
+
+                // آکاردئون راهنمای قوانین (DOM Native)
+                Details(attrs = {
+                    style {
+                        backgroundColor(Color("#FFF8E1")) // پس‌زمینه کرم روشن
+                        borderRadius(8.px)
+                        padding(12.px)
+                    }
+                }) {
+                    Summary(attrs = {
+                        style {
+                            color(Color("#E65100"))
+                            fontWeight("bold")
+                            cursor("pointer")
+                            display(DisplayStyle.Flex)
+                            alignItems(AlignItems.Center)
+                        }
+                    }) {
+                        Text("💡 راهنمای قوانین گرد کردن (بستن)")
+                    }
+                    
+                    Div(attrs = {
+                        style {
+                            marginTop(12.px)
+                            fontSize(0.9.cssRem)
+                            color(Color("#424242"))
+                            lineHeight("1.8")
+                        }
+                    }) {
+                        P(attrs = { style { margin(0.px); fontWeight("bold") } }) { Text("قانون گرد کردن نمایشی:") }
+                        P(attrs = { style { margin(4.px, 0.px) } }) { Text("در ۱ رقم اعشار : اگر رقم صدم ۸ و ۹ بود دهم یک بالا برود.") }
+                        P(attrs = { style { margin(4.px, 0.px) } }) { Text("در ۲ رقم اگر رقم هزارم ۸ و ۹ بود صدم یکی بالا برود.") }
+                        P(attrs = { style { margin(4.px, 0.px) } }) { Text("در ۳ رقم اگر رقم ده هزارم ۸ و ۹ بود هزارم یکی بالا برود.") }
+                    }
+                }
+            }
+        }
+
         // فیلد ۳: مقدار کل
         Div(attrs = { classes(AppStyleSheet.floatingContainer) }) {
             Input(type = InputType.Text, attrs = {
                 classes(AppStyleSheet.floatingInput)
-                classes("floating-input") // اسم ثابت
-                attr("inputmode", "decimal")
+                classes("floating-input")
+                attr("inputmode", "decimal") // باز کردن کیبورد عددی در موبایل
                 value(state.totalAmount.toPersianDigits())
                 onInput { viewModel.onTotalAmountChange(it.value.standardizeDigits()) }
                 placeholder(" ") 
             })
             Label(attrs = { 
                 classes(AppStyleSheet.floatingLabel)
-                classes("floating-label") // اسم ثابت
+                classes("floating-label")
             }) { Text(state.unitType.dynamicLabel) }
         }
     }

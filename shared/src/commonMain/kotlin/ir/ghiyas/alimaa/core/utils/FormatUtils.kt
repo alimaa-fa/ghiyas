@@ -8,36 +8,30 @@ fun String.toPersianDigitsLocal(): String {
     return result
 }
 
-fun Double.toGhiyasFormat(baseUnit: String): String {
-    // ۱. تشخیص دقیق تعداد رقم اعشار بر اساس نوع واحد ورودی
-    val decimals = when {
-        baseUnit.contains("کیلو") || baseUnit.contains("گرم") -> 3
-        baseUnit.contains("متر") -> 2
-        baseUnit.contains("دست") || baseUnit.contains("دانه") || baseUnit.contains("دان") -> 1
-        else -> 0
+// تابع جدید و بهینه‌شده که مستقیما تعداد رقم اعشار را می‌گیرد (ایده‌آل برای واحد سفارشی)
+fun Double.toGhiyasFormat(decimals: Int): String {
+    // حالت آزاد (بدون محدودیت و قیچی)
+    if (decimals == -1) {
+        return this.toString().toPersianDigitsLocal()
     }
 
-    // اگر واحد بدون اعشار بود (مثل تومان)، بخش اعشاری کاملاً حذف می‌شود
     if (decimals == 0) {
         return this.toLong().toString().toPersianDigitsLocal()
     }
 
-    // ۲. پردازش بر پایه رشته برای دور زدن باگ‌های ممیز شناور سخت‌افزاری
     val rawStr = this.toString()
     val parts = rawStr.split('.')
     val intPart = parts[0]
     val decPart = if (parts.size > 1) parts[1] else ""
 
-    // پر کردن انتهای اعشار با صفر جهت بررسی دقیق موقعیت‌ها
     val paddedDec = decPart.padEnd(decimals + 5, '0')
-    
     val targetDecVal = paddedDec.substring(0, decimals)
     val checkDigit = paddedDec[decimals].toString().toIntOrNull() ?: 0
 
     var finalInt = intPart.toLongOrNull() ?: 0L
     var finalDecStr = targetDecVal
 
-    // قانون بومی قیاس: تنها در صورتی که رقم بعدی ۸ یا ۹ باشد رو به بالا گرد کن، در غیر این صورت قیچی کن
+    // قانون بومی قیاس: تنها در صورتی که رقم بعدی ۸ یا ۹ باشد رو به بالا گرد کن
     if (checkDigit == 8 || checkDigit == 9) {
         val decNum = targetDecVal.toLongOrNull() ?: 0L
         val maxDecNum = ("1" + "0".repeat(decimals)).toLong()
@@ -52,6 +46,17 @@ fun Double.toGhiyasFormat(baseUnit: String): String {
     }
 
     return "$finalInt.$finalDecStr".toPersianDigitsLocal()
+}
+
+// حفظ تابع قبلی برای سازگاری کامل با سایر بخش‌های پروژه (Overloading)
+fun Double.toGhiyasFormat(baseUnit: String): String {
+    val decimals = when {
+        baseUnit.contains("کیلو") || baseUnit.contains("گرم") -> 3
+        baseUnit.contains("متر") -> 2
+        baseUnit.contains("دست") || baseUnit.contains("دانه") || baseUnit.contains("دان") -> 1
+        else -> 0
+    }
+    return this.toGhiyasFormat(decimals)
 }
 
 expect fun formatTimestampToPersianDateTime(timestamp: Long): String
