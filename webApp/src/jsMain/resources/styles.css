@@ -7,7 +7,7 @@
 }
 
 * {
-    box-sizing: border-box;
+    box-sizing: border-box !important;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -17,26 +17,24 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    font-family: 'DimaWeb', 'Vazirmatn', system-ui, -apple-system, sans-serif !important;
-    font-size: 14px !important;
-    -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
+    font-family: 'DimaWeb', 'Vazirmatn', -apple-system, system-ui, sans-serif !important;
+    font-size: 13.5px !important;
+    -webkit-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
     background-color: #F5F5F5;
 }
 
-/* اصلاح چیدمان فیلدهای دوتایی در موبایل */
+/* جلوگیری از شکستن عنوان فیلدها به دو خط */
+label, span, p, h4 {
+    white-space: normal;
+}
+
+/* بهینه‌سازی فرم‌ها در موبایل */
 input, select, textarea, button {
     font-family: inherit !important;
-    font-size: 0.95rem !important;
+    font-size: 0.9rem !important;
 }
 
-/* کنترل سایز عناوین و برچسب‌های داخل کارت‌ها */
-h1, h2, h3, h4, h5, h6 {
-    font-family: inherit !important;
-    font-weight: bold;
-}
-
-/* تب‌بار بالای صفحه برای جلوگیری از بیرون‌زدگی */
 .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
