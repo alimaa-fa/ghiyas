@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ghiyas-core-v1';
+const CACHE_NAME = 'ghiyas-core-v2';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -6,7 +6,9 @@ const ASSETS_TO_CACHE = [
   './styles.css',
   './webApp.js',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './fonts/DimaWeb.ttf',
+  'https://developer.eitaa.com/eitaa-web-app.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -40,7 +42,7 @@ self.addEventListener('fetch', (event) => {
         return cachedResponse;
       }
       return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+        if (!networkResponse || networkResponse.status !== 200) {
           return networkResponse;
         }
         const responseToCache = networkResponse.clone();

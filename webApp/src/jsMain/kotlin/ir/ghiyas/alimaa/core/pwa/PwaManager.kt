@@ -1,34 +1,72 @@
 package ir.ghiyas.alimaa.core.pwa
 
 import kotlinx.browser.window
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import org.w3c.dom.events.Event
 
 object PwaManager {
-    
-    fun isStandalone(): Boolean {
-        // استفاده از API های رسمی کاتلین/وب به جای تابع js
-        val isStandaloneMedia = window.matchMedia("(display-mode: standalone)").matches
-        val isSafariStandalone = window.navigator.asDynamic().standalone == true
-        
-        return isStandaloneMedia || isSafariStandalone
+
+    private val _isInstallable = MutableStateFlow(false)
+    val isInstallable: StateFlow<Boolean> = _isInstallable.asStateFlow()
+
+    private var deferredPrompt: dynamic = null
+
+    fun initialize() {
+        initEitaaWebApp()
+        registerServiceWorker()
+        requestPersistentStorage()
+        listenForInstallPrompt()
     }
 
-    fun requestInstall() {
-        // دسترسی امن به متغیرهای گلوبال با asDynamic
-        val deferredPrompt = window.asDynamic().deferredInstallPrompt
-        
-        if (deferredPrompt != undefined && deferredPrompt != null) {
-            // مرورگرهای کرومیوم (Chrome, Edge, Samsung)
-            deferredPrompt.prompt()
-            deferredPrompt.userChoice.then {
-                window.asDynamic().deferredInstallPrompt = null
+    private fun initEitaaWebApp() {
+        try {
+            val eitaa = window.asDynamic().Eitaa
+            if (eitaa != null && eitaa.WebApp != null) {
+                eitaa.WebApp.ready()
+                eitaa.WebApp.expand()
             }
-        } else {
-            // فایرفاکس، سافاری، یا داخل محیط پیام‌رسان‌ها
-            window.alert(
-                "برای نصب برنامه:\n\n" +
-                "۱. در کروم، فایرفاکس یا اج: از منوی مرورگر گزینه «Install» یا «Add to Home screen» را انتخاب کنید.\n" +
-                "۲. در آیفون (سافاری): دکمه Share را زده و «Add to Home Screen» را انتخاب کنید."
-            )
+        } catch (_: Throwable) {
+            // در مرورگرهای معمولی بدون خطا رد می‌شود
+        }
+    }
+
+    private fun registerServiceWorker() {
+        if (window.navigator.asDynamic().serviceWorker != null) {
+            window.navigator.asDynamic().serviceWorker.register("./sw.js")
+        }
+    }
+
+    private fun requestPersistentStorage() {
+        try {
+            val storage = window.navigator.asDynamic().storage
+            if (storage != null && storage.persist != null) {
+                storage.persist()
+            }
+        } catch (_: Throwable) {
+            // مرورگرهایی که از persist پشتیبانی نمی‌کنند
+        }
+    }
+
+    private fun listenForInstallPrompt() {
+        window.addEventListener("beforeinstallprompt", { event: Event ->
+            event.preventDefault()
+            deferredPrompt = event
+            _isInstallable.value = true
+        })
+
+        window.addEventListener("appinstalled", {
+            _isInstallable.value = false
+            deferredPrompt = null
+        })
+    }
+
+    fun promptInstall() {
+        if (deferredPrompt != null) {
+            deferredPrompt.prompt()
+            deferredPrompt = null
+            _isInstallable.value = false
         }
     }
 }
