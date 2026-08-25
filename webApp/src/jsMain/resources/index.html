@@ -5,54 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>قیاس</title>
     
-    <link rel="manifest" href="/manifest.json">
+    <!-- تنظیمات PWA و Standalone -->
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2E7D32">
-    <link rel="apple-touch-icon" href="/icon-192.png">
-    
-    <style>
-        @font-face {
-            font-family: 'DimaWeb';
-            src: url('fonts/DimaWeb.ttf') format('truetype'); 
-            font-weight: normal;
-            font-style: normal;
-        }
-    </style>
-    
-    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.0.0/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="قیاس">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body style="margin: 0; padding: 0; background-color: #F5F5F5; font-family: 'DimaWeb', Vazirmatn, sans-serif;">
-    
+<body>
     <div id="root"></div>
-
-    <script type="application/javascript" src="webApp.js"></script>
-
-    <script>
-        // ۱. قفل کردن حافظه دائمی (جلوگیری از پاک شدن کش توسط پاکسازی خودکار سیستم‌عامل)
-        if (navigator.storage && navigator.storage.persist) {
-            navigator.storage.persist().then(granted => {
-                console.log("وضعیت حافظه دائمی (LocalStorage/Cache):", granted ? "مقاوم شد" : "معمولی");
-            });
-        }
-
-        // ۲. به تاخیر انداختن رویداد نصب پیش‌فرض مرورگر و سپردن کنترل آن به کاتلین
-        window.deferredInstallPrompt = null;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            window.deferredInstallPrompt = e;
-            // شلیک رویداد سفارشی تا رابط کاربری ما در کاتلین (بنر نصب) روشن شود
-            window.dispatchEvent(new Event('pwa-ready-to-install'));
-        });
-
-        // ۳. ثبت سرویس ورکر برای عملکرد ۱۰۰٪ آفلاین
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js').then(reg => {
-                    console.log('سرویس ورکر با موفقیت ثبت شد. Scope:', reg.scope);
-                }).catch(err => {
-                    console.error('خطا در ثبت سرویس ورکر:', err);
-                });
-            });
-        }
-    </script>
+    <script src="webApp.js"></script>
 </body>
 </html>
