@@ -1,23 +1,27 @@
 package ir.ghiyas.alimaa.presentation.stages.distribution
 
 import ir.ghiyas.alimaa.domain.strategy.DistributionMode
+import ir.ghiyas.alimaa.domain.strategy.ComprehensiveState
 import ir.ghiyas.alimaa.domain.strategy.ModeBState
-import ir.ghiyas.alimaa.domain.strategy.PersonNode
+import ir.ghiyas.alimaa.domain.models.ComprehensiveMode
+import ir.ghiyas.alimaa.domain.models.ShareholderNode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlin.random.Random
 
+// این کلاس ShareholderInput باید حتماً اینجا باشد تا ExpenseStageViewModel خطا ندهد
 data class ShareholderInput(val name: String = "", val ghiyasInput: String = "")
 
 data class PoolDistributionState(
-    val mode: DistributionMode = DistributionMode.MODE_B_SIMPLE,
+    val mode: DistributionMode = DistributionMode.MODE_A_NO_BREAKDOWN, 
     val groupName: String = "",                           
-    val modeBState: ModeBState = ModeBState(),                  
-    val shareholders: List<ShareholderInput> = listOf(ShareholderInput()), 
+    val comprehensiveState: ComprehensiveState = ComprehensiveState(), 
+    val modeBState: ModeBState = ModeBState(), // Legacy
+    val shareholders: List<ShareholderInput> = listOf(ShareholderInput()), // نوع لیست بازگردانی شد
     val defaultStrategyTitle: String = "",
-    val customProfileId: String = "", // برای محاسبات اختصاصی
+    val customProfileId: String = "", 
     val calculateZivar: Boolean = true,
     val targetGroup: String = "کل عبدالرحیمی‌ها",
     val transferDadallah: Boolean = false        
@@ -56,25 +60,33 @@ class DistributionStageViewModel {
     fun updateTargetGroup(target: PoolTarget, group: String) { updatePoolState(target) { it.copy(targetGroup = group) } }
     fun updateTransferDadallah(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(transferDadallah = isChecked) } }
     
-    fun addShareholder(target: PoolTarget) { updatePoolState(target) { it.copy(shareholders = it.shareholders + ShareholderInput()) } }
-    fun updateShareholder(target: PoolTarget, index: Int, name: String, ghiyasInput: String) {
-        updatePoolState(target) { state -> val newList = state.shareholders.toMutableList(); if (index in newList.indices) newList[index] = ShareholderInput(name, ghiyasInput); state.copy(shareholders = newList) }
-    }
-    fun removeShareholder(target: PoolTarget, index: Int) {
-        updatePoolState(target) { state -> val newList = state.shareholders.toMutableList(); if (index in newList.indices && newList.size > 1) newList.removeAt(index); state.copy(shareholders = newList) }
+    // === متدهای موتور جدید جامع (Comprehensive) ===
+    fun updateComprehensiveState(target: PoolTarget, update: (ComprehensiveState) -> ComprehensiveState) {
+        updatePoolState(target) { it.copy(comprehensiveState = update(it.comprehensiveState)) }
     }
 
-    fun updateModeBState(target: PoolTarget, update: (ModeBState) -> ModeBState) {
-        updatePoolState(target) { it.copy(modeBState = update(it.modeBState)) }
-    }
-
-    private fun List<PersonNode>.updateNodeRecursive(path: List<String>, transform: (PersonNode) -> PersonNode): List<PersonNode> {
+    private fun List<ShareholderNode>.updateNodeRecursive(path: List<String>, transform: (ShareholderNode) -> ShareholderNode): List<ShareholderNode> {
         if (path.isEmpty()) return this
         val targetId = path.first()
-        return this.map { node -> if (node.id == targetId) { if (path.size == 1) transform(node) else node.copy(subNodes = node.subNodes.updateNodeRecursive(path.drop(1), transform)) } else node }
+        return this.map { node -> 
+            if (node.id == targetId) { 
+                if (path.size == 1) transform(node) else node.copy(children = node.children.updateNodeRecursive(path.drop(1), transform)) 
+            } else node 
+        }
     }
 
-    fun updatePersonNode(target: PoolTarget, path: List<String>, update: (PersonNode) -> PersonNode) { updateModeBState(target) { bState -> bState.copy(children = bState.children.updateNodeRecursive(path, update)) } }
-    fun addPersonNode(target: PoolTarget, path: List<String>) { val newNode = PersonNode(id = generateUniqueId()); if (path.isEmpty()) { updateModeBState(target) { it.copy(children = it.children + newNode) } } else { updatePersonNode(target, path) { it.copy(subNodes = it.subNodes + newNode) } } }
-    fun removePersonNode(target: PoolTarget, path: List<String>, idToRemove: String) { if (path.isEmpty()) { updateModeBState(target) { it.copy(children = it.children.filter { c -> c.id != idToRemove }) } } else { updatePersonNode(target, path) { it.copy(subNodes = it.subNodes.filter { c -> c.id != idToRemove }) } } }
+    fun updateNode(target: PoolTarget, path: List<String>, update: (ShareholderNode) -> ShareholderNode) { 
+        updateComprehensiveState(target) { st -> st.copy(nodes = st.nodes.updateNodeRecursive(path, update)) } 
+    }
+
+    fun addNode(target: PoolTarget, path: List<String>) { 
+        val newNode = ShareholderNode(id = generateUniqueId())
+        if (path.isEmpty()) { updateComprehensiveState(target) { it.copy(nodes = it.nodes + newNode) } } 
+        else { updateNode(target, path) { it.copy(children = it.children + newNode) } } 
+    }
+
+    fun removeNode(target: PoolTarget, path: List<String>, idToRemove: String) { 
+        if (path.isEmpty()) { updateComprehensiveState(target) { it.copy(nodes = it.nodes.filter { c -> c.id != idToRemove }) } } 
+        else { updateNode(target, path) { it.copy(children = it.children.filter { c -> c.id != idToRemove }) } } 
+    }
 }

@@ -10,9 +10,12 @@ import ir.ghiyas.alimaa.presentation.stages.distribution.PoolTarget
 import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureInputState
 import ir.ghiyas.alimaa.domain.strategy.DistributionMode
 import ir.ghiyas.alimaa.domain.strategy.DefaultCalculationsRegistry
-import ir.ghiyas.alimaa.domain.strategy.PersonNode
+import ir.ghiyas.alimaa.domain.models.ShareholderNode
+import ir.ghiyas.alimaa.domain.models.ComprehensiveMode
 import ir.ghiyas.alimaa.domain.models.CustomProfile
 import ir.ghiyas.alimaa.domain.models.ProfileIntegrationType
+import ir.ghiyas.alimaa.domain.models.SavedDistributionTemplate
+import ir.ghiyas.alimaa.data.DistributionTemplateRepository
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
 
 private fun String.standardizeDigitsLocal(): String {
@@ -42,52 +45,68 @@ private fun DistTextInput(label: String, value: String, isNumber: Boolean = fals
     }
 }
 
+private fun flattenTree(nodes: List<ShareholderNode>): List<Pair<String, String>> {
+    return nodes.flatMap { listOf(it.id to it.name) + flattenTree(it.children) }
+}
+
 @Composable
-fun RecursivePersonNode(node: PersonNode, path: List<String>, target: PoolTarget, viewModel: DistributionStageViewModel) {
-    Div(attrs = { style { padding(12.px); marginTop(8.px); property("border-left", "4px solid #81C784"); backgroundColor(Color("#F8FBF8")); borderRadius(4.px) } }) {
-        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(8.px) } }) {
-            Div(attrs = { style { flex(2) } }) { DistTextInput("نام شخص", node.name, false) { v -> viewModel.updatePersonNode(target, path) { it.copy(name = v) } } }
-            Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem) } }) {
-                Input(type = InputType.Checkbox, attrs = { checked(node.isFemale); onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isFemale = event.value) } }; style { marginRight(4.px) } })
-                Text("دختر (۰.۵)")
+fun RecursiveComprehensiveNode(node: ShareholderNode, path: List<String>, currentMode: ComprehensiveMode, target: PoolTarget, viewModel: DistributionStageViewModel, allAvailableNodes: List<Pair<String, String>>) {
+    // تغییر رنگ حاشیه اگر غیرفعال باشد
+    val borderColor = if (node.isActive) "#4CAF50" else "#BDBDBD"
+    val bgColor = if (node.isActive) "#F8FBF8" else "#F5F5F5"
+
+    Div(attrs = { style { padding(12.px); marginTop(12.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(4.px) } }) {
+        
+        // ردیف اول: فعال بودن، نام و مقدار
+        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(12.px) } }) {
+            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
+                Input(type = InputType.Checkbox, attrs = { checked(node.isActive); onChange { e -> viewModel.updateNode(target, path) { it.copy(isActive = e.value) } } })
             }
-            Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); fontWeight("bold"); property("cursor", "pointer") }; onClick { viewModel.removePersonNode(target, path.dropLast(1), node.id) } }) { Text("-") }
-        }
-
-        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px) } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.isSubDivided); onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isSubDivided = event.value) } }; style { marginRight(8.px) } })
-            Text("آیا سهم این شخص در خودش خرد می‌شود؟")
-        }
-
-        if (node.isSubDivided) {
-            Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
-                DistTextInput("تعداد نفرات زیرمجموعه", node.subCountInput, true) { v -> viewModel.updatePersonNode(target, path) { it.copy(subCountInput = v) } }
-                val maxLimit = node.subCountInput.toDoubleOrNull() ?: 0.0
-                val currentSum = node.subNodes.sumOf { it.weight }
-                val hasDecimal = (maxLimit > 0 && maxLimit % 1.0 != 0.0)
-
-                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
-                    Input(type = InputType.Checkbox, attrs = { checked(node.isDetailedFurther); onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isDetailedFurther = event.value) } }; style { marginRight(8.px) } })
-                    Text("تقسیم جزئی‌تر؟ (درختی)")
+            Div(attrs = { style { flex(2) } }) { DistTextInput("نام شریک", node.name, false) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } }
+            
+            if (currentMode != ComprehensiveMode.PERSON) {
+                Div(attrs = { style { flex(1) } }) { DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } }
+            } else {
+                Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem) } }) {
+                    Input(type = InputType.Checkbox, attrs = { checked(node.isFemale); onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } })
+                    Text("دختر (۰.۵)")
                 }
+            }
+            Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); fontWeight("bold"); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
+        }
 
-                if (!node.isDetailedFurther) {
-                    if (!hasDecimal) {
-                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
-                            Input(type = InputType.Checkbox, attrs = { checked(node.isSubBoyGirlSplit); onChange { event -> viewModel.updatePersonNode(target, path) { it.copy(isSubBoyGirlSplit = event.value) } }; style { marginRight(8.px) } })
-                            Text("تسهیم پسر و دختری؟")
+        // ردیف دوم و سوم فقط در صورت فعال بودن شخص نمایش داده می‌شود
+        if (node.isActive) {
+            Div(attrs = { style { marginBottom(12.px); padding(8.px); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); border(1.px, LineStyle.Dashed, Color("#FFEB3B")) } }) {
+                Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#F57F17")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتقال سهم این شخص به:") }
+                Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> viewModel.updateNode(target, path) { it.copy(transferredToId = e.value ?: "") } } }) {
+                    Option(value = "", attrs = { if (node.transferredToId.isEmpty()) attr("selected", "true") }) { Text("بدون انتقال (خودش دریافت کند)") }
+                    allAvailableNodes.filter { it.first != node.id }.forEach { (id, name) ->
+                        Option(value = id, attrs = { if (node.transferredToId == id) attr("selected", "true") }) { Text(name.ifEmpty { "ناشناس" }) }
+                    }
+                }
+            }
+
+            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); fontWeight("bold"); color(Color("#2E7D32")) } }) {
+                Input(type = InputType.Checkbox, attrs = { checked(node.hasSubDistribution); onChange { e -> viewModel.updateNode(target, path) { it.copy(hasSubDistribution = e.value) } }; style { marginRight(8.px) } })
+                Text("تقسیم جزئی (وارث جدید)؟")
+            }
+
+            if (node.hasSubDistribution) {
+                Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
+                    Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(8.px) }; onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> viewModel.updateNode(target, path) { it.copy(subDistributionMode = m) } } } }) {
+                        ComprehensiveMode.entries.forEach { mode ->
+                            Option(value = mode.name, attrs = { if (node.subDistributionMode == mode) attr("selected", "true") }) { Text("زیرمجموعه " + mode.displayName) }
                         }
                     }
-                } else {
-                    if (currentSum > maxLimit) {
-                        P(attrs = { style { color(Color("#D32F2F")); fontSize(0.85.cssRem); fontWeight("bold"); margin(4.px, 0.px) } }) { Text("خطا: مجموع سهم زیرمجموعه ($currentSum) از حد مجاز ($maxLimit) بیشتر است!") }
-                    }
-                    node.subNodes.forEach { child -> RecursivePersonNode(child, path + child.id, target, viewModel) }
-                    if (currentSum + 0.5 <= maxLimit) {
-                        Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "1px dashed #4CAF50"); borderRadius(4.px); padding(8.px); property("cursor", "pointer"); marginTop(8.px) }; onClick { viewModel.addPersonNode(target, path) } }) { Text("+ افزودن عضو به ${if (node.name.isEmpty()) "شخص" else node.name}") }
-                    }
+                    
+                    node.children.forEach { child -> RecursiveComprehensiveNode(child, path + child.id, node.subDistributionMode, target, viewModel, allAvailableNodes) }
+                    
+                    Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "1px dashed #4CAF50"); borderRadius(4.px); padding(8.px); property("cursor", "pointer"); marginTop(8.px) }; onClick { viewModel.addNode(target, path) } }) { Text("+ افزودن عضو زیرمجموعه") }
                 }
             }
+        } else {
+            P(attrs = { style { margin(0.px); fontSize(0.85.cssRem); color(Color("#9E9E9E")) } }) { Text("این شخص موقتاً از محاسبه خط خورده است.") }
         }
     }
 }
@@ -122,19 +141,14 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
 }
 
 @Composable
-fun PoolSettingsCard(
-    title: String, target: PoolTarget, state: PoolDistributionState, 
-    viewModel: DistributionStageViewModel, agricultureInput: AgricultureInputState, 
-    customProfiles: List<CustomProfile>, onNavigateToBuilder: () -> Unit
-) {
+fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionState, viewModel: DistributionStageViewModel, agricultureInput: AgricultureInputState, customProfiles: List<CustomProfile>, onNavigateToBuilder: () -> Unit) {
     Div(attrs = { style { marginBottom(24.px); padding(16.px); border(1.px, LineStyle.Solid, Color("#AED581")); borderRadius(12.px); backgroundColor(Color("#F1F8E9")) } }) {
         H4(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#1B5E20")) } }) { Text(title) }
 
-        Div(attrs = { style { display(DisplayStyle.Flex); flexWrap(FlexWrap.Wrap); gap(8.px); marginBottom(24.px) } }) {
+        Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px); marginBottom(24.px) } }) {
             val modes = listOf(
-                DistributionMode.MODE_B_SIMPLE to "بر اساس نفر",
-                DistributionMode.MODE_A_NO_BREAKDOWN to "بدون خرد کردن",
-                DistributionMode.MODE_C_GHIYAS to "بر اساس قیاس",
+                DistributionMode.MODE_A_NO_BREAKDOWN to "بدون خرد کردن (یکجا)",
+                DistributionMode.MODE_COMPREHENSIVE to "بر اساس نفر / سهم / درصد",
                 DistributionMode.MODE_DEFAULT_MAKER to "پیش‌فرض سازنده",
                 DistributionMode.MODE_CUSTOM_BUILDER to "محاسبات اختصاصی"
             )
@@ -142,7 +156,8 @@ fun PoolSettingsCard(
                 val isActive = state.mode == mode
                 Button(attrs = {
                     style {
-                        flex(1); minWidth(120.px); padding(10.px); borderRadius(8.px); fontWeight(if (isActive) "bold" else "normal")
+                        width(100.percent); padding(14.px); borderRadius(8.px); fontWeight(if (isActive) "bold" else "normal")
+                        fontSize(if (isActive) 1.1.cssRem else 1.cssRem)
                         color(if (isActive) Color("white") else Color("#2E7D32")); backgroundColor(if (isActive) Color("#2E7D32") else Color("white"))
                         property("border", "1px solid #2E7D32"); property("cursor", "pointer")
                     }
@@ -153,76 +168,107 @@ fun PoolSettingsCard(
 
         Div(attrs = { style { padding(16.px); backgroundColor(Color("white")); borderRadius(8.px); property("border", "1px dashed #C5E1A5") } }) {
             when (state.mode) {
-                DistributionMode.MODE_CUSTOM_BUILDER -> {
+                DistributionMode.MODE_COMPREHENSIVE -> {
+                    val compState = state.comprehensiveState
                     
-                    // افزودن بنر هشدار نسخه آزمایشی
-                    Div(attrs = { style { backgroundColor(Color("#FFF3E0")); border(1.px, LineStyle.Solid, Color("#FFB74D")); property("border-right", "4px solid #F57C00"); padding(12.px); borderRadius(8.px); marginBottom(16.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px) } }) {
-                        Span(attrs = { style { fontSize(1.5.cssRem) } }) { Text("⚠️") }
-                        P(attrs = { style { margin(0.px); color(Color("#E65100")); fontSize(0.9.cssRem); fontWeight("bold"); lineHeight("1.6") } }) {
-                            Text("نسخه آزمایشی: قابلیت ساخت محاسبه اختصاصی در حال توسعه است و در به‌روزرسانی‌های آینده نهایی خواهد شد. لطفاً برای دریافت نتایج دقیق، از تب‌های پیش‌فرض استفاده کنید.")
-                        }
-                    }
-
-                    H5(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("انتخاب محاسبات اختصاصی (وابسته)") }
+                    // استیت‌های لوکال برای ذخیره و بازیابی
+                    var savedTemplates by remember { mutableStateOf(DistributionTemplateRepository.getAllTemplates()) }
+                    var newTemplateTitle by remember { mutableStateOf("") }
                     
-                    val dependentProfiles = customProfiles.filter { it.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4 }
-                    
-                    Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { e -> viewModel.updateCustomProfile(target, e.value ?: "") } }) {
-                        if (dependentProfiles.isEmpty()) {
-                            Option(value = "", attrs = { attr("disabled", "true"); attr("selected", "true") }) { Text("هنوز هیچ الگوی وابسته‌ای ساخته نشده است.") }
-                        } else {
-                            Option(value = "", attrs = { attr("disabled", "true"); if(state.customProfileId.isEmpty()) attr("selected", "true") }) { Text("یک الگوی اختصاصی انتخاب کنید...") }
-                            dependentProfiles.forEach { prof ->
-                                Option(value = prof.id, attrs = { if(state.customProfileId == prof.id) attr("selected", "true") }) { Text(prof.name) }
+                    // --- بخش دسترسی سریع (کارت‌های ذخیره‌شده) ---
+                    if (savedTemplates.isNotEmpty()) {
+                        Div(attrs = { style { marginBottom(24.px); padding(12.px); backgroundColor(Color("#F3E5F5")); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#CE93D8")) } }) {
+                            H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#6A1B9A")) } }) { Text("💳 الگوهای آماده (دسترسی سریع)") }
+                            Div(attrs = { style { display(DisplayStyle.Flex); flexWrap(FlexWrap.Wrap); gap(8.px) } }) {
+                                savedTemplates.forEach { template ->
+                                    Div(attrs = { 
+                                        style { 
+                                            display(DisplayStyle.Flex); alignItems(AlignItems.Center); 
+                                            backgroundColor(Color("white")); border(1.px, LineStyle.Solid, Color("#AB47BC")); 
+                                            borderRadius(16.px); padding(6.px, 12.px); cursor("pointer") 
+                                        }
+                                    }) {
+                                        Span(attrs = { 
+                                            style { fontSize(0.95.cssRem); color(Color("#4A148C")); fontWeight("bold") }
+                                            onClick {
+                                                viewModel.updateComprehensiveState(target) { 
+                                                    it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) 
+                                                }
+                                            }
+                                        }) { Text(template.title) }
+                                        
+                                        Span(attrs = { 
+                                            style { marginLeft(12.px); color(Color("#D32F2F")); fontWeight("bold"); fontSize(1.2.cssRem) }
+                                            onClick {
+                                                DistributionTemplateRepository.deleteTemplate(template.id)
+                                                savedTemplates = DistributionTemplateRepository.getAllTemplates()
+                                            }
+                                        }) { Text("×") }
+                                    }
+                                }
                             }
                         }
                     }
-                    Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") }
+
+                    // --- تنظیمات اصلی موتور ---
+                    Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(16.px); fontSize(1.cssRem) }; onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> viewModel.updateComprehensiveState(target) { st -> st.copy(rootMode = m) } } } }) {
+                        ComprehensiveMode.entries.forEach { mode ->
+                            Option(value = mode.name, attrs = { if (compState.rootMode == mode) attr("selected", "true") }) { Text(mode.displayName) }
+                        }
+                    }
+
+                    if (compState.rootMode == ComprehensiveMode.PERSON) {
+                        DistTextInput("تعداد کل نفرات (اختیاری)", compState.countLimitInput, true) { v -> viewModel.updateComprehensiveState(target) { it.copy(countLimitInput = v) } }
+                    }
+
+                    val allNodesFlat = flattenTree(compState.nodes)
+                    
+                    compState.nodes.forEach { node ->
+                        RecursiveComprehensiveNode(node, listOf(node.id), compState.rootMode, target, viewModel, allNodesFlat)
+                    }
+
+                    Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(16.px) }; onClick { viewModel.addNode(target, emptyList()) } }) { Text("+ افزودن شریک جدید") }
+
+                    // --- بخش ذخیره الگو برای استفاده بعدی ---
+                    if (compState.nodes.isNotEmpty()) {
+                        Div(attrs = { style { marginTop(24.px); padding(16.px); backgroundColor(Color("#FFF3E0")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#FFB74D")) } }) {
+                            H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#E65100")) } }) { Text("💾 ذخیره این ترکیب برای دفعات بعد") }
+                            Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px); alignItems(AlignItems.Center) } }) {
+                                Div(attrs = { style { flex(2) } }) {
+                                    DistTextInput("نام الگو (مثلاً: شرکای باغ بالا)", newTemplateTitle, false) { newTemplateTitle = it }
+                                }
+                                Button(attrs = {
+                                    style { 
+                                        flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); 
+                                        border(0.px); borderRadius(8.px); padding(14.px); fontWeight("bold"); cursor("pointer") 
+                                    }
+                                    onClick {
+                                        if (newTemplateTitle.isNotBlank()) {
+                                            val template = SavedDistributionTemplate(
+                                                id = kotlin.random.Random.nextInt().toString() + "_" + kotlin.js.Date.now().toString(),
+                                                title = newTemplateTitle,
+                                                rootMode = compState.rootMode,
+                                                totalCountLimit = compState.countLimitInput,
+                                                nodes = compState.nodes,
+                                                createdAt = kotlin.js.Date.now().toLong()
+                                            )
+                                            DistributionTemplateRepository.saveTemplate(template)
+                                            savedTemplates = DistributionTemplateRepository.getAllTemplates()
+                                            newTemplateTitle = "" 
+                                        }
+                                    }
+                                }) { Text("ذخیره الگو") }
+                            }
+                        }
+                    }
                 }
                 
                 DistributionMode.MODE_A_NO_BREAKDOWN -> {
                     DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) }
                     P(attrs = { style { fontSize(0.85.cssRem); color(Color("#757575")); marginTop(8.px) } }) { Text("در این حالت کل سهم این بخش بدون تغییر به نام وارد شده اختصاص می‌یابد.") }
                 }
-                DistributionMode.MODE_B_SIMPLE -> {
-                    H5(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("تنظیمات محاسبه (بر اساس نفر)") }
-                    val bState = state.modeBState
-                    DistTextInput("تعداد کل نفرات", bState.countInput, true) { v -> viewModel.updateModeBState(target) { it.copy(countInput = v) } }
-                    val maxLimit = bState.countInput.toDoubleOrNull() ?: 0.0
-                    val currentSum = bState.children.sumOf { it.weight }
-                    val hasDecimal = (maxLimit > 0 && maxLimit % 1.0 != 0.0)
-
-                    Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontWeight("bold"); marginTop(16.px) } }) {
-                        Input(type = InputType.Checkbox, attrs = { checked(bState.isDetailed); onChange { event -> viewModel.updateModeBState(target) { st -> st.copy(isDetailed = event.value) } }; style { marginRight(12.px); width(20.px); height(20.px) } })
-                        Text("تقسیم جزئی شود؟ (ساختار درختی)")
-                    }
-
-                    if (!bState.isDetailed) {
-                        if (!hasDecimal) {
-                            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontWeight("bold"); marginTop(16.px) } }) {
-                                Input(type = InputType.Checkbox, attrs = { checked(bState.isBoyGirlSplit); onChange { event -> viewModel.updateModeBState(target) { st -> st.copy(isBoyGirlSplit = event.value) } }; style { marginRight(12.px); width(20.px); height(20.px) } })
-                                Text("تسهیم پسر و دختری؟")
-                            }
-                        }
-                    } else {
-                        if (currentSum > maxLimit) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(8.px); borderRadius(4.px); fontSize(0.9.cssRem); fontWeight("bold"); margin(12.px, 0.px) } }) { Text("خطا: مجموع وزن افراد ($currentSum) از حد مجاز ($maxLimit) فراتر رفته است!") } }
-                        bState.children.forEach { node -> RecursivePersonNode(node, listOf(node.id), target, viewModel) }
-                        if (currentSum + 0.5 <= maxLimit) { Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(16.px) }; onClick { viewModel.addPersonNode(target, emptyList()) } }) { Text("+ افزودن شخص جدید") } }
-                    }
-                }
-                DistributionMode.MODE_C_GHIYAS -> {
-                    H5(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("تسهیم بر اساس قیاس (وزن اختصاصی)") }
-                    state.shareholders.forEachIndexed { index, shareholder ->
-                        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(12.px) } }) {
-                            Div(attrs = { style { flex(2) } }) { DistTextInput("نام سهام‌دار", shareholder.name, false) { n -> viewModel.updateShareholder(target, index, n, shareholder.ghiyasInput) } }
-                            Div(attrs = { style { flex(1) } }) { DistTextInput("قیاس", shareholder.ghiyasInput, true) { q -> viewModel.updateShareholder(target, index, shareholder.name, q) } }
-                            if (state.shareholders.size > 1) { Button(attrs = { style { backgroundColor(Color("#D32F2F")); color(Color("white")); border(0.px); borderRadius(4.px); padding(10.px, 16.px); fontWeight("bold"); property("cursor", "pointer") }; onClick { viewModel.removeShareholder(target, index) } }) { Text("-") } }
-                        }
-                    }
-                    Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(8.px) }; onClick { viewModel.addShareholder(target) } }) { Text("+ افزودن سهام‌دار جدید") }
-                }
+                
                 DistributionMode.MODE_DEFAULT_MAKER -> {
-                    H5(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("انتخاب از محاسبات آماده") }
                     Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); property("border", "1px solid #BDBDBD"); fontSize(1.cssRem); fontFamily("inherit") }; onChange { event -> viewModel.updateDefaultStrategy(target, event.value ?: "") } }) {
                         Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("محاسبات پیش‌فرض سازنده را انتخاب کنید...") }
                         DefaultCalculationsRegistry.strategies.forEach { strategy -> Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) attr("selected", "true") }) { Text(strategy.title) } }
@@ -230,17 +276,23 @@ fun PoolSettingsCard(
                     if (state.defaultStrategyTitle == "دانگ ماریکی(کِجِینو)") {
                         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(16.px); fontWeight("bold") } }) { Input(type = InputType.Checkbox, attrs = { checked(state.calculateZivar); onChange { event -> viewModel.updateCalculateZivar(target, event.value) }; style { marginRight(8.px); width(20.px); height(20.px) } }); Text("سهم زیور/نواب حساب شود؟") }
                     }
-                    if (state.defaultStrategyTitle == "عبدالرحیم(کِجینو)") {
-                        H6(attrs = { style { marginTop(16.px); marginBottom(6.px); color(Color("#424242")) } }) { Text("انتخاب گروه هدف عبدالرحیم:") }
-                        Select(attrs = { style { width(100.percent); padding(10.px); borderRadius(8.px); marginBottom(12.px); border(1.px, LineStyle.Solid, Color("#2E7D32")) }; onChange { event -> viewModel.updateTargetGroup(target, event.value ?: "کل عبدالرحیمی‌ها") } }) {
-                            Option(value = "کل عبدالرحیمی‌ها", attrs = { if (state.targetGroup == "کل عبدالرحیمی‌ها") attr("selected", "true") }) { Text("کل عبدالرحیمی‌ها") }
-                            Option(value = "مابین نوری و صغری", attrs = { if (state.targetGroup == "مابین نوری و صغری") attr("selected", "true") }) { Text("مابین نوری و صغری") }
-                        }
-                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginBottom(12.px); fontWeight("bold") } }) { Input(type = InputType.Checkbox, attrs = { checked(state.calculateZivar); onChange { event -> viewModel.updateCalculateZivar(target, event.value) }; style { marginRight(8.px); width(20.px); height(20.px) } }); Text("سهم زیور(نواب) حساب شود؟") }
-                        if (agricultureInput.isNimehkari) {
-                            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("pointer", "cursor"); fontWeight("bold") } }) { Input(type = InputType.Checkbox, attrs = { checked(state.transferDadallah); onChange { event -> viewModel.updateTransferDadallah(target, event.value) }; style { marginRight(8.px); width(20.px); height(20.px) } }); Text("سهم دادالله(نیمه‌کاری) به عبدالرحیم منتقل شود؟") }
+                }
+                
+                DistributionMode.MODE_CUSTOM_BUILDER -> {
+                    Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { e -> viewModel.updateCustomProfile(target, e.value ?: "") } }) {
+                        val dependentProfiles = customProfiles.filter { it.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4 }
+                        if (dependentProfiles.isEmpty()) {
+                            Option(value = "", attrs = { attr("disabled", "true"); attr("selected", "true") }) { Text("هنوز هیچ الگوی وابسته‌ای ساخته نشده است.") }
+                        } else {
+                            Option(value = "", attrs = { attr("disabled", "true"); if(state.customProfileId.isEmpty()) attr("selected", "true") }) { Text("یک الگوی اختصاصی انتخاب کنید...") }
+                            dependentProfiles.forEach { prof -> Option(value = prof.id, attrs = { if(state.customProfileId == prof.id) attr("selected", "true") }) { Text(prof.name) } }
                         }
                     }
+                    Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") }
+                }
+                
+                else -> {
+                    P(attrs = { style { color(Color("#D32F2F")) } }) { Text("این گزینه برای سازگاری با تاریخچه گذشته است. لطفاً از گزینه جامع استفاده کنید.") }
                 }
             }
         }
