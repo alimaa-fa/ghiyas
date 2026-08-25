@@ -7,7 +7,7 @@
 }
 
 * {
-    box-sizing: border-box;
+    box-sizing: border-box !important;
     -webkit-tap-highlight-color: transparent;
 }
 
@@ -17,29 +17,27 @@ html, body {
     margin: 0;
     padding: 0;
     overflow: hidden;
-    font-family: 'DimaWeb', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    font-size: 15.5px;
-    line-height: 1.5;
+    font-family: 'DimaWeb', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 15px;
+    line-height: 1.4;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     background-color: #F5F5F5;
     color: #212121;
 }
 
-/* استانداردسازی فیلدهای ورودی و دکمه‌ها */
+/* جلوگیری از شکست خط و تنظیم اندازه برچسب فیلدها */
 input, select, textarea, button {
-    font-family: inherit;
-    font-size: 1rem;
+    font-family: inherit !important;
+    font-size: 0.92rem !important;
 }
 
-/* بهبود خوانایی عناوین و کارت‌ها */
-h1, h2, h3, h4, h5, h6 {
-    font-family: inherit;
-    font-weight: bold;
-    margin-top: 0;
+/* مهار متن‌های شناور و لیبل‌های داخل کادرهای دوتایی */
+label, span {
+    white-space: nowrap;
 }
 
-/* مخفی‌سازی اسکرول‌بار تب‌ها با حفظ امکان سوایپ */
+/* حفظ قابلیت اسکرول نرم در تب‌ها */
 .hide-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
