@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ghiyas-core-v2';
+const CACHE_NAME = 'ghiyas-core-v4';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -7,15 +7,15 @@ const ASSETS_TO_CACHE = [
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
-  './fonts/DimaWeb.ttf',
-  'https://developer.eitaa.com/eitaa-web-app.js'
+  './fonts/DimaWeb.ttf'
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
@@ -35,6 +35,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+  
+  // فقط درخواست‌های مربوط به هاست خودمان را کش می‌کنیم
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== location.origin) {
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
