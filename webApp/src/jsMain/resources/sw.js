@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ghiyas-core-v4';
+const CACHE_NAME = 'ghiyas-core-v6';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -36,7 +36,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
-  // فقط درخواست‌های مربوط به هاست خودمان را کش می‌کنیم
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== location.origin) {
     return;

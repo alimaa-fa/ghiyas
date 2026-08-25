@@ -1,19 +1,46 @@
+@font-face {
+    font-family: 'DimaWeb';
+    src: url('fonts/DimaWeb.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
 html, body {
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden;
+    font-family: 'DimaWeb', 'Vazirmatn', system-ui, -apple-system, sans-serif !important;
+    font-size: 14px !important;
     -webkit-text-size-adjust: 100%;
-    -moz-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    font-size: 16px;
+    background-color: #F5F5F5;
 }
 
-* {
-    box-sizing: border-box;
+/* اصلاح چیدمان فیلدهای دوتایی در موبایل */
+input, select, textarea, button {
+    font-family: inherit !important;
+    font-size: 0.95rem !important;
 }
 
-input, textarea, button, select {
-    font-family: inherit;
+/* کنترل سایز عناوین و برچسب‌های داخل کارت‌ها */
+h1, h2, h3, h4, h5, h6 {
+    font-family: inherit !important;
+    font-weight: bold;
+}
+
+/* تب‌بار بالای صفحه برای جلوگیری از بیرون‌زدگی */
+.hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
 }
