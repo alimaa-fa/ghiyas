@@ -6,7 +6,11 @@
     font-display: swap;
 }
 
-/* ریست کردن تنظیمات پایه بدون دستکاری استایل‌های کاتلین */
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
 html, body {
     width: 100%;
     height: 100%;
@@ -16,13 +20,9 @@ html, body {
     /* جلوگیری از زوم شدن خودکار فونت در وب‌ویوی ایتا و اندروید */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
-    font-family: 'DimaWeb', 'Vazirmatn', -apple-system, sans-serif;
+    font-family: 'DimaWeb', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #F5F5F5;
     color: #212121;
-}
-
-* {
-    -webkit-tap-highlight-color: transparent;
 }
 
 .hide-scrollbar {

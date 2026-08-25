@@ -1,7 +1,9 @@
-const CACHE_NAME = 'ghiyas-core-v14';
-// فایل‌های اصلی (HTML و CSS) از اینجا حذف شدند تا همیشه اول از شبکه چک شوند
+const CACHE_NAME = 'ghiyas-core-v15';
 const ASSETS_TO_CACHE = [
+  './',
+  './index.html',
   './manifest.json',
+  './styles.css?v=15',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
@@ -9,7 +11,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // جایگزینی فوری سرویس‌ورکر جدید
+  // ❌ دستور skipWaiting حذف شد تا سرویس‌ورکر در صف انتظار بماند و دکمه آپدیت ظاهر شود
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -33,38 +35,40 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  
-  const url = new URL(event.request.url);
-  if (url.origin !== location.origin) return;
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== location.origin) return;
 
-  // ۱. استراتژی Network-First برای HTML و CSS (آپدیت در لحظه)
-  if (event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('.css')) {
+  // استراتژی Network-First برای HTML تا مرورگر همیشه متوجه آپدیت‌ها بشود
+  if (event.request.mode === 'navigate') {
     event.respondWith(
-      fetch(event.request).then((response) => {
+      fetch(event.request).then((networkResponse) => {
         return caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, response.clone());
-          return response;
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
         });
-      }).catch(() => caches.match(event.request)) // فال‌بک به نسخه آفلاین در صورت قطعی اینترنت
+      }).catch(() => {
+        return caches.match('./index.html');
+      })
     );
     return;
   }
 
-  // ۲. استراتژی Cache-First برای جاوااسکریپت، عکس‌ها و فونت‌ها (سرعت لود بالا)
+  // استراتژی Cache-First برای بقیه فایل‌ها جهت لود سریع آفلاین
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // آپدیت نامحسوس در پس‌زمینه
-        fetch(event.request).then((res) => {
-          caches.open(CACHE_NAME).then((c) => c.put(event.request, res));
-        }).catch(() => {});
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        const clone = networkResponse.clone();
-        caches.open(CACHE_NAME).then((c) => c.put(event.request, clone));
-        return networkResponse;
+      return cachedResponse || fetch(event.request).then((networkResponse) => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
       });
     })
   );
+});
+
+// این پیام با زدن دکمه «بروزرسانی» از سمت کاتلین ارسال می‌شود
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
