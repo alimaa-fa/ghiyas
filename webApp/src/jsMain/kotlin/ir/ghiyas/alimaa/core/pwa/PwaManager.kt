@@ -6,6 +6,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.w3c.dom.events.Event
 
+/**
+ * مدیریت چرخه حیات PWA، سرویس‌ورکر، اعتبارسنجی خودکار نسخه و SDK ایتا.
+ */
 object PwaManager {
 
     private val _isInstallable = MutableStateFlow(false)
@@ -33,8 +36,21 @@ object PwaManager {
     }
 
     private fun registerServiceWorker() {
-        if (window.navigator.asDynamic().serviceWorker != null) {
-            window.navigator.asDynamic().serviceWorker.register("./sw.js")
+        val nav = window.navigator.asDynamic()
+        if (nav.serviceWorker != null) {
+            nav.serviceWorker.register("./sw.js").then({ reg: dynamic ->
+                // اجبار مرورگر به چک کردن نسخه جدید سرور در هر ورود
+                reg.update()
+            })
+
+            // رفرش خودکار و نامحسوس صفحه به محض نصب و فعال‌سازی سرویس‌ورکر جدید
+            var refreshing = false
+            nav.serviceWorker.addEventListener("controllerchange", {
+                if (!refreshing) {
+                    refreshing = true
+                    window.location.reload()
+                }
+            })
         }
     }
 
@@ -45,7 +61,7 @@ object PwaManager {
                 storage.persist()
             }
         } catch (_: Throwable) {
-            // مرورگرهایی که از persist پشتیبانی نمی‌کنند
+            // در صورت عدم پشتیبانی مرورگر نادیده گرفته می‌شود
         }
     }
 

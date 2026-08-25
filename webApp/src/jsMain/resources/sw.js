@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ghiyas-core-v9';
+const CACHE_NAME = 'ghiyas-core-v10';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './styles.css?v=9',
+  './styles.css?v=10',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
@@ -41,6 +41,23 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // استراتژی Network-First برای فایل اصلی و مسیر ریشه (دریافت در لحظه آپدیت و فال‌بک آفلاین)
+  if (event.request.mode === 'navigate' || event.request.url.endsWith('index.html') || event.request.url.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        }
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(event.request).then((cached) => cached || caches.match('./index.html'));
+      })
+    );
+    return;
+  }
+
+  // استراتژی Cache-First با اعتبارسنجی خودکار برای اسکریپت‌ها و فونت‌ها
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
@@ -55,10 +72,6 @@ self.addEventListener('fetch', (event) => {
           cache.put(event.request, responseToCache);
         });
         return networkResponse;
-      }).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
-        }
       });
     })
   );
