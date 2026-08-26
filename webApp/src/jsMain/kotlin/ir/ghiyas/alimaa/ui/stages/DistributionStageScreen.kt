@@ -212,6 +212,8 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     var savedTemplates by remember { mutableStateOf(DistributionTemplateRepository.getAllTemplates()) }
                     var newTemplateTitle by remember { mutableStateOf("") }
                     var activeExecutionTemplateId by remember { mutableStateOf<String?>(null) }
+                    var editingTemplateId by remember { mutableStateOf<String?>(null) } // استیت جدید برای نگهداری آیدی الگو در زمان ویرایش
+                    
                     val isExecutionMode = activeExecutionTemplateId != null
                     
                     // --- پنل الگوهای ذخیره شده ---
@@ -220,14 +222,19 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                             H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#6A1B9A")) } }) { Text("💳 الگوهای آماده (دسترسی سریع)") }
                             Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px) } }) {
                                 savedTemplates.forEach { template ->
+                                    val isBeingEdited = editingTemplateId == template.id
                                     key(template.id) {
-                                        Div(attrs = { style { backgroundColor(Color("white")); border(1.px, LineStyle.Solid, Color("#AB47BC")); borderRadius(8.px); padding(12.px) } }) {
-                                            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(Color("#4A148C")); fontWeight("bold") } }) { Text(template.title) }
+                                        Div(attrs = { style { backgroundColor(if(isBeingEdited) Color("#FFF9C4") else Color("white")); border(1.px, LineStyle.Solid, if(isBeingEdited) Color("#FBC02D") else Color("#AB47BC")); borderRadius(8.px); padding(12.px) } }) {
+                                            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(if(isBeingEdited) Color("#F57F17") else Color("#4A148C")); fontWeight("bold") } }) { 
+                                                Text(template.title + if(isBeingEdited) " (در حال ویرایش...)" else "") 
+                                            }
                                             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px) } }) {
                                                 Button(attrs = { style { flex(1); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(4.px); padding(6.px); cursor("pointer") }
                                                     onClick { 
                                                         viewModel.updateComprehensiveState(target) { it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) }
                                                         activeExecutionTemplateId = template.id
+                                                        editingTemplateId = null
+                                                        newTemplateTitle = ""
                                                     }
                                                 }) { Text("انتخاب برای محاسبه") }
                                                 
@@ -235,6 +242,8 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                                     onClick { 
                                                         viewModel.updateComprehensiveState(target) { it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) }
                                                         activeExecutionTemplateId = null 
+                                                        editingTemplateId = template.id // ست کردن آیدی الگو برای آپدیت شدن به جای ساخته شدن
+                                                        newTemplateTitle = template.title // پر کردن فیلد نام
                                                     }
                                                 }) { Text("ویرایش") }
                                                 
@@ -244,6 +253,7 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                                             DistributionTemplateRepository.deleteTemplate(template.id)
                                                             savedTemplates = DistributionTemplateRepository.getAllTemplates()
                                                             if (activeExecutionTemplateId == template.id) activeExecutionTemplateId = null
+                                                            if (editingTemplateId == template.id) { editingTemplateId = null; newTemplateTitle = "" }
                                                         }
                                                     }
                                                 }) { Text("حذف") }
@@ -300,7 +310,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         }
                     }
 
-                    // رندر امن گره‌ها با استفاده از key
                     compState.nodes.forEach { node ->
                         key(node.id) {
                             RecursiveComprehensiveNode(node, listOf(node.id), compState.rootMode, target, viewModel, allNodesFlat, isExecutionMode)
@@ -312,18 +321,23 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     }
 
                     if (!isExecutionMode && compState.nodes.isNotEmpty()) {
-                        Div(attrs = { style { marginTop(24.px); padding(16.px); backgroundColor(Color("#FFF3E0")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#FFB74D")) } }) {
-                            H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#E65100")) } }) { Text("💾 ذخیره ساختار برای دفعات بعد") }
+                        Div(attrs = { style { marginTop(24.px); padding(16.px); backgroundColor(if(editingTemplateId != null) Color("#FFFDE7") else Color("#FFF3E0")); borderRadius(8.px); border(1.px, LineStyle.Dashed, if(editingTemplateId != null) Color("#FBC02D") else Color("#FFB74D")) } }) {
+                            H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(if(editingTemplateId != null) Color("#F57F17") else Color("#E65100")) } }) { Text(if(editingTemplateId != null) "✏️ ذخیره تغییرات الگو" else "💾 ذخیره ساختار جدید برای دفعات بعد") }
                             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px); alignItems(AlignItems.Center) } }) {
                                 Div(attrs = { style { flex(2) } }) { DistTextInput("نام الگو (مثلاً: شرکای باغ)", newTemplateTitle, false) { newTemplateTitle = it } }
-                                Button(attrs = { style { flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); padding(14.px); fontWeight("bold"); cursor("pointer") }; onClick {
+                                Button(attrs = { style { flex(1); backgroundColor(if(editingTemplateId != null) Color("#4CAF50") else Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); padding(14.px); fontWeight("bold"); cursor("pointer") }; onClick {
                                     if (newTemplateTitle.isNotBlank()) {
-                                        val template = SavedDistributionTemplate(id = kotlin.random.Random.nextInt().toString() + "_" + kotlin.js.Date.now().toString(), title = newTemplateTitle, rootMode = compState.rootMode, totalCountLimit = compState.countLimitInput, nodes = compState.nodes, createdAt = kotlin.js.Date.now().toLong())
+                                        val templateIdToSave = editingTemplateId ?: (kotlin.random.Random.nextInt().toString() + "_" + kotlin.js.Date.now().toString())
+                                        val template = SavedDistributionTemplate(id = templateIdToSave, title = newTemplateTitle, rootMode = compState.rootMode, totalCountLimit = compState.countLimitInput, nodes = compState.nodes, createdAt = kotlin.js.Date.now().toLong())
                                         DistributionTemplateRepository.saveTemplate(template)
                                         savedTemplates = DistributionTemplateRepository.getAllTemplates()
-                                        newTemplateTitle = "" 
+                                        newTemplateTitle = ""
+                                        editingTemplateId = null // پس از ذخیره، از حالت ویرایش خارج می‌شود
                                     }
-                                }}) { Text("ذخیره") }
+                                }}) { Text(if(editingTemplateId != null) "بروزرسانی" else "ذخیره") }
+                            }
+                            if (editingTemplateId != null) {
+                                Button(attrs = { style { width(100.percent); marginTop(8.px); padding(8.px); backgroundColor(Color("transparent")); color(Color("#D32F2F")); border(0.px); cursor("pointer") }; onClick { editingTemplateId = null; newTemplateTitle = "" } }) { Text("لغو ویرایش (ساخت الگوی جدید)") }
                             }
                         }
                     }

@@ -21,13 +21,20 @@ object DistributionTemplateRepository {
         }
     }
 
+    // متد ذخیره طوری اصلاح شد که اگر آیدی موجود بود، همان را آپدیت کند
     fun saveTemplate(template: SavedDistributionTemplate) {
         val templates = getAllTemplates().toMutableList()
-        val existingIndex = templates.indexOfFirst { it.title == template.title }
+        val existingIndex = templates.indexOfFirst { it.id == template.id }
         if (existingIndex >= 0) {
-            templates[existingIndex] = template.copy(id = templates[existingIndex].id)
+            templates[existingIndex] = template 
         } else {
-            templates.add(0, template)
+            // اگر آیدی نبود، شاید نام تکراری باشد
+            val existingTitleIndex = templates.indexOfFirst { it.title == template.title }
+            if (existingTitleIndex >= 0) {
+                templates[existingTitleIndex] = template.copy(id = templates[existingTitleIndex].id)
+            } else {
+                templates.add(0, template)
+            }
         }
         saveAll(templates)
     }
@@ -54,7 +61,8 @@ object DistributionTemplateRepository {
             "subDistributionMode" to node.subDistributionMode.name,
             "children" to childrenJs,
             "canBeExcluded" to node.canBeExcluded,
-            "isExcluded" to node.isExcluded
+            "isExcluded" to node.isExcluded,
+            "canBeTransferred" to node.canBeTransferred // ذخیره این فیلد جا مانده بود!
         )
     }
 
@@ -75,7 +83,8 @@ object DistributionTemplateRepository {
             subDistributionMode = mode,
             children = childrenList,
             canBeExcluded = if (jsObj.canBeExcluded != undefined && jsObj.canBeExcluded != null) jsObj.canBeExcluded as Boolean else false,
-            isExcluded = if (jsObj.isExcluded != undefined && jsObj.isExcluded != null) jsObj.isExcluded as Boolean else false
+            isExcluded = if (jsObj.isExcluded != undefined && jsObj.isExcluded != null) jsObj.isExcluded as Boolean else false,
+            canBeTransferred = if (jsObj.canBeTransferred != undefined && jsObj.canBeTransferred != null) jsObj.canBeTransferred as Boolean else false // بازیابی این فیلد جا مانده بود!
         )
     }
 
