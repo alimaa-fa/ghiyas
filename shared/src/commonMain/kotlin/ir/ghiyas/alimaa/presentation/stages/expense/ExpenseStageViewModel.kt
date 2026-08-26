@@ -118,9 +118,14 @@ class ExpenseStageViewModel {
             if (isP1GlobalMacro) {
                 val p1Input = DistributionInput(
                     poolAmount = agriOutput.remainingForStage4, 
-                    mode = p1State.mode, groupName = p1State.groupName, modeBState = p1State.modeBState,
+                    mode = p1State.mode, 
+                    groupName = p1State.groupName, 
+                    comprehensiveState = p1State.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                    modeBState = p1State.modeBState,
                     shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                    defaultStrategyTitle = p1State.defaultStrategyTitle, defaultLabel = "سهم یکجا کل",
+                    defaultStrategyTitle = p1State.defaultStrategyTitle, 
+                    customProfileId = p1State.customProfileId, // اتصال استیت اختصاصی
+                    defaultLabel = "سهم یکجا کل",
                     calculateZivar = p1State.calculateZivar, isNimehkari = true, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah
                 )
@@ -131,9 +136,15 @@ class ExpenseStageViewModel {
                 val p2Pool = agriOutput.remainingForStage4 
                 
                 val p1Input = DistributionInput(
-                    poolAmount = p1Pool, mode = p1State.mode, groupName = p1State.groupName, modeBState = p1State.modeBState,
+                    poolAmount = p1Pool, 
+                    mode = p1State.mode, 
+                    groupName = p1State.groupName, 
+                    comprehensiveState = p1State.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                    modeBState = p1State.modeBState,
                     shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                    defaultStrategyTitle = p1State.defaultStrategyTitle, defaultLabel = "نیمه اول",
+                    defaultStrategyTitle = p1State.defaultStrategyTitle, 
+                    customProfileId = p1State.customProfileId, // اتصال استیت اختصاصی
+                    defaultLabel = "نیمه اول",
                     calculateZivar = p1State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah
                 )
@@ -143,9 +154,15 @@ class ExpenseStageViewModel {
 
                 val p2State = distributionInput.partner2PoolState
                 val p2Input = DistributionInput(
-                    poolAmount = p2Pool, mode = p2State.mode, groupName = p2State.groupName, modeBState = p2State.modeBState,
+                    poolAmount = p2Pool, 
+                    mode = p2State.mode, 
+                    groupName = p2State.groupName, 
+                    comprehensiveState = p2State.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                    modeBState = p2State.modeBState,
                     shareholders = p2State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                    defaultStrategyTitle = p2State.defaultStrategyTitle, defaultLabel = "نیمه دوم",
+                    defaultStrategyTitle = p2State.defaultStrategyTitle, 
+                    customProfileId = p2State.customProfileId, // اتصال استیت اختصاصی
+                    defaultLabel = "نیمه دوم",
                     calculateZivar = p2State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p2State.targetGroup, transferDadallah = p2State.transferDadallah
                 )
@@ -157,10 +174,15 @@ class ExpenseStageViewModel {
         } else {
             val mainState = distributionInput.mainPoolState
             val distInput = DistributionInput(
-                poolAmount = poolAmount, mode = mainState.mode, groupName = mainState.groupName, 
-                modeBState = mainState.modeBState, // اصلاح خطای Unresolved reference این بخش
+                poolAmount = poolAmount, 
+                mode = mainState.mode, 
+                groupName = mainState.groupName, 
+                comprehensiveState = mainState.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                modeBState = mainState.modeBState, 
                 shareholders = mainState.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                defaultStrategyTitle = mainState.defaultStrategyTitle, defaultLabel = "سهم کل یکجا",
+                defaultStrategyTitle = mainState.defaultStrategyTitle, 
+                customProfileId = mainState.customProfileId, // اتصال استیت اختصاصی
+                defaultLabel = "سهم کل یکجا",
                 calculateZivar = mainState.calculateZivar, isNimehkari = false, nimehkariPool = WalnutUnit.ZERO,
                 targetGroup = mainState.targetGroup, transferDadallah = mainState.transferDadallah
             )

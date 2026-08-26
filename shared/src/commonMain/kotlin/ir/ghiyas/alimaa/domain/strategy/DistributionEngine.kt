@@ -2,22 +2,15 @@ package ir.ghiyas.alimaa.domain.strategy
 
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.DecimalMode
-import com.ionspin.kotlin.bignum.decimal.RoundingMode
 import ir.ghiyas.alimaa.domain.models.ResultItem
 import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.domain.models.ShareholderNode
 import ir.ghiyas.alimaa.domain.models.ComprehensiveMode
 
 enum class DistributionMode {
-    MODE_A_NO_BREAKDOWN, 
-    MODE_COMPREHENSIVE, 
-    MODE_B_SIMPLE, // حفظ برای سازگاری عقبگرد (Legacy)
-    MODE_C_GHIYAS, // حفظ برای سازگاری عقبگرد (Legacy)
-    MODE_DEFAULT_MAKER, 
-    MODE_CUSTOM_BUILDER
+    MODE_A_NO_BREAKDOWN, MODE_COMPREHENSIVE, MODE_B_SIMPLE, MODE_C_GHIYAS, MODE_DEFAULT_MAKER, MODE_CUSTOM_BUILDER
 }
 
-// === مدل‌های قدیمی برای جلوگیری از کرش در ExpenseStage و تاریخچه ===
 data class Shareholder(val name: String, val ghiyas: Double)
 
 data class PersonNode(
@@ -31,7 +24,6 @@ data class ModeBState(
     val countInput: String = "", val isBoyGirlSplit: Boolean = false,
     val isDetailed: Boolean = false, val children: List<PersonNode> = emptyList()
 )
-// =================================================================
 
 data class ComprehensiveState(
     val rootMode: ComprehensiveMode = ComprehensiveMode.PERSON,
@@ -44,8 +36,8 @@ data class DistributionInput(
     val mode: DistributionMode,
     val groupName: String = "", 
     val comprehensiveState: ComprehensiveState = ComprehensiveState(),
-    val modeBState: ModeBState = ModeBState(), // Legacy
-    val shareholders: List<Shareholder> = emptyList(), // Legacy
+    val modeBState: ModeBState = ModeBState(), 
+    val shareholders: List<Shareholder> = emptyList(), 
     val defaultStrategyTitle: String = "",
     val customProfileId: String = "", 
     val defaultLabel: String = "سهم یکجا",
@@ -58,9 +50,26 @@ data class DistributionInput(
 
 object DistributionEngine {
 
-    // حفظ متد قدیمی برای کارکرد صحیح سایر مراحل
+    // فیلتر قدرتمند برای تبدیل تمام اعداد فارسی/عربی و ممیزها به فرمت استاندارد انگلیسی
+    private fun String.toEnglishDecimals(): String {
+        return this.replace('۰', '0').replace('۱', '1').replace('۲', '2').replace('۳', '3')
+            .replace('۴', '4').replace('۵', '5').replace('۶', '6').replace('۷', '7')
+            .replace('۸', '8').replace('۹', '9').replace('٫', '.').replace(',', '.')
+    }
+
+    // پارسر امن: اگر تبدیل با خطا مواجه شد، هرگز کرش نمی‌کند و مقدار پیش‌فرض را برمی‌گرداند
+    private fun safeParseBigDecimal(value: String, default: String = "0"): BigDecimal {
+        val clean = value.toEnglishDecimals().trim()
+        if (clean.isEmpty()) return BigDecimal.parseString(default)
+        return try {
+            BigDecimal.parseString(clean)
+        } catch (e: Exception) {
+            BigDecimal.parseString(default)
+        }
+    }
+
     private fun processModeBTree(pool: WalnutUnit, parentName: String, countInput: String, isBoyGirlSplit: Boolean, isDetailed: Boolean, children: List<PersonNode>): List<ResultItem> {
-        val count = countInput.toDoubleOrNull() ?: 1.0
+        val count = countInput.toEnglishDecimals().toDoubleOrNull() ?: 1.0
         val validCount = if (count > 0) count else 1.0
         val baseShare = pool / validCount
         if (!isDetailed || children.isEmpty()) {
@@ -79,11 +88,8 @@ object DistributionEngine {
         }
     }
 
-    /**
-     * موتور بازگشتی تسهیم جامع (نفر، سهم، درصد) با دقت بالا و منطق انتقال
-     */
     private fun processComprehensiveTree(pool: BigDecimal, nodes: List<ShareholderNode>, rootMode: ComprehensiveMode, parentName: String = ""): List<ResultItem> {
-        val activeNodes = nodes.filter { it.isActive }
+        val activeNodes = nodes.filter { !it.isExcluded }
         if (activeNodes.isEmpty()) return emptyList()
 
         var totalWeight = BigDecimal.ZERO
@@ -92,27 +98,30 @@ object DistributionEngine {
         for (node in activeNodes) {
             val weight = when (rootMode) {
                 ComprehensiveMode.PERSON -> {
-                    val base = BigDecimal.parseString(node.rawValue.ifEmpty { "1" })
-                    if (node.isFemale) base.multiply(BigDecimal.parseString("0.5")) else base
+                    val base = safeParseBigDecimal(node.rawValue, "1")
+                    if (node.isFemale) base.multiply(safeParseBigDecimal("0.5")) else base
                 }
-                ComprehensiveMode.SHARE_QYAS, ComprehensiveMode.PERCENTAGE -> BigDecimal.parseString(node.rawValue.ifEmpty { "0" })
+                ComprehensiveMode.SHARE_QYAS, ComprehensiveMode.PERCENTAGE -> safeParseBigDecimal(node.rawValue, "0")
             }
             nodeWeights[node.id] = weight
             totalWeight = totalWeight.add(weight)
         }
 
-        val denominator = if (rootMode == ComprehensiveMode.PERCENTAGE) BigDecimal.parseString("100") else totalWeight
+        val denominator = if (rootMode == ComprehensiveMode.PERCENTAGE) safeParseBigDecimal("100") else totalWeight
         val rawShares = mutableMapOf<String, BigDecimal>()
-        
-        // بای‌پس قطعی کامپایلر: پیدا کردن داینامیکِ حالتِ گرد کردن بدون استفاده از نام ثابت
-        val safeHalfUpMode = RoundingMode.values().firstOrNull { it.name.contains("HALF") } ?: RoundingMode.NONE
-        val decMode = DecimalMode(decimalPrecision = 15, roundingMode = safeHalfUpMode)
         
         if (denominator.compareTo(BigDecimal.ZERO) > 0) {
             for (node in activeNodes) {
                 val weight = nodeWeights[node.id] ?: BigDecimal.ZERO
-                // استفاده از حالت داینامیک برای جلوگیری از خطای Unresolved Reference
-                val share = pool.multiply(weight).divide(denominator, decMode).roundToDigitPositionAfterDecimalPoint(3, safeHalfUpMode)
+                val share = try {
+                    pool.multiply(weight).divide(denominator, DecimalMode(decimalPrecision = 15))
+                } catch (e: Exception) {
+                    // سیستم نجات: اگر کتابخانه در جاوااسکریپت کرش کرد، با Double بومی محاسبه را انجام بده
+                    val pDouble = pool.doubleValue(false)
+                    val wDouble = weight.doubleValue(false)
+                    val dDouble = denominator.doubleValue(false)
+                    BigDecimal.fromDouble((pDouble * wDouble) / dDouble)
+                }
                 rawShares[node.id] = share
             }
         }

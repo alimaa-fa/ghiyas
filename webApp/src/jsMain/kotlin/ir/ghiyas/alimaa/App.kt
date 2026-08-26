@@ -65,6 +65,9 @@ fun App() {
     val calcState by calculatorViewModel.state.collectAsState()
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     
+    // استخراج استیت موتور تسهیم به صورت Flow برای رندر زنده نتایج
+    val distributionState by distributionViewModel.state.collectAsState()
+    
     // وضعیت دسترسی به نسخه جدید و وضعیت قابلیت نصب
     val isInstallable by PwaManager.isInstallable.collectAsState()
     val hasUpdateAvailable by PwaManager.hasUpdateAvailable.collectAsState()
@@ -120,7 +123,16 @@ fun App() {
                                 onClick {
                                     val yearOptions = kotlin.js.json("year" to "numeric").unsafeCast<kotlin.js.Date.LocaleOptions>()
                                     val rawPersianYear = kotlin.js.Date().toLocaleDateString("fa-IR", yearOptions).trim()
-                                    expenseViewModel.calculateAndSnapshot(inputState.calculationName, inputState.unitType.displayName, rawPersianYear, kotlin.js.Date().getTime().toLong(), agricultureInputState, distributionViewModel.state.value)
+                                    
+                                    // اصلاح مهم: ارسال پارامترها به صورت ترتیبی تا با امضای ExpenseStageViewModel هماهنگ باشد
+                                    expenseViewModel.calculateAndSnapshot(
+                                        inputState.calculationName, 
+                                        inputState.unitType.displayName, 
+                                        rawPersianYear, 
+                                        kotlin.js.Date().getTime().toLong(), 
+                                        agricultureInputState, 
+                                        distributionState
+                                    )
                                     expenseViewModel.snapshot.value?.let { newRecord -> ir.ghiyas.alimaa.data.LocalStorageRepository.saveRecord(newRecord) }
                                 }
                             }) { Text("محاسبه کن") }

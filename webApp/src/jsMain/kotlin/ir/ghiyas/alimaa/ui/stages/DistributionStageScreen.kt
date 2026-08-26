@@ -17,6 +17,7 @@ import ir.ghiyas.alimaa.domain.models.ProfileIntegrationType
 import ir.ghiyas.alimaa.domain.models.SavedDistributionTemplate
 import ir.ghiyas.alimaa.data.DistributionTemplateRepository
 import ir.ghiyas.alimaa.ui.theme.AppStyleSheet
+import kotlinx.browser.window
 
 private fun String.standardizeDigitsLocal(): String {
     var result = this
@@ -32,11 +33,12 @@ private fun String.toPersianDigitsLocal(): String {
 }
 
 @Composable
-private fun DistTextInput(label: String, value: String, isNumber: Boolean = false, onValueChange: (String) -> Unit) {
+private fun DistTextInput(label: String, value: String, isNumber: Boolean = false, isReadonly: Boolean = false, onValueChange: (String) -> Unit) {
     Div(attrs = { classes(AppStyleSheet.floatingContainer); style { marginBottom(0.px); width(100.percent) } }) {
         Input(type = InputType.Text, attrs = {
             classes(AppStyleSheet.floatingInput); classes("floating-input")
             if (isNumber) attr("inputmode", "decimal")
+            if (isReadonly) { attr("disabled", "true"); style { backgroundColor(Color("#F5F5F5")); color(Color("#9E9E9E")) } }
             value(value.toPersianDigitsLocal())
             onInput { event -> val finalVal = if (isNumber) event.value.standardizeDigitsLocal() else event.value; onValueChange(finalVal) }
             placeholder(" ") 
@@ -50,63 +52,105 @@ private fun flattenTree(nodes: List<ShareholderNode>): List<Pair<String, String>
 }
 
 @Composable
-fun RecursiveComprehensiveNode(node: ShareholderNode, path: List<String>, currentMode: ComprehensiveMode, target: PoolTarget, viewModel: DistributionStageViewModel, allAvailableNodes: List<Pair<String, String>>) {
-    // تغییر رنگ حاشیه اگر غیرفعال باشد
-    val borderColor = if (node.isActive) "#4CAF50" else "#BDBDBD"
-    val bgColor = if (node.isActive) "#F8FBF8" else "#F5F5F5"
+fun RecursiveComprehensiveNode(
+    node: ShareholderNode, path: List<String>, currentMode: ComprehensiveMode, 
+    target: PoolTarget, viewModel: DistributionStageViewModel, 
+    allAvailableNodes: List<Pair<String, String>>, isExecutionMode: Boolean
+) {
+    val isVisuallyExcluded = isExecutionMode && node.isExcluded
+    val borderColor = if (isVisuallyExcluded) "#BDBDBD" else "#4CAF50"
+    val bgColor = if (isVisuallyExcluded) "#F5F5F5" else "#F8FBF8"
+    val opacityValue = if (isVisuallyExcluded) 0.6 else 1.0
 
-    Div(attrs = { style { padding(12.px); marginTop(12.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(4.px) } }) {
+    Div(attrs = { style { padding(12.px); marginTop(12.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(4.px); opacity(opacityValue) } }) {
         
-        // ردیف اول: فعال بودن، نام و مقدار
+        // ردیف اول: نام، مقدار
         Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(12.px) } }) {
-            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer") } }) {
-                Input(type = InputType.Checkbox, attrs = { checked(node.isActive); onChange { e -> viewModel.updateNode(target, path) { it.copy(isActive = e.value) } } })
+            Div(attrs = { style { flex(2) } }) { 
+                DistTextInput("نام شریک", node.name, false, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } 
             }
-            Div(attrs = { style { flex(2) } }) { DistTextInput("نام شریک", node.name, false) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } }
             
             if (currentMode != ComprehensiveMode.PERSON) {
-                Div(attrs = { style { flex(1) } }) { DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } }
+                Div(attrs = { style { flex(1) } }) { 
+                    DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } 
+                }
             } else {
-                Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem) } }) {
-                    Input(type = InputType.Checkbox, attrs = { checked(node.isFemale); onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } })
+                Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.9.cssRem) } }) {
+                    Input(type = InputType.Checkbox, attrs = { 
+                        checked(node.isFemale)
+                        if (isExecutionMode) attr("disabled", "true")
+                        onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } 
+                    })
                     Text("دختر (۰.۵)")
                 }
             }
-            Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); fontWeight("bold"); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
+            if (!isExecutionMode) {
+                Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); fontWeight("bold"); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
+            }
         }
 
-        // ردیف دوم و سوم فقط در صورت فعال بودن شخص نمایش داده می‌شود
-        if (node.isActive) {
-            Div(attrs = { style { marginBottom(12.px); padding(8.px); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); border(1.px, LineStyle.Dashed, Color("#FFEB3B")) } }) {
-                Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#F57F17")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتقال سهم این شخص به:") }
-                Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> viewModel.updateNode(target, path) { it.copy(transferredToId = e.value ?: "") } } }) {
-                    Option(value = "", attrs = { if (node.transferredToId.isEmpty()) attr("selected", "true") }) { Text("بدون انتقال (خودش دریافت کند)") }
-                    allAvailableNodes.filter { it.first != node.id }.forEach { (id, name) ->
-                        Option(value = id, attrs = { if (node.transferredToId == id) attr("selected", "true") }) { Text(name.ifEmpty { "ناشناس" }) }
-                    }
-                }
+        if (!isExecutionMode) {
+            // --- حالت ویرایش (Edit Mode) ---
+            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); color(Color("#F57C00")); marginBottom(12.px); fontWeight("bold") } }) {
+                Input(type = InputType.Checkbox, attrs = { checked(node.canBeExcluded); onChange { e -> viewModel.updateNode(target, path) { it.copy(canBeExcluded = e.value) } }; style { marginRight(4.px) } })
+                Text("حساب شود/نشود؟ (مجوز حذف در اجرا)")
+            }
+
+            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); color(Color("#1976D2")); marginBottom(12.px); fontWeight("bold") } }) {
+                Input(type = InputType.Checkbox, attrs = { checked(node.canBeTransferred); onChange { e -> viewModel.updateNode(target, path) { it.copy(canBeTransferred = e.value) } }; style { marginRight(4.px) } })
+                Text("امکان انتقال سهم در زمان اجرا؟")
             }
 
             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); fontWeight("bold"); color(Color("#2E7D32")) } }) {
                 Input(type = InputType.Checkbox, attrs = { checked(node.hasSubDistribution); onChange { e -> viewModel.updateNode(target, path) { it.copy(hasSubDistribution = e.value) } }; style { marginRight(8.px) } })
                 Text("تقسیم جزئی (وارث جدید)؟")
             }
-
+            
             if (node.hasSubDistribution) {
                 Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
                     Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(8.px) }; onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> viewModel.updateNode(target, path) { it.copy(subDistributionMode = m) } } } }) {
-                        ComprehensiveMode.entries.forEach { mode ->
-                            Option(value = mode.name, attrs = { if (node.subDistributionMode == mode) attr("selected", "true") }) { Text("زیرمجموعه " + mode.displayName) }
+                        ComprehensiveMode.entries.forEach { mode -> 
+                            key(mode.name) { Option(value = mode.name, attrs = { if (node.subDistributionMode == mode) attr("selected", "true") }) { Text("زیرمجموعه " + mode.displayName) } }
                         }
                     }
-                    
-                    node.children.forEach { child -> RecursiveComprehensiveNode(child, path + child.id, node.subDistributionMode, target, viewModel, allAvailableNodes) }
-                    
+                    node.children.forEach { child -> 
+                        key(child.id) { RecursiveComprehensiveNode(child, path + child.id, node.subDistributionMode, target, viewModel, allAvailableNodes, isExecutionMode) }
+                    }
                     Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "1px dashed #4CAF50"); borderRadius(4.px); padding(8.px); property("cursor", "pointer"); marginTop(8.px) }; onClick { viewModel.addNode(target, path) } }) { Text("+ افزودن عضو زیرمجموعه") }
                 }
             }
-        } else {
-            P(attrs = { style { margin(0.px); fontSize(0.85.cssRem); color(Color("#9E9E9E")) } }) { Text("این شخص موقتاً از محاسبه خط خورده است.") }
+        } 
+        // --- فاز اجرا (Execution Mode) ---
+        else {
+            if (node.canBeExcluded) {
+                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); color(Color("#D32F2F")); marginBottom(12.px); fontWeight("bold") } }) {
+                    Input(type = InputType.Checkbox, attrs = { checked(node.isExcluded); onChange { e -> viewModel.updateNode(target, path) { it.copy(isExcluded = e.value) } }; style { marginRight(4.px) } })
+                    Text("حساب نشود؟ (حذف از محاسبه)")
+                }
+            }
+
+            if (!node.isExcluded) {
+                if (node.canBeTransferred) {
+                    Div(attrs = { style { marginBottom(12.px); padding(8.px); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); border(1.px, LineStyle.Dashed, Color("#FFEB3B")) } }) {
+                        Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#F57F17")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتقال سهم این شخص به:") }
+                        Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> viewModel.updateNode(target, path) { it.copy(transferredToId = e.value ?: "") } } }) {
+                            Option(value = "", attrs = { if (node.transferredToId.isEmpty()) attr("selected", "true") }) { Text("بدون انتقال (خودش دریافت کند)") }
+                            allAvailableNodes.filter { it.first != node.id }.forEach { (id, name) -> 
+                                key(id) { Option(value = id, attrs = { if (node.transferredToId == id) attr("selected", "true") }) { Text(name.ifEmpty { "ناشناس" }) } }
+                            }
+                        }
+                    }
+                }
+
+                if (node.hasSubDistribution) {
+                    P(attrs = { style { fontSize(0.9.cssRem); color(Color("#2E7D32")); fontWeight("bold") } }) { Text("🔻 زیرمجموعه وارثین:") }
+                    Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
+                        node.children.forEach { child -> 
+                            key(child.id) { RecursiveComprehensiveNode(child, path + child.id, node.subDistributionMode, target, viewModel, allAvailableNodes, isExecutionMode) }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -128,9 +172,7 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
             val isP1GlobalMacro = state.partner1PoolState.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
 
             if (isP1GlobalMacro) {
-                Div(attrs = { style { marginBottom(24.px); padding(20.px); border(2.px, LineStyle.Dashed, Color("#90CAF9")); borderRadius(12.px); backgroundColor(Color("#E3F2FD")); color(Color("#0D47A1")); textAlign("center"); fontWeight("bold"); fontSize(1.05.cssRem) } }) {
-                    Text("🔒 تنظیمات سهم $p2Name به صورت خودکار توسط محاسبه یکپارچه (${p1Strategy.title}) مدیریت و تسهیم می‌شود.")
-                }
+                Div(attrs = { style { marginBottom(24.px); padding(20.px); border(2.px, LineStyle.Dashed, Color("#90CAF9")); borderRadius(12.px); backgroundColor(Color("#E3F2FD")); color(Color("#0D47A1")); textAlign("center"); fontWeight("bold"); fontSize(1.05.cssRem) } }) { Text("🔒 تنظیمات سهم $p2Name به صورت خودکار توسط محاسبه یکپارچه (${p1Strategy.title}) مدیریت و تسهیم می‌شود.") }
             } else {
                 PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel, agricultureInput, customProfiles, onNavigateToBuilder)
             }
@@ -154,15 +196,12 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
             )
             modes.forEach { (mode, label) ->
                 val isActive = state.mode == mode
-                Button(attrs = {
-                    style {
-                        width(100.percent); padding(14.px); borderRadius(8.px); fontWeight(if (isActive) "bold" else "normal")
-                        fontSize(if (isActive) 1.1.cssRem else 1.cssRem)
-                        color(if (isActive) Color("white") else Color("#2E7D32")); backgroundColor(if (isActive) Color("#2E7D32") else Color("white"))
-                        property("border", "1px solid #2E7D32"); property("cursor", "pointer")
-                    }
-                    onClick { viewModel.updateMode(target, mode) }
-                }) { Text(label) }
+                key(mode.name) {
+                    Button(attrs = {
+                        style { width(100.percent); padding(14.px); borderRadius(8.px); fontWeight(if (isActive) "bold" else "normal"); fontSize(if (isActive) 1.1.cssRem else 1.cssRem); color(if (isActive) Color("white") else Color("#2E7D32")); backgroundColor(if (isActive) Color("#2E7D32") else Color("white")); property("border", "1px solid #2E7D32"); property("cursor", "pointer") }
+                        onClick { viewModel.updateMode(target, mode) }
+                    }) { Text(label) }
+                }
             }
         }
 
@@ -170,130 +209,129 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
             when (state.mode) {
                 DistributionMode.MODE_COMPREHENSIVE -> {
                     val compState = state.comprehensiveState
-                    
-                    // استیت‌های لوکال برای ذخیره و بازیابی
                     var savedTemplates by remember { mutableStateOf(DistributionTemplateRepository.getAllTemplates()) }
                     var newTemplateTitle by remember { mutableStateOf("") }
+                    var activeExecutionTemplateId by remember { mutableStateOf<String?>(null) }
+                    val isExecutionMode = activeExecutionTemplateId != null
                     
-                    // --- بخش دسترسی سریع (کارت‌های ذخیره‌شده) ---
+                    // --- پنل الگوهای ذخیره شده ---
                     if (savedTemplates.isNotEmpty()) {
                         Div(attrs = { style { marginBottom(24.px); padding(12.px); backgroundColor(Color("#F3E5F5")); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#CE93D8")) } }) {
                             H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#6A1B9A")) } }) { Text("💳 الگوهای آماده (دسترسی سریع)") }
-                            Div(attrs = { style { display(DisplayStyle.Flex); flexWrap(FlexWrap.Wrap); gap(8.px) } }) {
+                            Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px) } }) {
                                 savedTemplates.forEach { template ->
-                                    Div(attrs = { 
-                                        style { 
-                                            display(DisplayStyle.Flex); alignItems(AlignItems.Center); 
-                                            backgroundColor(Color("white")); border(1.px, LineStyle.Solid, Color("#AB47BC")); 
-                                            borderRadius(16.px); padding(6.px, 12.px); cursor("pointer") 
+                                    key(template.id) {
+                                        Div(attrs = { style { backgroundColor(Color("white")); border(1.px, LineStyle.Solid, Color("#AB47BC")); borderRadius(8.px); padding(12.px) } }) {
+                                            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(Color("#4A148C")); fontWeight("bold") } }) { Text(template.title) }
+                                            Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px) } }) {
+                                                Button(attrs = { style { flex(1); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(4.px); padding(6.px); cursor("pointer") }
+                                                    onClick { 
+                                                        viewModel.updateComprehensiveState(target) { it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) }
+                                                        activeExecutionTemplateId = template.id
+                                                    }
+                                                }) { Text("انتخاب برای محاسبه") }
+                                                
+                                                Button(attrs = { style { flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(4.px); padding(6.px); cursor("pointer") }
+                                                    onClick { 
+                                                        viewModel.updateComprehensiveState(target) { it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) }
+                                                        activeExecutionTemplateId = null 
+                                                    }
+                                                }) { Text("ویرایش") }
+                                                
+                                                Button(attrs = { style { backgroundColor(Color("#F44336")); color(Color("white")); border(0.px); borderRadius(4.px); padding(6.px); cursor("pointer") }
+                                                    onClick { 
+                                                        if (window.confirm("آیا از حذف این الگو مطمئن هستید؟")) {
+                                                            DistributionTemplateRepository.deleteTemplate(template.id)
+                                                            savedTemplates = DistributionTemplateRepository.getAllTemplates()
+                                                            if (activeExecutionTemplateId == template.id) activeExecutionTemplateId = null
+                                                        }
+                                                    }
+                                                }) { Text("حذف") }
+                                            }
                                         }
-                                    }) {
-                                        Span(attrs = { 
-                                            style { fontSize(0.95.cssRem); color(Color("#4A148C")); fontWeight("bold") }
-                                            onClick {
-                                                viewModel.updateComprehensiveState(target) { 
-                                                    it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) 
-                                                }
-                                            }
-                                        }) { Text(template.title) }
-                                        
-                                        Span(attrs = { 
-                                            style { marginLeft(12.px); color(Color("#D32F2F")); fontWeight("bold"); fontSize(1.2.cssRem) }
-                                            onClick {
-                                                DistributionTemplateRepository.deleteTemplate(template.id)
-                                                savedTemplates = DistributionTemplateRepository.getAllTemplates()
-                                            }
-                                        }) { Text("×") }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // --- تنظیمات اصلی موتور ---
-                    Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(16.px); fontSize(1.cssRem) }; onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> viewModel.updateComprehensiveState(target) { st -> st.copy(rootMode = m) } } } }) {
-                        ComprehensiveMode.entries.forEach { mode ->
-                            Option(value = mode.name, attrs = { if (compState.rootMode == mode) attr("selected", "true") }) { Text(mode.displayName) }
+                    if (isExecutionMode) {
+                        Div(attrs = { style { backgroundColor(Color("#E8F5E9")); border(1.px, LineStyle.Solid, Color("#4CAF50")); padding(12.px); borderRadius(8.px); marginBottom(16.px); textAlign("center") } }) {
+                            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(Color("#2E7D32")); fontWeight("bold") } }) { Text("شما در حال استفاده از الگوی آماده (حالت اجرا) هستید.") }
+                            Button(attrs = { style { backgroundColor(Color("white")); color(Color("#D32F2F")); border(1.px, LineStyle.Solid, Color("#D32F2F")); borderRadius(4.px); padding(6.px, 12.px); cursor("pointer") }; onClick { activeExecutionTemplateId = null } }) { Text("خروج از حالت اجرا و بازگشت به ویرایش") }
+                        }
+                    } else {
+                        Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(16.px); fontSize(1.cssRem) }; onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> viewModel.updateComprehensiveState(target) { st -> st.copy(rootMode = m) } } } }) {
+                            ComprehensiveMode.entries.forEach { mode -> 
+                                key(mode.name) { Option(value = mode.name, attrs = { if (compState.rootMode == mode) attr("selected", "true") }) { Text(mode.displayName) } }
+                            }
                         }
                     }
 
                     if (compState.rootMode == ComprehensiveMode.PERSON) {
-                        DistTextInput("تعداد کل نفرات (اختیاری)", compState.countLimitInput, true) { v -> viewModel.updateComprehensiveState(target) { it.copy(countLimitInput = v) } }
+                        DistTextInput("تعداد کل نفرات (الزامی)", compState.countLimitInput, true, isReadonly = isExecutionMode) { v -> viewModel.updateComprehensiveState(target) { it.copy(countLimitInput = v) } }
                     }
 
                     val allNodesFlat = flattenTree(compState.nodes)
-                    
+                    var currentTotal = 0.0
                     compState.nodes.forEach { node ->
-                        RecursiveComprehensiveNode(node, listOf(node.id), compState.rootMode, target, viewModel, allNodesFlat)
+                        if (!node.isExcluded) {
+                            val v = node.rawValue.toDoubleOrNull() ?: if (compState.rootMode == ComprehensiveMode.PERSON) 1.0 else 0.0
+                            currentTotal += if (compState.rootMode == ComprehensiveMode.PERSON && node.isFemale) v * 0.5 else v
+                        }
+                    }
+                    
+                    val maxLimit = when (compState.rootMode) {
+                        ComprehensiveMode.PERSON -> compState.countLimitInput.toDoubleOrNull() ?: 0.0
+                        ComprehensiveMode.PERCENTAGE -> 100.0
+                        ComprehensiveMode.SHARE_QYAS -> Double.MAX_VALUE
+                    }
+                    
+                    val isLimitReached = maxLimit > 0 && currentTotal >= maxLimit
+                    val isPersonAndEmpty = compState.rootMode == ComprehensiveMode.PERSON && maxLimit == 0.0
+
+                    if (!isExecutionMode) {
+                        if (isPersonAndEmpty) {
+                            P(attrs = { style { color(Color("#D32F2F")); fontWeight("bold") } }) { Text("⚠️ فیلد تعداد نفرات الزامی است. لطفاً آن را پر کنید.") }
+                        } else if (isLimitReached) {
+                            P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(8.px); borderRadius(4.px); fontSize(0.9.cssRem); fontWeight("bold"); margin(12.px, 0.px) } }) { 
+                                Text(if (compState.rootMode == ComprehensiveMode.PERCENTAGE) "خطا: جمع درصدها نمی‌تواند بیشتر از ۱۰۰ باشد!" else "اخطار: سقف نفرات پر شده است.") 
+                            }
+                        }
                     }
 
-                    Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(16.px) }; onClick { viewModel.addNode(target, emptyList()) } }) { Text("+ افزودن شریک جدید") }
+                    // رندر امن گره‌ها با استفاده از key
+                    compState.nodes.forEach { node ->
+                        key(node.id) {
+                            RecursiveComprehensiveNode(node, listOf(node.id), compState.rootMode, target, viewModel, allNodesFlat, isExecutionMode)
+                        }
+                    }
 
-                    // --- بخش ذخیره الگو برای استفاده بعدی ---
-                    if (compState.nodes.isNotEmpty()) {
+                    if (!isExecutionMode && !isLimitReached && !isPersonAndEmpty) {
+                        Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(16.px) }; onClick { viewModel.addNode(target, emptyList()) } }) { Text("+ افزودن شریک جدید") }
+                    }
+
+                    if (!isExecutionMode && compState.nodes.isNotEmpty()) {
                         Div(attrs = { style { marginTop(24.px); padding(16.px); backgroundColor(Color("#FFF3E0")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#FFB74D")) } }) {
-                            H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#E65100")) } }) { Text("💾 ذخیره این ترکیب برای دفعات بعد") }
+                            H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#E65100")) } }) { Text("💾 ذخیره ساختار برای دفعات بعد") }
                             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px); alignItems(AlignItems.Center) } }) {
-                                Div(attrs = { style { flex(2) } }) {
-                                    DistTextInput("نام الگو (مثلاً: شرکای باغ بالا)", newTemplateTitle, false) { newTemplateTitle = it }
-                                }
-                                Button(attrs = {
-                                    style { 
-                                        flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); 
-                                        border(0.px); borderRadius(8.px); padding(14.px); fontWeight("bold"); cursor("pointer") 
+                                Div(attrs = { style { flex(2) } }) { DistTextInput("نام الگو (مثلاً: شرکای باغ)", newTemplateTitle, false) { newTemplateTitle = it } }
+                                Button(attrs = { style { flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); padding(14.px); fontWeight("bold"); cursor("pointer") }; onClick {
+                                    if (newTemplateTitle.isNotBlank()) {
+                                        val template = SavedDistributionTemplate(id = kotlin.random.Random.nextInt().toString() + "_" + kotlin.js.Date.now().toString(), title = newTemplateTitle, rootMode = compState.rootMode, totalCountLimit = compState.countLimitInput, nodes = compState.nodes, createdAt = kotlin.js.Date.now().toLong())
+                                        DistributionTemplateRepository.saveTemplate(template)
+                                        savedTemplates = DistributionTemplateRepository.getAllTemplates()
+                                        newTemplateTitle = "" 
                                     }
-                                    onClick {
-                                        if (newTemplateTitle.isNotBlank()) {
-                                            val template = SavedDistributionTemplate(
-                                                id = kotlin.random.Random.nextInt().toString() + "_" + kotlin.js.Date.now().toString(),
-                                                title = newTemplateTitle,
-                                                rootMode = compState.rootMode,
-                                                totalCountLimit = compState.countLimitInput,
-                                                nodes = compState.nodes,
-                                                createdAt = kotlin.js.Date.now().toLong()
-                                            )
-                                            DistributionTemplateRepository.saveTemplate(template)
-                                            savedTemplates = DistributionTemplateRepository.getAllTemplates()
-                                            newTemplateTitle = "" 
-                                        }
-                                    }
-                                }) { Text("ذخیره الگو") }
+                                }}) { Text("ذخیره") }
                             }
                         }
                     }
                 }
-                
-                DistributionMode.MODE_A_NO_BREAKDOWN -> {
-                    DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) }
-                    P(attrs = { style { fontSize(0.85.cssRem); color(Color("#757575")); marginTop(8.px) } }) { Text("در این حالت کل سهم این بخش بدون تغییر به نام وارد شده اختصاص می‌یابد.") }
-                }
-                
-                DistributionMode.MODE_DEFAULT_MAKER -> {
-                    Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); property("border", "1px solid #BDBDBD"); fontSize(1.cssRem); fontFamily("inherit") }; onChange { event -> viewModel.updateDefaultStrategy(target, event.value ?: "") } }) {
-                        Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("محاسبات پیش‌فرض سازنده را انتخاب کنید...") }
-                        DefaultCalculationsRegistry.strategies.forEach { strategy -> Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) attr("selected", "true") }) { Text(strategy.title) } }
-                    }
-                    if (state.defaultStrategyTitle == "دانگ ماریکی(کِجِینو)") {
-                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(16.px); fontWeight("bold") } }) { Input(type = InputType.Checkbox, attrs = { checked(state.calculateZivar); onChange { event -> viewModel.updateCalculateZivar(target, event.value) }; style { marginRight(8.px); width(20.px); height(20.px) } }); Text("سهم زیور/نواب حساب شود؟") }
-                    }
-                }
-                
-                DistributionMode.MODE_CUSTOM_BUILDER -> {
-                    Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { e -> viewModel.updateCustomProfile(target, e.value ?: "") } }) {
-                        val dependentProfiles = customProfiles.filter { it.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4 }
-                        if (dependentProfiles.isEmpty()) {
-                            Option(value = "", attrs = { attr("disabled", "true"); attr("selected", "true") }) { Text("هنوز هیچ الگوی وابسته‌ای ساخته نشده است.") }
-                        } else {
-                            Option(value = "", attrs = { attr("disabled", "true"); if(state.customProfileId.isEmpty()) attr("selected", "true") }) { Text("یک الگوی اختصاصی انتخاب کنید...") }
-                            dependentProfiles.forEach { prof -> Option(value = prof.id, attrs = { if(state.customProfileId == prof.id) attr("selected", "true") }) { Text(prof.name) } }
-                        }
-                    }
-                    Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") }
-                }
-                
-                else -> {
-                    P(attrs = { style { color(Color("#D32F2F")) } }) { Text("این گزینه برای سازگاری با تاریخچه گذشته است. لطفاً از گزینه جامع استفاده کنید.") }
-                }
+                DistributionMode.MODE_A_NO_BREAKDOWN -> { DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) } }
+                DistributionMode.MODE_DEFAULT_MAKER -> { Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); property("border", "1px solid #BDBDBD"); fontSize(1.cssRem); fontFamily("inherit") }; onChange { event -> viewModel.updateDefaultStrategy(target, event.value ?: "") } }) { Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("انتخاب...") } ; DefaultCalculationsRegistry.strategies.forEach { strategy -> key(strategy.title) { Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) attr("selected", "true") }) { Text(strategy.title) } } } } }
+                DistributionMode.MODE_CUSTOM_BUILDER -> { Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") } }
+                else -> { P(attrs = { style { color(Color("#D32F2F")) } }) { Text("گزینه برای سازگاری گذشته.") } }
             }
         }
     }

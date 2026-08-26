@@ -14,7 +14,7 @@ object DistributionTemplateRepository {
         if (jsonString.isNullOrBlank()) return emptyList()
         return try {
             val jsArray = js("JSON.parse(jsonString)") as Array<dynamic>
-            jsArray.map { jsToTemplate(it) }.sortedByDescending { it.createdAt }
+            jsArray.map { jsToTemplate(it) }.sortedByDescending { (it.createdAt as? Number)?.toLong() ?: 0L }
         } catch (e: Exception) {
             console.error("خطا در بازیابی الگوهای تسهیم:", e)
             emptyList()
@@ -42,25 +42,24 @@ object DistributionTemplateRepository {
         window.localStorage.setItem(STORAGE_KEY, js("JSON.stringify(jsArray)") as String)
     }
 
-    // --- توابع تبدیل دستی به/از JSON برای دور زدن نیاز به کتابخانه Serialization ---
-
     private fun nodeToJs(node: ShareholderNode): dynamic {
         val childrenJs = node.children.map { nodeToJs(it) }.toTypedArray()
         return json(
             "id" to node.id,
             "name" to node.name,
-            "isActive" to node.isActive,
             "isFemale" to node.isFemale,
             "rawValue" to node.rawValue,
             "transferredToId" to node.transferredToId,
             "hasSubDistribution" to node.hasSubDistribution,
             "subDistributionMode" to node.subDistributionMode.name,
-            "children" to childrenJs
+            "children" to childrenJs,
+            "canBeExcluded" to node.canBeExcluded,
+            "isExcluded" to node.isExcluded
         )
     }
 
     private fun jsToNode(jsObj: dynamic): ShareholderNode {
-        val childrenArray: Array<dynamic> = if (jsObj.children != undefined && jsObj.children != null) jsObj.children else emptyArray()
+        val childrenArray = if (jsObj.children != undefined && jsObj.children != null) jsObj.children as Array<dynamic> else emptyArray<dynamic>()
         val childrenList = childrenArray.map { jsToNode(it) }
         
         val modeStr = if (jsObj.subDistributionMode != undefined && jsObj.subDistributionMode != null) jsObj.subDistributionMode as String else ComprehensiveMode.PERSON.name
@@ -69,13 +68,14 @@ object DistributionTemplateRepository {
         return ShareholderNode(
             id = if (jsObj.id != undefined && jsObj.id != null) jsObj.id as String else "",
             name = if (jsObj.name != undefined && jsObj.name != null) jsObj.name as String else "",
-            isActive = if (jsObj.isActive != undefined && jsObj.isActive != null) jsObj.isActive as Boolean else true,
             isFemale = if (jsObj.isFemale != undefined && jsObj.isFemale != null) jsObj.isFemale as Boolean else false,
             rawValue = if (jsObj.rawValue != undefined && jsObj.rawValue != null) jsObj.rawValue as String else "1",
             transferredToId = if (jsObj.transferredToId != undefined && jsObj.transferredToId != null) jsObj.transferredToId as String else "",
             hasSubDistribution = if (jsObj.hasSubDistribution != undefined && jsObj.hasSubDistribution != null) jsObj.hasSubDistribution as Boolean else false,
             subDistributionMode = mode,
-            children = childrenList
+            children = childrenList,
+            canBeExcluded = if (jsObj.canBeExcluded != undefined && jsObj.canBeExcluded != null) jsObj.canBeExcluded as Boolean else false,
+            isExcluded = if (jsObj.isExcluded != undefined && jsObj.isExcluded != null) jsObj.isExcluded as Boolean else false
         )
     }
 
@@ -92,7 +92,7 @@ object DistributionTemplateRepository {
     }
 
     private fun jsToTemplate(jsObj: dynamic): SavedDistributionTemplate {
-        val nodesArray: Array<dynamic> = if (jsObj.nodes != undefined && jsObj.nodes != null) jsObj.nodes else emptyArray()
+        val nodesArray = if (jsObj.nodes != undefined && jsObj.nodes != null) jsObj.nodes as Array<dynamic> else emptyArray<dynamic>()
         val nodesList = nodesArray.map { jsToNode(it) }
         
         val rootModeStr = if (jsObj.rootMode != undefined && jsObj.rootMode != null) jsObj.rootMode as String else ComprehensiveMode.PERSON.name
