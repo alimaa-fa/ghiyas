@@ -14,7 +14,7 @@ data class ShareholderNode(
     val id: String,
     val name: String = "",
     val isFemale: Boolean = false,
-    val rawValue: String = "1",
+    val rawValue: String = "",
     val transferredToId: String = "",
     val hasSubDistribution: Boolean = false,
     val subDistributionMode: ComprehensiveMode = ComprehensiveMode.PERSON,

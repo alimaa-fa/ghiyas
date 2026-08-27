@@ -62,20 +62,20 @@ fun RecursiveComprehensiveNode(
     val bgColor = if (isVisuallyExcluded) "#F5F5F5" else "#F8FBF8"
     val opacityValue = if (isVisuallyExcluded) 0.6 else 1.0
 
-    Div(attrs = { style { padding(12.px); marginTop(12.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(4.px); opacity(opacityValue) } }) {
+    Div(attrs = { style { padding(10.px); marginTop(10.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(6.px); opacity(opacityValue) } }) {
         
-        // ردیف اول: نام، مقدار
-        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(12.px) } }) {
-            Div(attrs = { style { flex(2) } }) { 
+        // ردیف اول: نام شریک (منعطف) + فیلد مقدار/درصد (عرض بهینه و بدون بریدگی) + دکمه حذف
+        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(6.px); marginBottom(10.px) } }) {
+            Div(attrs = { style { property("flex", "1"); property("min-width", "0") } }) { 
                 DistTextInput("نام شریک", node.name, false, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } 
             }
             
             if (currentMode != ComprehensiveMode.PERSON) {
-                Div(attrs = { style { flex(1) } }) { 
+                Div(attrs = { style { property("flex", "0 0 90px"); width(90.px) } }) { 
                     DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } 
                 }
             } else {
-                Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.9.cssRem) } }) {
+                Label(attrs = { style { property("flex", "0 0 85px"); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.85.cssRem) } }) {
                     Input(type = InputType.Checkbox, attrs = { 
                         checked(node.isFemale)
                         if (isExecutionMode) attr("disabled", "true")
@@ -85,7 +85,7 @@ fun RecursiveComprehensiveNode(
                 }
             }
             if (!isExecutionMode) {
-                Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); fontWeight("bold"); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
+                Button(attrs = { style { property("flex", "0 0 36px"); width(36.px); height(36.px); padding(0.px); backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(6.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); justifyContent(JustifyContent.Center); fontWeight("bold"); fontSize(1.2.cssRem); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
             }
         }
 
@@ -212,7 +212,7 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     var savedTemplates by remember { mutableStateOf(DistributionTemplateRepository.getAllTemplates()) }
                     var newTemplateTitle by remember { mutableStateOf("") }
                     var activeExecutionTemplateId by remember { mutableStateOf<String?>(null) }
-                    var editingTemplateId by remember { mutableStateOf<String?>(null) } // استیت جدید برای نگهداری آیدی الگو در زمان ویرایش
+                    var editingTemplateId by remember { mutableStateOf<String?>(null) }
                     
                     val isExecutionMode = activeExecutionTemplateId != null
                     
@@ -242,8 +242,8 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                                     onClick { 
                                                         viewModel.updateComprehensiveState(target) { it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) }
                                                         activeExecutionTemplateId = null 
-                                                        editingTemplateId = template.id // ست کردن آیدی الگو برای آپدیت شدن به جای ساخته شدن
-                                                        newTemplateTitle = template.title // پر کردن فیلد نام
+                                                        editingTemplateId = template.id
+                                                        newTemplateTitle = template.title
                                                     }
                                                 }) { Text("ویرایش") }
                                                 
@@ -310,6 +310,7 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         }
                     }
 
+                    // رندر امن گره‌ها با استفاده از key
                     compState.nodes.forEach { node ->
                         key(node.id) {
                             RecursiveComprehensiveNode(node, listOf(node.id), compState.rootMode, target, viewModel, allNodesFlat, isExecutionMode)
@@ -332,7 +333,7 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                         DistributionTemplateRepository.saveTemplate(template)
                                         savedTemplates = DistributionTemplateRepository.getAllTemplates()
                                         newTemplateTitle = ""
-                                        editingTemplateId = null // پس از ذخیره، از حالت ویرایش خارج می‌شود
+                                        editingTemplateId = null
                                     }
                                 }}) { Text(if(editingTemplateId != null) "بروزرسانی" else "ذخیره") }
                             }
