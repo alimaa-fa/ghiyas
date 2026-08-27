@@ -71,18 +71,8 @@ fun ExpenseStageScreen(viewModel: ExpenseStageViewModel) {
         }
 
         if (inputState.isCalculated) {
-            Div(attrs = {
-                style {
-                    marginBottom(24.px)
-                    padding(16.px)
-                    border(1.px, LineStyle.Solid, Color("#E0E0E0"))
-                    borderRadius(8.px)
-                    backgroundColor(Color("#FAFAFA"))
-                }
-            }) {
-                H4(attrs = { style { marginTop(0.px); marginBottom(16.px); color(Color("#424242")) } }) { Text("خرج کل به صورت مقطوع") }
-                CustomNumberInput("مبلغ مقطوع کل", inputState.globalFixedExpense_Input) { v -> viewModel.updateGlobalFixedExpense(v) }
-            }
+            
+            // بخش مربوط به «خرج کل به صورت مقطوع» از اینجا حذف شد
 
             ExpenseCategoryView(
                 title = "تکانی",

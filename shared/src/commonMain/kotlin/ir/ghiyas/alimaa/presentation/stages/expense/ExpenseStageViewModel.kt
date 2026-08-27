@@ -26,7 +26,7 @@ data class SarkariCategoryState(
 )
 
 data class KharjkardInputState(
-    val isCalculated: Boolean = false, val globalFixedExpense_Input: String = "", val extraExpense_Input: String = "",
+    val isCalculated: Boolean = false, val extraExpense_Input: String = "",
     val tekani: ExpenseCategoryState = ExpenseCategoryState(), val jamkoni: ExpenseCategoryState = ExpenseCategoryState(),
     val kooleh: ExpenseCategoryState = ExpenseCategoryState(), val sarkari: SarkariCategoryState = SarkariCategoryState()
 )
@@ -43,7 +43,6 @@ class ExpenseStageViewModel {
     fun setTotalWalnuts(unit: WalnutUnit) { totalWalnuts = unit }
     fun clearForm() { _inputState.value = KharjkardInputState(); _snapshot.value = null }
     fun updateIsCalculated(isCalculated: Boolean) { _inputState.update { it.copy(isCalculated = isCalculated) } }
-    fun updateGlobalFixedExpense(value: String) { _inputState.update { it.copy(globalFixedExpense_Input = value) } }
     fun updateExtraExpense(value: String) { _inputState.update { it.copy(extraExpense_Input = value) } }
     fun updateTekani(update: (ExpenseCategoryState) -> ExpenseCategoryState) { _inputState.update { it.copy(tekani = update(it.tekani)) } }
     fun updateJamkoni(update: (ExpenseCategoryState) -> ExpenseCategoryState) { _inputState.update { it.copy(jamkoni = update(it.jamkoni)) } }
@@ -63,7 +62,6 @@ class ExpenseStageViewModel {
         var totalExpensesValue = 0.0 
         
         if (_inputState.value.isCalculated) {
-            if (output.globalFixed.value > 0) expensesList.add(ResultItem("خرج کل به صورت مقطوع", output.globalFixed))
             expensesList.add(ResultItem("کل تکانی", output.totalTekani))
             expensesList.add(ResultItem("سهم هر تکان", output.perPersonTekani))
             expensesList.add(ResultItem("کل جمع‌کنی", output.totalJamkoni))
@@ -79,7 +77,7 @@ class ExpenseStageViewModel {
             }
             if (output.extraExpense.value > 0) expensesList.add(ResultItem("خرج اضافی متفرقه", output.extraExpense))
 
-            totalExpensesValue = output.globalFixed.value + output.totalTekani.value + output.totalJamkoni.value + output.totalKooleh.value + output.totalSarkari.value + output.extraExpense.value
+            totalExpensesValue = output.totalTekani.value + output.totalJamkoni.value + output.totalKooleh.value + output.totalSarkari.value + output.extraExpense.value
         }
 
         val remainingForStage3 = totalWalnuts - WalnutUnit(totalExpensesValue)
@@ -120,11 +118,11 @@ class ExpenseStageViewModel {
                     poolAmount = agriOutput.remainingForStage4, 
                     mode = p1State.mode, 
                     groupName = p1State.groupName, 
-                    comprehensiveState = p1State.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                    comprehensiveState = p1State.comprehensiveState,
                     modeBState = p1State.modeBState,
                     shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                     defaultStrategyTitle = p1State.defaultStrategyTitle, 
-                    customProfileId = p1State.customProfileId, // اتصال استیت اختصاصی
+                    customProfileId = p1State.customProfileId,
                     defaultLabel = "سهم یکجا کل",
                     calculateZivar = p1State.calculateZivar, isNimehkari = true, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah
@@ -139,11 +137,11 @@ class ExpenseStageViewModel {
                     poolAmount = p1Pool, 
                     mode = p1State.mode, 
                     groupName = p1State.groupName, 
-                    comprehensiveState = p1State.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                    comprehensiveState = p1State.comprehensiveState,
                     modeBState = p1State.modeBState,
                     shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                     defaultStrategyTitle = p1State.defaultStrategyTitle, 
-                    customProfileId = p1State.customProfileId, // اتصال استیت اختصاصی
+                    customProfileId = p1State.customProfileId,
                     defaultLabel = "نیمه اول",
                     calculateZivar = p1State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah
@@ -157,11 +155,11 @@ class ExpenseStageViewModel {
                     poolAmount = p2Pool, 
                     mode = p2State.mode, 
                     groupName = p2State.groupName, 
-                    comprehensiveState = p2State.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                    comprehensiveState = p2State.comprehensiveState,
                     modeBState = p2State.modeBState,
                     shareholders = p2State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                     defaultStrategyTitle = p2State.defaultStrategyTitle, 
-                    customProfileId = p2State.customProfileId, // اتصال استیت اختصاصی
+                    customProfileId = p2State.customProfileId,
                     defaultLabel = "نیمه دوم",
                     calculateZivar = p2State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p2State.targetGroup, transferDadallah = p2State.transferDadallah
@@ -177,11 +175,11 @@ class ExpenseStageViewModel {
                 poolAmount = poolAmount, 
                 mode = mainState.mode, 
                 groupName = mainState.groupName, 
-                comprehensiveState = mainState.comprehensiveState, // اتصال استیت موتور جامع به ورودی
+                comprehensiveState = mainState.comprehensiveState,
                 modeBState = mainState.modeBState, 
                 shareholders = mainState.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                 defaultStrategyTitle = mainState.defaultStrategyTitle, 
-                customProfileId = mainState.customProfileId, // اتصال استیت اختصاصی
+                customProfileId = mainState.customProfileId,
                 defaultLabel = "سهم کل یکجا",
                 calculateZivar = mainState.calculateZivar, isNimehkari = false, nimehkariPool = WalnutUnit.ZERO,
                 targetGroup = mainState.targetGroup, transferDadallah = mainState.transferDadallah

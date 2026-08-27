@@ -7,7 +7,6 @@ import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseCategoryState
 object KharjkardStrategy {
 
     data class Output(
-        val globalFixed: WalnutUnit,
         val totalTekani: WalnutUnit, val perPersonTekani: WalnutUnit,
         val totalJamkoni: WalnutUnit, val perPersonJamkoni: WalnutUnit,
         val totalKooleh: WalnutUnit, val perPersonKooleh: WalnutUnit,
@@ -17,11 +16,10 @@ object KharjkardStrategy {
     )
 
     fun calculate(state: KharjkardInputState, totalWalnuts: WalnutUnit): Output {
-        val globalFixed = WalnutUnit.fromInput(state.globalFixedExpense_Input)
         val extraExpense = WalnutUnit.fromInput(state.extraExpense_Input)
 
         if (!state.isCalculated) {
-            return Output(globalFixed, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, extraExpense)
+            return Output(WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, WalnutUnit.ZERO, extraExpense)
         }
 
         fun calcStandard(catState: ExpenseCategoryState): Pair<WalnutUnit, WalnutUnit> {
@@ -76,7 +74,6 @@ object KharjkardStrategy {
         }
 
         return Output(
-            globalFixed,
             totalTekani, perPersonTekani,
             totalJamkoni, perPersonJamkoni,
             totalKooleh, perPersonKooleh,
