@@ -64,24 +64,24 @@ fun RecursiveComprehensiveNode(
 
     Div(attrs = { style { padding(10.px); marginTop(10.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(6.px); opacity(opacityValue) } }) {
         
-        // ردیف اول: نام شریک (منعطف) + فیلد مقدار/درصد (عرض بهینه و بدون بریدگی) + دکمه حذف
+        // ردیف اول: عرض فیلد عدد از 90 به 72 کاهش یافت تا نام شریک فضای کافی داشته باشد
         Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(6.px); marginBottom(10.px) } }) {
             Div(attrs = { style { property("flex", "1"); property("min-width", "0") } }) { 
                 DistTextInput("نام شریک", node.name, false, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } 
             }
             
             if (currentMode != ComprehensiveMode.PERSON) {
-                Div(attrs = { style { property("flex", "0 0 90px"); width(90.px) } }) { 
+                Div(attrs = { style { property("flex", "0 0 72px"); width(72.px) } }) { 
                     DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } 
                 }
             } else {
-                Label(attrs = { style { property("flex", "0 0 85px"); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.85.cssRem) } }) {
+                Label(attrs = { style { property("flex", "0 0 72px"); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.85.cssRem) } }) {
                     Input(type = InputType.Checkbox, attrs = { 
                         checked(node.isFemale)
                         if (isExecutionMode) attr("disabled", "true")
-                        onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } 
+                        onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(2.px) } 
                     })
-                    Text("دختر (۰.۵)")
+                    Text("دختر(۰.۵)")
                 }
             }
             if (!isExecutionMode) {
@@ -345,14 +345,13 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                 }
                 DistributionMode.MODE_A_NO_BREAKDOWN -> { DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) } }
                 
-                // --- بخش اصلاح شده: بازگرداندن شروط پیش‌فرض سازنده ---
+                // --- بخش محاسبات پیش‌فرض ---
                 DistributionMode.MODE_DEFAULT_MAKER -> { 
                     Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); property("border", "1px solid #BDBDBD"); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { event -> viewModel.updateDefaultStrategy(target, event.value ?: "") } }) { 
                         Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("انتخاب از محاسبات آماده...") } ; 
                         DefaultCalculationsRegistry.strategies.forEach { strategy -> key(strategy.title) { Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) attr("selected", "true") }) { Text(strategy.title) } } } 
                     }
                     
-                    // شروط ویژه استراتژی عبدالرحیم (کجینو)
                     if (state.defaultStrategyTitle.contains("عبدالرحیم")) {
                         Div(attrs = { style { backgroundColor(Color("#F1F8E9")); border(1.px, LineStyle.Dashed, Color("#AED581")); padding(12.px); borderRadius(8.px) } }) {
                             Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#388E3C")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتخاب گروه هدف عبدالرحیم:") }
@@ -361,7 +360,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                 Option(value = "نوری و صغری", attrs = { if (state.targetGroup == "نوری و صغری") attr("selected", "true") }) { Text("نوری و صغری") }
                             }
                             
-                            // شرط مخفی شدن: فقط زمانی نمایش بده که گروه هدف "کل عبدالرحیمی‌ها" باشد
                             if (state.targetGroup == "کل عبدالرحیمی‌ها") {
                                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.95.cssRem); fontWeight("bold"); color(Color("#212121")); marginBottom(8.px) } }) {
                                     Input(type = InputType.Checkbox, attrs = { checked(state.calculateZivar); onChange { e -> viewModel.updateCalculateZivar(target, e.value) }; style { marginRight(8.px) } })
@@ -376,7 +374,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         }
                     }
                     
-                    // شروط ویژه استراتژی دانگ ماریکی
                     if (state.defaultStrategyTitle.contains("دانگ ماریکی")) {
                         Div(attrs = { style { backgroundColor(Color("#F1F8E9")); border(1.px, LineStyle.Dashed, Color("#AED581")); padding(12.px); borderRadius(8.px); marginTop(12.px) } }) {
                             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.95.cssRem); fontWeight("bold"); color(Color("#212121")) } }) {
