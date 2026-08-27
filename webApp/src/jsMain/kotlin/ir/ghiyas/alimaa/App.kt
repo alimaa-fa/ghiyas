@@ -23,6 +23,8 @@ import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.domain.models.ProfileIntegrationType
 import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 import ir.ghiyas.alimaa.core.pwa.PwaManager
+import kotlinx.browser.window
+import org.w3c.dom.events.Event
 
 @Composable
 fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight: Boolean = false) {
@@ -53,6 +55,26 @@ fun App() {
         PwaManager.initialize()
     }
 
+    // مکانیزم جلوگیری از خروج ناخواسته با دکمه بازگشت (Back Button)
+    LaunchedEffect(Unit) {
+        // ایجاد یک رکورد ساختگی در تاریخچه برای به تله انداختن دکمه بازگشت
+        window.history.pushState(null, "", window.location.href)
+        
+        val popStateHandler: (Event) -> Unit = { event ->
+            // وقتی کاربر دکمه بازگشت را می‌زند، این رویداد شلیک می‌شود
+            val confirmExit = window.confirm("آیا مطمئن هستید که می‌خواهید از برنامه خارج شوید؟ (اطلاعات ذخیره‌نشده پاک خواهند شد)")
+            if (!confirmExit) {
+                // اگر کاربر لغو کرد، دوباره یک رکورد ساختگی اضافه می‌کنیم تا در برنامه بماند
+                window.history.pushState(null, "", window.location.href)
+            } else {
+                // اگر کاربر تایید کرد، به تاریخچه اجازه می‌دهیم تا از برنامه خارج شود
+                window.history.back()
+            }
+        }
+        
+        window.addEventListener("popstate", popStateHandler)
+    }
+
     var customProfiles by remember { mutableStateOf(emptyList<ir.ghiyas.alimaa.domain.models.CustomProfile>()) }
     LaunchedEffect(currentScreen, currentMainTab) {
         if (currentScreen == "main") {
@@ -65,10 +87,8 @@ fun App() {
     val calcState by calculatorViewModel.state.collectAsState()
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     
-    // استخراج استیت موتور تسهیم به صورت Flow برای رندر زنده نتایج
     val distributionState by distributionViewModel.state.collectAsState()
     
-    // وضعیت دسترسی به نسخه جدید و وضعیت قابلیت نصب
     val isInstallable by PwaManager.isInstallable.collectAsState()
     val hasUpdateAvailable by PwaManager.hasUpdateAvailable.collectAsState()
 
@@ -82,14 +102,12 @@ fun App() {
 
     Div(attrs = { dir(DirType.Rtl); style { property("margin", "0 auto"); maxWidth(600.px); width(100.percent); height(100.vh); position(Position.Relative); property("overflow", "hidden"); backgroundColor(Color("#F5F5F5")); display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); fontFamily("Vazirmatn", "system-ui", "-apple-system", "sans-serif"); property("box-shadow", "0 0 15px rgba(0,0,0,0.05)") } }) {
         
-        // ۱. نوار اعلان نسخه جدید نرم‌افزار
         if (hasUpdateAvailable) {
             Div(attrs = { style { backgroundColor(Color("#FFF3E0")); color(Color("#E65100")); padding(10.px, 16.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); property("border-bottom", "1px solid #FFE0B2") } }) {
                 Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("نسخه جدید قیاس آماده است 🚀") }
                 Button(attrs = { style { backgroundColor(Color("#EF6C00")); color(Color("white")); border(0.px); borderRadius(6.px); padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { PwaManager.applyUpdate() } }) { Text("بروزرسانی") }
             }
         }
-        // ۲. نوار اعلان نصب اپلیکیشن
         else if (isInstallable) {
             Div(attrs = { style { backgroundColor(Color("#E3F2FD")); color(Color("#0D47A1")); padding(10.px, 16.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); property("border-bottom", "1px solid #90CAF9") } }) {
                 Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("برای استفاده کاملاً آفلاین، قیاس را نصب کنید 📥") }
@@ -124,7 +142,6 @@ fun App() {
                                     val yearOptions = kotlin.js.json("year" to "numeric").unsafeCast<kotlin.js.Date.LocaleOptions>()
                                     val rawPersianYear = kotlin.js.Date().toLocaleDateString("fa-IR", yearOptions).trim()
                                     
-                                    // اصلاح مهم: ارسال پارامترها به صورت ترتیبی تا با امضای ExpenseStageViewModel هماهنگ باشد
                                     expenseViewModel.calculateAndSnapshot(
                                         inputState.calculationName, 
                                         inputState.unitType.displayName, 
