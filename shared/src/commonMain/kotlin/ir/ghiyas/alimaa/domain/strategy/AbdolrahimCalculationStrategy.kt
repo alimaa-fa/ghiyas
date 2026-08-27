@@ -14,12 +14,19 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
         val totalGhiyas = if (input.calculateZivar) {
             102.0
         } else {
-            if (input.targetGroup == "مابین نوری و صغری") 34.4 else 62.0
+            if (input.targetGroup == "نوری و صغری") 34.4 else 62.0
         }
 
-        // ۲. محاسبات پایه
+        // ۲. محاسبات پایه (ارزش قیاس از استخر کل)
         val valuePerGhiyas = input.poolAmount / totalGhiyas
-        results.add(ResultItem("هر قیاس", valuePerGhiyas))
+        
+        // اصلاح نام نمایشی "هر قیاس" بر اساس وضعیت انتقال
+        val ghiyasLabel = if (input.isNimehkari && input.transferDadallah && input.targetGroup == "کل عبدالرحیمی‌ها") {
+            "هر قیاس (قبل از انتقال سهم دادالله)"
+        } else {
+            "هر قیاس"
+        }
+        results.add(ResultItem(ghiyasLabel, valuePerGhiyas))
 
         // ۳. محاسبه سهم زیور در صورت انتخاب شدن
         if (input.calculateZivar) {
@@ -40,6 +47,12 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
 
         if (input.targetGroup == "کل عبدالرحیمی‌ها") {
             results.add(ResultItem("سهم عبدالرحیم", abdolrahimFinal))
+            
+            // اضافه شدن "هر قیاس" دوم (بعد از انتقال) فقط زمانی که انتقال انجام شده باشد
+            if (input.isNimehkari && input.transferDadallah) {
+                val newValuePerGhiyas = abdolrahimFinal / 62.0
+                results.add(ResultItem("هر قیاس (بعد از انتقال سهم دادالله)", newValuePerGhiyas))
+            }
         }
 
         // ۵. تسهیم مابین ورثه بر اساس سناریوی انتخاب شده
@@ -47,7 +60,7 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
         val soghraShare: WalnutUnit
         val ezzatKobraShare: WalnutUnit
 
-        if (input.targetGroup == "مابین نوری و صغری") {
+        if (input.targetGroup == "نوری و صغری") {
             nouriShare = valuePerGhiyas * 20.6
             soghraShare = valuePerGhiyas * 13.8
             ezzatKobraShare = WalnutUnit.ZERO

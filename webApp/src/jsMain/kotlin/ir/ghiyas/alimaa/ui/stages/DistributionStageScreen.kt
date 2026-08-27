@@ -344,7 +344,49 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     }
                 }
                 DistributionMode.MODE_A_NO_BREAKDOWN -> { DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) } }
-                DistributionMode.MODE_DEFAULT_MAKER -> { Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); property("border", "1px solid #BDBDBD"); fontSize(1.cssRem); fontFamily("inherit") }; onChange { event -> viewModel.updateDefaultStrategy(target, event.value ?: "") } }) { Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("انتخاب...") } ; DefaultCalculationsRegistry.strategies.forEach { strategy -> key(strategy.title) { Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) attr("selected", "true") }) { Text(strategy.title) } } } } }
+                
+                // --- بخش اصلاح شده: بازگرداندن شروط پیش‌فرض سازنده ---
+                DistributionMode.MODE_DEFAULT_MAKER -> { 
+                    Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); property("border", "1px solid #BDBDBD"); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { event -> viewModel.updateDefaultStrategy(target, event.value ?: "") } }) { 
+                        Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("انتخاب از محاسبات آماده...") } ; 
+                        DefaultCalculationsRegistry.strategies.forEach { strategy -> key(strategy.title) { Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) attr("selected", "true") }) { Text(strategy.title) } } } 
+                    }
+                    
+                    // شروط ویژه استراتژی عبدالرحیم (کجینو)
+                    if (state.defaultStrategyTitle.contains("عبدالرحیم")) {
+                        Div(attrs = { style { backgroundColor(Color("#F1F8E9")); border(1.px, LineStyle.Dashed, Color("#AED581")); padding(12.px); borderRadius(8.px) } }) {
+                            Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#388E3C")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتخاب گروه هدف عبدالرحیم:") }
+                            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(12.px) }; onChange { e -> viewModel.updateTargetGroup(target, e.value ?: "کل عبدالرحیمی‌ها") } }) {
+                                Option(value = "کل عبدالرحیمی‌ها", attrs = { if (state.targetGroup == "کل عبدالرحیمی‌ها") attr("selected", "true") }) { Text("کل عبدالرحیمی‌ها") }
+                                Option(value = "نوری و صغری", attrs = { if (state.targetGroup == "نوری و صغری") attr("selected", "true") }) { Text("نوری و صغری") }
+                            }
+                            
+                            // شرط مخفی شدن: فقط زمانی نمایش بده که گروه هدف "کل عبدالرحیمی‌ها" باشد
+                            if (state.targetGroup == "کل عبدالرحیمی‌ها") {
+                                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.95.cssRem); fontWeight("bold"); color(Color("#212121")); marginBottom(8.px) } }) {
+                                    Input(type = InputType.Checkbox, attrs = { checked(state.calculateZivar); onChange { e -> viewModel.updateCalculateZivar(target, e.value) }; style { marginRight(8.px) } })
+                                    Text("سهم زیور (نواب) حساب شود؟")
+                                }
+                                
+                                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.95.cssRem); fontWeight("bold"); color(Color("#212121")) } }) {
+                                    Input(type = InputType.Checkbox, attrs = { checked(state.transferDadallah); onChange { e -> viewModel.updateTransferDadallah(target, e.value) }; style { marginRight(8.px) } })
+                                    Text("سهم دادالله (نیمه‌کاری) به عبدالرحیم منتقل شود؟")
+                                }
+                            }
+                        }
+                    }
+                    
+                    // شروط ویژه استراتژی دانگ ماریکی
+                    if (state.defaultStrategyTitle.contains("دانگ ماریکی")) {
+                        Div(attrs = { style { backgroundColor(Color("#F1F8E9")); border(1.px, LineStyle.Dashed, Color("#AED581")); padding(12.px); borderRadius(8.px); marginTop(12.px) } }) {
+                            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.95.cssRem); fontWeight("bold"); color(Color("#212121")) } }) {
+                                Input(type = InputType.Checkbox, attrs = { checked(state.calculateZivar); onChange { e -> viewModel.updateCalculateZivar(target, e.value) }; style { marginRight(8.px) } })
+                                Text("سهم زیور (نواب) حساب شود؟")
+                            }
+                        }
+                    }
+                }
+                
                 DistributionMode.MODE_CUSTOM_BUILDER -> { Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") } }
                 else -> { P(attrs = { style { color(Color("#D32F2F")) } }) { Text("گزینه برای سازگاری گذشته.") } }
             }
