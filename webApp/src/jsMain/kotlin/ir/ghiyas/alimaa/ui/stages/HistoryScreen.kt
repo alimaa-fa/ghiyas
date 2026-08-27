@@ -19,27 +19,30 @@ enum class SortOption(val label: String) {
 @Composable
 fun HistoryItemCard(
     record: CalculationHistoryRecord,
-    onDeleteRequest: (CalculationHistoryRecord) -> Unit
+    onDeleteRequest: (CalculationHistoryRecord) -> Unit,
+    onNameUpdated: () -> Unit // کال‌بک برای به روز رسانی لیست پس از ویرایش نام
 ) {
     var expanded by remember { mutableStateOf(false) }
+    var isEditing by remember { mutableStateOf(false) }
+    var editNameInput by remember { mutableStateOf(record.calculationName) }
     
-    // متغیر isKg حذف شد زیرا تابع فرمت‌کننده حالا نام واحد را برای گردکردن هوشمند می‌پذیرد.
     val dateTimeOptions = kotlin.js.json("year" to "numeric", "month" to "long", "day" to "numeric", "hour" to "2-digit", "minute" to "2-digit").unsafeCast<kotlin.js.Date.LocaleOptions>()
     val liveTimeString = kotlin.js.Date(record.timestamp).toLocaleString("fa-IR", dateTimeOptions)
 
     Div(attrs = {
         style {
             padding(16.px)
-            border(1.px, LineStyle.Solid, Color("#E0E0E0"))
+            border(1.px, LineStyle.Solid, if (isEditing) Color("#81C784") else Color("#E0E0E0"))
             borderRadius(8.px)
-            backgroundColor(Color("#FAFAFA"))
+            backgroundColor(if (isEditing) Color("#F1F8E9") else Color("#FAFAFA"))
             display(DisplayStyle.Flex)
             flexDirection(FlexDirection.Column)
             gap(8.px)
-            cursor("pointer")
+            cursor(if (isEditing) "default" else "pointer")
             property("transition", "all 0.3s ease")
         }
-        onClick { expanded = !expanded }
+        // اگر در حالت ویرایش نیستیم، کلیک روی کل کارت باعث باز و بسته شدن می‌شود
+        onClick { if (!isEditing) expanded = !expanded }
     }) {
         // Visible Header
         Div(attrs = {
@@ -47,92 +50,153 @@ fun HistoryItemCard(
                 display(DisplayStyle.Flex)
                 justifyContent(JustifyContent.SpaceBetween)
                 alignItems(AlignItems.Center)
+                flexWrap(FlexWrap.Wrap)
+                gap(12.px)
             }
         }) {
-            // Title & Date
+            // Title & Date Area
             Div(attrs = {
                 style {
                     display(DisplayStyle.Flex)
                     flexDirection(FlexDirection.Column)
                     gap(4.px)
+                    flex(1)
+                    minWidth(150.px)
                 }
+                // اصلاح مهم: stopPropagation از اینجا حذف شد تا کلیک روی عنوان به کارت اصلی برسد و آن را باز کند
             }) {
-                Span(attrs = {
-                    style {
-                        fontWeight("bold")
-                        color(Color("#1B5E20"))
-                        fontSize(1.1.cssRem)
+                if (isEditing) {
+                    Div(attrs = { 
+                        style { display(DisplayStyle.Flex); gap(8.px); alignItems(AlignItems.Center) }
+                        // هنگام ویرایش فرم، از بسته شدن یا رفتار ناخواسته جلوگیری می‌کنیم
+                        onClick { it.stopPropagation() } 
+                    }) {
+                        Input(type = InputType.Text, attrs = {
+                            value(editNameInput)
+                            onInput { e -> editNameInput = e.value }
+                            style { 
+                                flex(1)
+                                padding(8.px)
+                                borderRadius(4.px)
+                                border(1.px, LineStyle.Solid, Color("#4CAF50"))
+                                fontFamily("inherit")
+                                fontSize(1.cssRem)
+                            }
+                        })
+                        Button(attrs = {
+                            style {
+                                backgroundColor(Color("#4CAF50"))
+                                color(Color("white"))
+                                border(0.px)
+                                borderRadius(4.px)
+                                padding(8.px, 12.px)
+                                cursor("pointer")
+                                fontWeight("bold")
+                            }
+                            onClick {
+                                if (editNameInput.isNotBlank()) {
+                                    LocalStorageRepository.updateRecordName(record.id, editNameInput.trim())
+                                    isEditing = false
+                                    onNameUpdated()
+                                }
+                            }
+                        }) { Text("ذخیره") }
+                        Button(attrs = {
+                            style {
+                                backgroundColor(Color("transparent"))
+                                color(Color("#757575"))
+                                border(1.px, LineStyle.Solid, Color("#BDBDBD"))
+                                borderRadius(4.px)
+                                padding(8.px, 12.px)
+                                cursor("pointer")
+                            }
+                            onClick { 
+                                isEditing = false 
+                                editNameInput = record.calculationName
+                            }
+                        }) { Text("لغو") }
                     }
-                }) {
-                    val title = if (record.calculationName.contains(record.persianYear)) {
-                        record.calculationName
-                    } else {
-                        "${record.calculationName} - ${record.persianYear}"
+                } else {
+                    Span(attrs = {
+                        style {
+                            fontWeight("bold")
+                            color(Color("#1B5E20"))
+                            fontSize(1.1.cssRem)
+                        }
+                    }) {
+                        val title = if (record.calculationName.contains(record.persianYear)) {
+                            record.calculationName
+                        } else {
+                            "${record.calculationName} - ${record.persianYear}"
+                        }
+                        Text(title)
                     }
-                    Text(title)
-                }
 
-                Span(attrs = {
-                    style {
-                        color(Color("#757575"))
-                        fontSize(0.85.cssRem)
+                    Span(attrs = {
+                        style {
+                            color(Color("#757575"))
+                            fontSize(0.85.cssRem)
+                        }
+                    }) {
+                        Text(liveTimeString)
                     }
-                }) {
-                    Text(liveTimeString)
                 }
             }
 
             // Actions
-            Div(attrs = {
-                style {
-                    display(DisplayStyle.Flex)
-                    gap(8.px)
+            if (!isEditing) {
+                Div(attrs = {
+                    style {
+                        display(DisplayStyle.Flex)
+                        gap(8.px)
+                    }
+                    // کلیک روی دکمه‌ها نباید باعث باز و بسته شدن کارت شود
+                    onClick { it.stopPropagation() } 
+                }) {
+                    Button(attrs = {
+                        style {
+                            backgroundColor(Color("#E8F5E9"))
+                            color(Color("#2E7D32"))
+                            border(1.px, LineStyle.Solid, Color("#C8E6C9"))
+                            borderRadius(8.px)
+                            padding(6.px, 12.px)
+                            cursor("pointer")
+                            fontSize(0.9.cssRem)
+                        }
+                        onClick { isEditing = true }
+                    }) { Text("ویرایش نام") }
+
+                    Button(attrs = {
+                        style {
+                            backgroundColor(Color("#E3F2FD"))
+                            color(Color("#1565C0"))
+                            border(1.px, LineStyle.Solid, Color("#BBDEFB"))
+                            borderRadius(8.px)
+                            padding(6.px, 12.px)
+                            cursor("pointer")
+                            fontSize(0.9.cssRem)
+                        }
+                        onClick { ir.ghiyas.alimaa.export.WebExportEngine.shareText(record) }
+                    }) { Text("اشتراک متنی") }
+
+                    Button(attrs = {
+                        style {
+                            backgroundColor(Color("#FFEBEE"))
+                            color(Color("#D32F2F"))
+                            border(1.px, LineStyle.Solid, Color("#FFCDD2"))
+                            borderRadius(8.px)
+                            padding(6.px, 12.px)
+                            cursor("pointer")
+                            fontSize(0.9.cssRem)
+                        }
+                        onClick { onDeleteRequest(record) }
+                    }) { Text("حذف") }
                 }
-                onClick { it.stopPropagation() } // Prevent card expand
-            }) {
-                Button(attrs = {
-                    style {
-                        backgroundColor(Color("#E3F2FD"))
-                        color(Color("#1565C0"))
-                        border(1.px, LineStyle.Solid, Color("#BBDEFB"))
-                        borderRadius(8.px)
-                        padding(6.px, 12.px)
-                        cursor("pointer")
-                        fontSize(0.9.cssRem)
-                    }
-                    onClick { ir.ghiyas.alimaa.export.WebExportEngine.shareText(record) }
-                }) { Text("متن") }
-
-                Button(attrs = {
-                    style {
-                        backgroundColor(Color("#E8F5E9"))
-                        color(Color("#2E7D32"))
-                        border(1.px, LineStyle.Solid, Color("#C8E6C9"))
-                        borderRadius(8.px)
-                        padding(6.px, 12.px)
-                        cursor("pointer")
-                        fontSize(0.9.cssRem)
-                    }
-                    onClick { ir.ghiyas.alimaa.export.WebExportEngine.shareImage(record) }
-                }) { Text("تصویر") }
-
-                Button(attrs = {
-                    style {
-                        backgroundColor(Color("#FFEBEE"))
-                        color(Color("#D32F2F"))
-                        border(1.px, LineStyle.Solid, Color("#FFCDD2"))
-                        borderRadius(8.px)
-                        padding(6.px, 12.px)
-                        cursor("pointer")
-                        fontSize(0.9.cssRem)
-                    }
-                    onClick { onDeleteRequest(record) }
-                }) { Text("حذف") }
             }
         }
 
         // Expandable Details (AnimatedVisibility equivalent for DOM)
-        if (expanded) {
+        if (expanded && !isEditing) {
             Div(attrs = {
                 style {
                     marginTop(12.px)
@@ -145,7 +209,6 @@ fun HistoryItemCard(
                 }
                 onClick { it.stopPropagation() }
             }) {
-                // ارسال مستقیم record.baseUnit برای تشخیص قوانین گردکردن
                 P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#424242")) } }) {
                     Text("مقدار اولیه: ${record.inputAmount.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                 }
@@ -367,7 +430,8 @@ fun HistoryScreen(
                 filteredRecords.forEach { record ->
                     HistoryItemCard(
                         record = record,
-                        onDeleteRequest = { r -> recordToDelete = r }
+                        onDeleteRequest = { r -> recordToDelete = r },
+                        onNameUpdated = { records = LocalStorageRepository.getAllRecords() } 
                     )
                 }
             }

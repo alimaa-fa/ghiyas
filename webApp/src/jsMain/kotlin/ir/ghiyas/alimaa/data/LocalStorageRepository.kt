@@ -11,19 +11,44 @@ object LocalStorageRepository {
 
     fun saveRecord(record: CalculationHistoryRecord) {
         val records = getAllRecords().toMutableList()
-        // If updating an existing one, replace it
         val existingIndex = records.indexOfFirst { it.id == record.id }
+        
         if (existingIndex >= 0) {
+            // آپدیت رکورد موجود
             records[existingIndex] = record
         } else {
-            records.add(0, record) // add to top
+            // رکورد جدید است، پس منطق نامگذاری خودکار (Auto-increment) را اعمال می‌کنیم
+            val baseName = record.calculationName
+            var finalName = baseName
+            var counter = 1
+            
+            // تا زمانی که در همان سال رکوردی با این نام دقیق وجود دارد، عدد را بالا ببر
+            while (records.any { it.calculationName == finalName && it.persianYear == record.persianYear }) {
+                finalName = "$baseName ($counter)"
+                counter++
+            }
+            
+            val recordToSave = record.copy(calculationName = finalName)
+            records.add(0, recordToSave)
         }
+        
         saveAll(records)
     }
 
     fun deleteRecord(id: String) {
         val records = getAllRecords().filter { it.id != id }
         saveAll(records)
+    }
+
+    // متد اختصاصی برای ویرایش نام رکورد به طور مستقیم
+    fun updateRecordName(id: String, newName: String) {
+        val records = getAllRecords().toMutableList()
+        val existingIndex = records.indexOfFirst { it.id == id }
+        if (existingIndex >= 0) {
+            val record = records[existingIndex]
+            records[existingIndex] = record.copy(calculationName = newName)
+            saveAll(records)
+        }
     }
 
     fun getAllRecords(): List<CalculationHistoryRecord> {
