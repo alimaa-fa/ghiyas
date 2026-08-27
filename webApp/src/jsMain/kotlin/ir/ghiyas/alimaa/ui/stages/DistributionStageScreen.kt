@@ -64,13 +64,9 @@ fun RecursiveComprehensiveNode(
 
     Div(attrs = { style { padding(10.px); marginTop(10.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(6.px); opacity(opacityValue) } }) {
         
-        // جداسازی نام از مقدار در دو سطر برای رفع مشکل کارت‌های تو در تو در موبایل
         Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px); marginBottom(12.px) } }) {
-            
-            // سطر اول: نام شریک (عرض کامل ۱۰۰٪)
             DistTextInput("نام شریک", node.name, false, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } 
             
-            // سطر دوم: مقدار/درصد + دکمه حذف
             Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px) } }) {
                 if (currentMode != ComprehensiveMode.PERSON) {
                     Div(attrs = { style { flex(1) } }) { 
@@ -88,7 +84,6 @@ fun RecursiveComprehensiveNode(
                 }
                 
                 if (!isExecutionMode) {
-                    // ابعاد دکمه از ۳۶ پیکسل به ۳۲ پیکسل کاهش یافت تا ظریف‌تر شود
                     Button(attrs = { style { property("flex", "0 0 32px"); width(32.px); height(32.px); padding(0.px); backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(6.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); justifyContent(JustifyContent.Center); fontWeight("bold"); fontSize(1.2.cssRem); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
                 }
             }
@@ -173,11 +168,15 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
             
             PoolSettingsCard("تنظیمات سهم $p1Name", PoolTarget.PARTNER_1, state.partner1PoolState, viewModel, agricultureInput, customProfiles, onNavigateToBuilder)
             
+            // شرط محو شدن شریک 2: اگر ماکروی پیش‌فرض بود یا کاربر تیک ادغام یکپارچه را زده بود
             val p1Strategy = DefaultCalculationsRegistry.strategies.find { it.title == state.partner1PoolState.defaultStrategyTitle }
             val isP1GlobalMacro = state.partner1PoolState.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
+            val isComprehensiveUnified = state.partner1PoolState.mode == DistributionMode.MODE_COMPREHENSIVE && state.partner1PoolState.isUnifiedComprehensiveCalculation
 
             if (isP1GlobalMacro) {
                 Div(attrs = { style { marginBottom(24.px); padding(20.px); border(2.px, LineStyle.Dashed, Color("#90CAF9")); borderRadius(12.px); backgroundColor(Color("#E3F2FD")); color(Color("#0D47A1")); textAlign("center"); fontWeight("bold"); fontSize(1.05.cssRem) } }) { Text("🔒 تنظیمات سهم $p2Name به صورت خودکار توسط محاسبه یکپارچه (${p1Strategy.title}) مدیریت و تسهیم می‌شود.") }
+            } else if (isComprehensiveUnified) {
+                Div(attrs = { style { marginBottom(24.px); padding(20.px); border(2.px, LineStyle.Dashed, Color("#FFCA28")); borderRadius(12.px); backgroundColor(Color("#FFF8E1")); color(Color("#F57F17")); textAlign("center"); fontWeight("bold"); fontSize(1.05.cssRem) } }) { Text("💡 تنظیمات سهم $p2Name به درخواست شما، با شریک اول تجمیع و در قالب یک محاسبه جامع پردازش می‌شود.") }
             } else {
                 PoolSettingsCard("تنظیمات سهم $p2Name", PoolTarget.PARTNER_2, state.partner2PoolState, viewModel, agricultureInput, customProfiles, onNavigateToBuilder)
             }
@@ -213,6 +212,30 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
         Div(attrs = { style { padding(16.px); backgroundColor(Color("white")); borderRadius(8.px); property("border", "1px dashed #C5E1A5") } }) {
             when (state.mode) {
                 DistributionMode.MODE_COMPREHENSIVE -> {
+                    // --- بخش اضافه شده: کادر محاسبه یکپارچه در صورت فعال بودن نیمه‌کاری ---
+                    if (agricultureInput.isNimehkari && target == PoolTarget.PARTNER_1) {
+                        var showHelp by remember { mutableStateOf(false) }
+                        
+                        Div(attrs = { style { marginBottom(20.px); padding(12.px); backgroundColor(Color("#FFF3E0")); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFE0B2")) } }) {
+                            Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontWeight("bold"); color(Color("#212121")); fontSize(1.05.cssRem) } }) {
+                                Input(type = InputType.Checkbox, attrs = { checked(state.isUnifiedComprehensiveCalculation); onChange { e -> viewModel.updateUnifiedComprehensive(target, e.value) }; style { marginRight(8.px); width(20.px); height(20.px) } })
+                                Text("محاسبه هر دو شریک نیمه‌کاری در همین محاسبه")
+                            }
+                            
+                            Div(attrs = { style { marginTop(12.px); textAlign("center") } }) {
+                                Span(attrs = { style { color(Color("#E65100")); fontWeight("bold"); cursor("pointer"); fontSize(0.95.cssRem) }; onClick { showHelp = !showHelp } }) {
+                                    Text("💡 راهنمای جلوگیری از باگ شریک دوم (${if (showHelp) "بستن" else "مشاهده"})")
+                                }
+                            }
+                            
+                            if (showHelp) {
+                                Div(attrs = { style { marginTop(12.px); padding(12.px); backgroundColor(Color("#FFF8E1")); borderRadius(6.px); color(Color("#5D4037")); fontSize(0.9.cssRem); lineHeight("1.6"); textAlign("justify") } }) {
+                                    Text("اگر محصول شما نیمه‌کاری هست و شما قصد دارید سهم هر دو شریک در همین محاسبه انجام شوند و نه جدا، این گزینه را تیک بزنید تا از باگ و ظاهر شدن تنظیمات شریک دوم در صفحه اصلی، پس از انتخاب نیمه‌کاری در مرحله قبل جلوگیری کنید!")
+                                }
+                            }
+                        }
+                    }
+
                     val compState = state.comprehensiveState
                     var savedTemplates by remember { mutableStateOf(DistributionTemplateRepository.getAllTemplates()) }
                     var newTemplateTitle by remember { mutableStateOf("") }

@@ -19,12 +19,14 @@ data class PoolDistributionState(
     val groupName: String = "",                           
     val comprehensiveState: ComprehensiveState = ComprehensiveState(), 
     val modeBState: ModeBState = ModeBState(), // Legacy
-    val shareholders: List<ShareholderInput> = listOf(ShareholderInput()), // نوع لیست بازگردانی شد
+    val shareholders: List<ShareholderInput> = listOf(ShareholderInput()),
     val defaultStrategyTitle: String = "",
     val customProfileId: String = "", 
     val calculateZivar: Boolean = true,
     val targetGroup: String = "کل عبدالرحیمی‌ها",
-    val transferDadallah: Boolean = false        
+    val transferDadallah: Boolean = false,
+    // فلگ جدید برای ادغام محاسبه شریک دوم در شریک اول در حالت جامع
+    val isUnifiedComprehensiveCalculation: Boolean = false
 )
 
 data class DistributionStageState(
@@ -60,6 +62,9 @@ class DistributionStageViewModel {
     fun updateTargetGroup(target: PoolTarget, group: String) { updatePoolState(target) { it.copy(targetGroup = group) } }
     fun updateTransferDadallah(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(transferDadallah = isChecked) } }
     
+    // متد جدید برای به‌روزرسانی تیک محاسبه یکپارچه
+    fun updateUnifiedComprehensive(target: PoolTarget, isUnified: Boolean) { updatePoolState(target) { it.copy(isUnifiedComprehensiveCalculation = isUnified) } }
+
     // === متدهای موتور جدید جامع (Comprehensive) ===
     fun updateComprehensiveState(target: PoolTarget, update: (ComprehensiveState) -> ComprehensiveState) {
         updatePoolState(target) { it.copy(comprehensiveState = update(it.comprehensiveState)) }
