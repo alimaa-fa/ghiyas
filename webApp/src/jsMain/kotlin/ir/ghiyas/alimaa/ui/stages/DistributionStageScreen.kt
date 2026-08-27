@@ -64,28 +64,33 @@ fun RecursiveComprehensiveNode(
 
     Div(attrs = { style { padding(10.px); marginTop(10.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(6.px); opacity(opacityValue) } }) {
         
-        // ردیف اول: عرض فیلد عدد از 90 به 72 کاهش یافت تا نام شریک فضای کافی داشته باشد
-        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(6.px); marginBottom(10.px) } }) {
-            Div(attrs = { style { property("flex", "1"); property("min-width", "0") } }) { 
-                DistTextInput("نام شریک", node.name, false, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } 
-            }
+        // جداسازی نام از مقدار در دو سطر برای رفع مشکل کارت‌های تو در تو در موبایل
+        Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px); marginBottom(12.px) } }) {
             
-            if (currentMode != ComprehensiveMode.PERSON) {
-                Div(attrs = { style { property("flex", "0 0 72px"); width(72.px) } }) { 
-                    DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } 
+            // سطر اول: نام شریک (عرض کامل ۱۰۰٪)
+            DistTextInput("نام شریک", node.name, false, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } 
+            
+            // سطر دوم: مقدار/درصد + دکمه حذف
+            Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px) } }) {
+                if (currentMode != ComprehensiveMode.PERSON) {
+                    Div(attrs = { style { flex(1) } }) { 
+                        DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } 
+                    }
+                } else {
+                    Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.9.cssRem) } }) {
+                        Input(type = InputType.Checkbox, attrs = { 
+                            checked(node.isFemale)
+                            if (isExecutionMode) attr("disabled", "true")
+                            onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } 
+                        })
+                        Text("دختر (۰.۵)")
+                    }
                 }
-            } else {
-                Label(attrs = { style { property("flex", "0 0 72px"); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.85.cssRem) } }) {
-                    Input(type = InputType.Checkbox, attrs = { 
-                        checked(node.isFemale)
-                        if (isExecutionMode) attr("disabled", "true")
-                        onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(2.px) } 
-                    })
-                    Text("دختر(۰.۵)")
+                
+                if (!isExecutionMode) {
+                    // ابعاد دکمه از ۳۶ پیکسل به ۳۲ پیکسل کاهش یافت تا ظریف‌تر شود
+                    Button(attrs = { style { property("flex", "0 0 32px"); width(32.px); height(32.px); padding(0.px); backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(6.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); justifyContent(JustifyContent.Center); fontWeight("bold"); fontSize(1.2.cssRem); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
                 }
-            }
-            if (!isExecutionMode) {
-                Button(attrs = { style { property("flex", "0 0 36px"); width(36.px); height(36.px); padding(0.px); backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(6.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); justifyContent(JustifyContent.Center); fontWeight("bold"); fontSize(1.2.cssRem); property("cursor", "pointer") }; onClick { viewModel.removeNode(target, path.dropLast(1), node.id) } }) { Text("-") }
             }
         }
 
