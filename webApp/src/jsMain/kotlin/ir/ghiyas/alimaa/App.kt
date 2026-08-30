@@ -12,6 +12,9 @@ import ir.ghiyas.alimaa.ui.stages.ExpenseStageScreen
 import ir.ghiyas.alimaa.ui.stages.AgricultureStageScreen
 import ir.ghiyas.alimaa.ui.stages.DistributionStageScreen
 import ir.ghiyas.alimaa.ui.stages.HistoryScreen
+import ir.ghiyas.alimaa.ui.stages.WorkCalendarScreen
+import ir.ghiyas.alimaa.ui.stages.CalendarManagerForm
+import ir.ghiyas.alimaa.ui.stages.WorkCalendarFormState
 import ir.ghiyas.alimaa.presentation.stages.input.InputStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.expense.ExpenseStageViewModel
 import ir.ghiyas.alimaa.presentation.stages.agriculture.AgricultureStageViewModel
@@ -25,6 +28,22 @@ import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 import ir.ghiyas.alimaa.core.pwa.PwaManager
 import kotlinx.browser.window
 import org.w3c.dom.events.Event
+import ir.ghiyas.alimaa.domain.models.WorkCalendarProfile
+import ir.ghiyas.alimaa.data.WorkCalendarRepository
+
+@Composable
+fun DeleteConfirmDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
+    Div(attrs = { style { position(Position.Fixed); top(0.px); left(0.px); width(100.percent); height(100.vh); backgroundColor(Color("rgba(0,0,0,0.5)")); display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); property("z-index", "9999") } }) {
+        Div(attrs = { dir(DirType.Rtl); style { backgroundColor(Color("white")); padding(24.px); borderRadius(16.px); width(90.percent); maxWidth(400.px) } }) {
+            H3(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#D32F2F")) } }) { Text("حذف تقویم") }
+            P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#424242")) } }) { Text("آیا مطمئن هستید که می‌خواهید این تقویم را به طور کامل حذف کنید؟ این عمل غیرقابل بازگشت است.") }
+            Div(attrs = { style { display(DisplayStyle.Flex); gap(12.px) } }) {
+                Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#F5F5F5")); color(Color("#424242")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onCancel() } }) { Text("لغو") }
+                Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#D32F2F")); color(Color("white")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onConfirm() } }) { Text("بله، حذف کن") }
+            }
+        }
+    }
+}
 
 @Composable
 fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight: Boolean = false) {
@@ -35,23 +54,15 @@ fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight
     }
 }
 
-// کامپوننت دیالوگ خروج اختصاصی با متن اصلاح شده و راهنمای دو بار بک زدن
 @Composable
 fun ExitConfirmDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
     Div(attrs = { style { position(Position.Fixed); top(0.px); left(0.px); width(100.percent); height(100.vh); backgroundColor(Color("rgba(0,0,0,0.5)")); display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); property("z-index", "9999") } }) {
-        Div(attrs = { dir(DirType.Rtl); style { backgroundColor(Color("white")); padding(24.px); borderRadius(16.px); width(90.percent); maxWidth(400.px); property("box-shadow", "0 10px 25px rgba(0,0,0,0.2)") } }) {
-            H3(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#D32F2F")); fontSize(1.3.cssRem) } }) { Text("خروج از برنامه") }
-            
-            P(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#424242")); fontSize(1.1.cssRem); lineHeight("1.6") } }) { Text("آیا مطمئن هستید که می‌خواهید خارج شوید؟ اطلاعات ذخیره‌نشده شما پاک خواهند شد.") }
-            
-            // پیام راهنما برای کاربران PWA و مرورگرها
-            Div(attrs = { style { backgroundColor(Color("#FFF3E0")); padding(12.px); borderRadius(8.px); marginBottom(24.px); border(1.px, LineStyle.Dashed, Color("#FFB74D")) } }) {
-                P(attrs = { style { margin(0.px); color(Color("#E65100")); fontSize(0.9.cssRem); fontWeight("bold"); textAlign("center") } }) { Text("💡 راهنما: برای خروج می‌توانید دوباره دکمه بازگشت گوشی را بزنید، یا دکمه زیر را انتخاب کنید.") }
-            }
-
+        Div(attrs = { dir(DirType.Rtl); style { backgroundColor(Color("white")); padding(24.px); borderRadius(16.px); width(90.percent); maxWidth(400.px) } }) {
+            H3(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#D32F2F")) } }) { Text("خروج از برنامه") }
+            P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#424242")) } }) { Text("آیا مطمئن هستید که می‌خواهید خارج شوید؟") }
             Div(attrs = { style { display(DisplayStyle.Flex); gap(12.px) } }) {
-                Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#F5F5F5")); color(Color("#424242")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer") }; onClick { onCancel() } }) { Text("لغو") }
-                Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#D32F2F")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer") }; onClick { onConfirm() } }) { Text("بله، خارج شوم") }
+                Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#F5F5F5")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onCancel() } }) { Text("لغو") }
+                Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#D32F2F")); color(Color("white")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onConfirm() } }) { Text("بله") }
             }
         }
     }
@@ -73,26 +84,25 @@ fun App() {
     val builderViewModel = remember { ir.ghiyas.alimaa.presentation.builder.BuilderViewModel() }
     val dynamicPlayerViewModel = remember { ir.ghiyas.alimaa.presentation.player.DynamicPlayerViewModel() }
     
+    var workCalendars by remember { mutableStateOf(emptyList<WorkCalendarProfile>()) }
+    var activeCalendarId by remember { mutableStateOf<String?>(null) }
+    val calendarFormState = remember { WorkCalendarFormState() }
+    var showDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+    
     LaunchedEffect(Unit) { PwaManager.initialize() }
 
-    // مدیریت هوشمند دکمه بازگشت با تله یک‌بار مصرف (Double Tap to Exit)
     LaunchedEffect(Unit) {
         window.history.pushState(null, "", window.location.href)
-        
         val popStateHandler: (Event) -> Unit = { 
             if (currentScreen != "main") {
-                // اگر در صفحه فرعی بود، فقط برگرد به اصلی و تله را مسلح کن
                 currentScreen = "main"
                 window.history.pushState(null, "", window.location.href)
             } else {
                 if (!showExitDialog) {
-                    // تپ اول دکمه بازگشت در صفحه اصلی: دیالوگ را باز کن و تله را مسلح کن تا مرورگر خارج نشود
                     showExitDialog = true
                     window.history.pushState(null, "", window.location.href)
                 } else {
-                    // تپ دوم: اگر دیالوگ باز است و کاربر دوباره دکمه سخت‌افزاری بازگشت را زد،
-                    // ما اینجا هیچ رکوردی (pushState) نمی‌سازیم. مرورگر خودش به صورت نیتیو بسته می‌شود.
-                    showExitDialog = false // پنهان کردن دیالوگ برای تمیزی خروج
+                    showExitDialog = false
                 }
             }
         }
@@ -105,9 +115,18 @@ fun App() {
     }
 
     var customProfiles by remember { mutableStateOf(emptyList<ir.ghiyas.alimaa.domain.models.CustomProfile>()) }
+    
     LaunchedEffect(currentScreen, currentMainTab) {
         if (currentScreen == "main") {
             try { customProfiles = ir.ghiyas.alimaa.data.CustomProfileRepository.getAllProfiles() } catch (e:Exception) {}
+            if (currentMainTab == "work_calendar") {
+                try { 
+                    workCalendars = WorkCalendarRepository.getAllProfiles() 
+                    if (activeCalendarId == null) {
+                        activeCalendarId = workCalendars.find { it.isDefault }?.id ?: workCalendars.firstOrNull()?.id
+                    }
+                } catch (e:Exception) {}
+            }
         }
     }
 
@@ -116,7 +135,6 @@ fun App() {
     val calcState by calculatorViewModel.state.collectAsState()
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     val distributionState by distributionViewModel.state.collectAsState()
-    val isInstallable by PwaManager.isInstallable.collectAsState()
     val hasUpdateAvailable by PwaManager.hasUpdateAvailable.collectAsState()
 
     LaunchedEffect(inputState.totalAmount) {
@@ -127,33 +145,73 @@ fun App() {
     Style(AppStyleSheet)
     val mainPaddingBottom = if (calcState.isVisible && !calcState.isFullScreen) 440.px else 32.px
 
-    Div(attrs = { dir(DirType.Rtl); style { property("margin", "0 auto"); maxWidth(600.px); width(100.percent); height(100.vh); position(Position.Relative); property("overflow", "hidden"); backgroundColor(Color("#F5F5F5")); display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); fontFamily("Vazirmatn", "system-ui", "-apple-system", "sans-serif"); property("box-shadow", "0 0 15px rgba(0,0,0,0.05)") } }) {
+    Div(attrs = { dir(DirType.Rtl); style { property("margin", "0 auto"); maxWidth(600.px); width(100.percent); height(100.vh); position(Position.Relative); property("overflow", "hidden"); backgroundColor(Color("#F5F5F5")); display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); fontFamily("Vazirmatn", "system-ui", "-apple-system", "sans-serif") } }) {
         
-        if (hasUpdateAvailable) {
-            Div(attrs = { style { backgroundColor(Color("#FFF3E0")); color(Color("#E65100")); padding(10.px, 16.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); property("border-bottom", "1px solid #FFE0B2") } }) {
-                Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("نسخه جدید قیاس آماده است 🚀") }
-                Button(attrs = { style { backgroundColor(Color("#EF6C00")); color(Color("white")); border(0.px); borderRadius(6.px); padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { PwaManager.applyUpdate() } }) { Text("بروزرسانی") }
-            }
+        val isCalendarTab = currentScreen == "main" && currentMainTab == "work_calendar"
+        
+        if (isCalendarTab) {
+            GhiyasTopAppBar(
+                onMenuClick = { isDrawerOpen = true },
+                onClearClick = {}, onHistoryClick = {},
+                centerContent = {
+                    if (calendarFormState.isVisible) {
+                        Span(attrs = { style { fontSize(18.px); fontWeight("bold") } }) { Text("مدیریت تقویم") }
+                    } else if (workCalendars.isNotEmpty()) {
+                        Select(attrs = {
+                            style { padding(4.px, 8.px); borderRadius(6.px); border(0.px); backgroundColor(Color("#81C784")); color(Color("white")); fontSize(1.cssRem); fontFamily("Vazirmatn"); fontWeight("bold"); outline("none") }
+                            onChange { e -> activeCalendarId = e.value }
+                        }) {
+                            workCalendars.forEach { cal ->
+                                Option(value = cal.id, attrs = { if (activeCalendarId == cal.id) selected() }) { 
+                                    Text(cal.name + if (cal.isDefault) " (پیش‌فرض)" else "") 
+                                }
+                            }
+                        }
+                    } else {
+                        Span(attrs = { style { fontSize(20.px); fontWeight("bold") } }) { Text("تقویم کاری") }
+                    }
+                },
+                onAddNewCalendar = { calendarFormState.reset(); calendarFormState.isVisible = true },
+                onEditCalendar = {
+                    workCalendars.find { it.id == activeCalendarId }?.let { prof ->
+                        calendarFormState.existingId = prof.id
+                        calendarFormState.calendarName = prof.name
+                        calendarFormState.parsedStartYear = prof.startYear
+                        calendarFormState.parsedStartMonth = prof.startMonth
+                        calendarFormState.parsedStartDay = prof.startDay
+                        calendarFormState.parsedTurnTime = prof.turnTime
+                        calendarFormState.parsedSchedule = prof.schedule
+                        calendarFormState.isVisible = true
+                    }
+                },
+                onDeleteCalendar = { showDeleteConfirmId = activeCalendarId },
+                onSetDefaultCalendar = {
+                    workCalendars.find { it.id == activeCalendarId }?.let { prof ->
+                        WorkCalendarRepository.saveProfile(prof.copy(isDefault = true))
+                        workCalendars = WorkCalendarRepository.getAllProfiles()
+                        window.alert("تقویم ${prof.name} به عنوان پیش‌فرض ثبت شد.")
+                    }
+                },
+                hasActiveCalendar = activeCalendarId != null && !calendarFormState.isVisible
+            )
+        } else {
+            GhiyasTopAppBar(
+                onMenuClick = { isDrawerOpen = true },
+                onClearClick = { clearFormRequested = true; expenseViewModel.clearForm(); agricultureViewModel.clearForm(); distributionViewModel.clearForm() },
+                onHistoryClick = { navigateTo("history") }
+            )
         }
-        else if (isInstallable) {
-            Div(attrs = { style { backgroundColor(Color("#E3F2FD")); color(Color("#0D47A1")); padding(10.px, 16.px); display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); property("border-bottom", "1px solid #90CAF9") } }) {
-                Div(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold") } }) { Text("برای استفاده کاملاً آفلاین، قیاس را نصب کنید 📥") }
-                Button(attrs = { style { backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(6.px); padding(6.px, 12.px); fontSize(0.85.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { PwaManager.promptInstall() } }) { Text("نصب اپلیکیشن") }
-            }
-        }
-
-        GhiyasTopAppBar(onMenuClick = { isDrawerOpen = true }, onClearClick = { clearFormRequested = true; expenseViewModel.clearForm(); agricultureViewModel.clearForm(); distributionViewModel.clearForm() }, onHistoryClick = { navigateTo("history") }, onShareClick = null)
 
         if (isDrawerOpen) { NavigationDrawer(onClose = { isDrawerOpen = false }, onNavigate = { route -> navigateTo(route); isDrawerOpen = false }) }
         
-        Div(attrs = { style { property("flex", "1"); property("overflow-y", "auto"); paddingBottom(mainPaddingBottom); property("transition", "padding-bottom 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)") } }) {
+        Div(attrs = { style { property("flex", "1"); property("overflow-y", "auto"); paddingBottom(mainPaddingBottom) } }) {
             when (currentScreen) {
                 "main" -> {
                     HeroBanner()
                     Div(attrs = { classes(AppStyleSheet.tabContainer); classes("hide-scrollbar") }) {
                         Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "default_pipeline") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "default_pipeline" } }) { Text("محاسبات پیش‌فرض") }
                         Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "standalone_runner") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "standalone_runner" } }) { Text("مدیریت الگوها") }
-                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "irrigation_calendar") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "irrigation_calendar" } }) { Text("تقویم آبیاری") }
+                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "work_calendar") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "work_calendar" } }) { Text("تقویم کاری") }
                     }
 
                     when (currentMainTab) {
@@ -232,7 +290,23 @@ fun App() {
                                 Button(attrs = { style { width(100.percent); padding(16.px); backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer"); marginTop(16.px) }; onClick { builderViewModel.clearForNewProfile(); navigateTo("builder") } }) { Text("➕ ساخت الگوی جدید") }
                             }
                         }
-                        "irrigation_calendar" -> { Div(attrs = { style { padding(32.px); textAlign("center"); color(Color("#757575")) } }) { Text("تقویم آبیاری (به زودی)") } }
+                        "work_calendar" -> { 
+                            if (calendarFormState.isVisible) {
+                                CalendarManagerForm(
+                                    state = calendarFormState,
+                                    onProfileSaved = {
+                                        calendarFormState.isVisible = false
+                                        calendarFormState.reset()
+                                        workCalendars = WorkCalendarRepository.getAllProfiles()
+                                        activeCalendarId = workCalendars.lastOrNull()?.id
+                                    },
+                                    onCancel = { calendarFormState.isVisible = false }
+                                )
+                            } else {
+                                val activeProfile = workCalendars.find { it.id == activeCalendarId }
+                                WorkCalendarScreen(activeProfile = activeProfile)
+                            }
+                        }
                     }
                 }
                 "history" -> { HistoryScreen(onBack = { window.history.back() }) }
@@ -243,31 +317,19 @@ fun App() {
             }
         }
         
-        // کنترل رفتار دکمه‌های دیالوگ خروج
-        if (showExitDialog) {
-            ExitConfirmDialog(
-                onConfirm = { 
-                    showExitDialog = false
-                    try {
-                        // اگر در بستر ایتا یا بله هستیم مستقیماً ببند
-                        val eitaa = window.asDynamic().Eitaa
-                        if (eitaa != null && eitaa.WebApp != null) {
-                            eitaa.WebApp.close()
-                        } else {
-                            window.history.back()
-                        }
-                    } catch (e: Throwable) {
-                        window.history.back()
-                    }
+        if (showDeleteConfirmId != null) {
+            DeleteConfirmDialog(
+                onConfirm = {
+                    WorkCalendarRepository.deleteProfile(showDeleteConfirmId!!)
+                    workCalendars = WorkCalendarRepository.getAllProfiles()
+                    activeCalendarId = workCalendars.find { it.isDefault }?.id ?: workCalendars.firstOrNull()?.id
+                    showDeleteConfirmId = null
                 },
-                onCancel = { 
-                    showExitDialog = false 
-                    // کاربر لغو کرده است، تله را دوباره مسلح کن
-                    window.history.pushState(null, "", window.location.href)
-                }
+                onCancel = { showDeleteConfirmId = null }
             )
         }
         
+        if (showExitDialog) { ExitConfirmDialog(onConfirm = { window.history.back() }, onCancel = { showExitDialog = false }) }
         FloatingCalculatorWidget(calculatorViewModel)
     }
 }
