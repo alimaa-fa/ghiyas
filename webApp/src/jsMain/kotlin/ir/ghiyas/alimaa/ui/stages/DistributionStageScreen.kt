@@ -73,13 +73,19 @@ fun RecursiveComprehensiveNode(
                         DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } 
                     }
                 } else {
-                    Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.9.cssRem) } }) {
-                        Input(type = InputType.Checkbox, attrs = { 
-                            checked(node.isFemale)
-                            if (isExecutionMode) attr("disabled", "true")
-                            onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } 
-                        })
-                        Text("دختر (۰.۵)")
+                    // در حالت اجرا، اگر شخص دختر نیست، اصلاً چک‌باکس را رندر نکن تا فضا اشغال نشود.
+                    if (!isExecutionMode || node.isFemale) {
+                        Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.9.cssRem) } }) {
+                            Input(type = InputType.Checkbox, attrs = { 
+                                checked(node.isFemale)
+                                if (isExecutionMode) attr("disabled", "true")
+                                onChange { e -> viewModel.updateNode(target, path) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } 
+                            })
+                            Text("دختر (۰.۵)")
+                        }
+                    } else {
+                        // اشغال فضای خالی برای تراز ماندن کارت اگر پسر بود
+                        Div(attrs = { style { flex(1) } }) {}
                     }
                 }
                 
@@ -90,7 +96,7 @@ fun RecursiveComprehensiveNode(
         }
 
         if (!isExecutionMode) {
-            // --- حالت ویرایش (Edit Mode) ---
+            // --- حالت ویرایش (طراحی الگو) ---
             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); color(Color("#F57C00")); marginBottom(12.px); fontWeight("bold") } }) {
                 Input(type = InputType.Checkbox, attrs = { checked(node.canBeExcluded); onChange { e -> viewModel.updateNode(target, path) { it.copy(canBeExcluded = e.value) } }; style { marginRight(4.px) } })
                 Text("حساب شود/نشود؟ (مجوز حذف در اجرا)")
@@ -119,13 +125,12 @@ fun RecursiveComprehensiveNode(
                     Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "1px dashed #4CAF50"); borderRadius(4.px); padding(8.px); property("cursor", "pointer"); marginTop(8.px) }; onClick { viewModel.addNode(target, path) } }) { Text("+ افزودن عضو زیرمجموعه") }
                 }
             }
-        } 
-        // --- فاز اجرا (Execution Mode) ---
-        else {
+        } else {
+            // --- حالت اجرا (استفاده از الگو) ---
             if (node.canBeExcluded) {
                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); color(Color("#D32F2F")); marginBottom(12.px); fontWeight("bold") } }) {
                     Input(type = InputType.Checkbox, attrs = { checked(node.isExcluded); onChange { e -> viewModel.updateNode(target, path) { it.copy(isExcluded = e.value) } }; style { marginRight(4.px) } })
-                    Text("حساب نشود؟ (حذف از محاسبه)")
+                    Text("حساب نشود؟ (حذف از این محاسبه)")
                 }
             }
 
@@ -168,7 +173,6 @@ fun DistributionStageScreen(viewModel: DistributionStageViewModel, agricultureIn
             
             PoolSettingsCard("تنظیمات سهم $p1Name", PoolTarget.PARTNER_1, state.partner1PoolState, viewModel, agricultureInput, customProfiles, onNavigateToBuilder)
             
-            // شرط محو شدن شریک 2: اگر ماکروی پیش‌فرض بود یا کاربر تیک ادغام یکپارچه را زده بود
             val p1Strategy = DefaultCalculationsRegistry.strategies.find { it.title == state.partner1PoolState.defaultStrategyTitle }
             val isP1GlobalMacro = state.partner1PoolState.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
             val isComprehensiveUnified = state.partner1PoolState.mode == DistributionMode.MODE_COMPREHENSIVE && state.partner1PoolState.isUnifiedComprehensiveCalculation
@@ -212,7 +216,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
         Div(attrs = { style { padding(16.px); backgroundColor(Color("white")); borderRadius(8.px); property("border", "1px dashed #C5E1A5") } }) {
             when (state.mode) {
                 DistributionMode.MODE_COMPREHENSIVE -> {
-                    // --- بخش اضافه شده: کادر محاسبه یکپارچه در صورت فعال بودن نیمه‌کاری ---
                     if (agricultureInput.isNimehkari && target == PoolTarget.PARTNER_1) {
                         var showHelp by remember { mutableStateOf(false) }
                         
@@ -239,29 +242,41 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     val compState = state.comprehensiveState
                     var savedTemplates by remember { mutableStateOf(DistributionTemplateRepository.getAllTemplates()) }
                     var newTemplateTitle by remember { mutableStateOf("") }
-                    var activeExecutionTemplateId by remember { mutableStateOf<String?>(null) }
                     var editingTemplateId by remember { mutableStateOf<String?>(null) }
                     
-                    val isExecutionMode = activeExecutionTemplateId != null
+                    var loadedForExecutionId by remember { mutableStateOf<String?>(null) }
+                    val isExecutionMode = loadedForExecutionId != null
                     
-                    // --- پنل الگوهای ذخیره شده ---
                     if (savedTemplates.isNotEmpty()) {
                         Div(attrs = { style { marginBottom(24.px); padding(12.px); backgroundColor(Color("#F3E5F5")); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#CE93D8")) } }) {
                             H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(Color("#6A1B9A")) } }) { Text("💳 الگوهای آماده (دسترسی سریع)") }
-                            Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px) } }) {
+                            
+                            Div(attrs = { 
+                                style { 
+                                    display(DisplayStyle.Flex); 
+                                    flexDirection(FlexDirection.Column); 
+                                    gap(8.px); 
+                                    maxHeight(260.px); 
+                                    property("overflow-y", "auto"); 
+                                    paddingRight(4.px) 
+                                } 
+                                classes("hide-scrollbar")
+                            }) {
                                 savedTemplates.forEach { template ->
                                     val isBeingEdited = editingTemplateId == template.id
+                                    val isBeingExecuted = loadedForExecutionId == template.id
+                                    
                                     key(template.id) {
-                                        Div(attrs = { style { backgroundColor(if(isBeingEdited) Color("#FFF9C4") else Color("white")); border(1.px, LineStyle.Solid, if(isBeingEdited) Color("#FBC02D") else Color("#AB47BC")); borderRadius(8.px); padding(12.px) } }) {
-                                            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(if(isBeingEdited) Color("#F57F17") else Color("#4A148C")); fontWeight("bold") } }) { 
-                                                Text(template.title + if(isBeingEdited) " (در حال ویرایش...)" else "") 
+                                        Div(attrs = { style { backgroundColor(if(isBeingEdited) Color("#FFF9C4") else if(isBeingExecuted) Color("#E8F5E9") else Color("white")); border(1.px, LineStyle.Solid, if(isBeingEdited) Color("#FBC02D") else if(isBeingExecuted) Color("#4CAF50") else Color("#AB47BC")); borderRadius(8.px); padding(12.px) } }) {
+                                            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(if(isBeingEdited) Color("#F57F17") else if(isBeingExecuted) Color("#2E7D32") else Color("#4A148C")); fontWeight("bold") } }) { 
+                                                Text(template.title + if(isBeingEdited) " (در حال ویرایش...)" else if(isBeingExecuted) " (درحال محاسبه)" else "") 
                                             }
                                             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px) } }) {
                                                 Button(attrs = { style { flex(1); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(4.px); padding(6.px); cursor("pointer") }
                                                     onClick { 
                                                         viewModel.updateComprehensiveState(target) { it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) }
-                                                        activeExecutionTemplateId = template.id
                                                         editingTemplateId = null
+                                                        loadedForExecutionId = template.id
                                                         newTemplateTitle = ""
                                                     }
                                                 }) { Text("انتخاب برای محاسبه") }
@@ -269,8 +284,8 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                                 Button(attrs = { style { flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(4.px); padding(6.px); cursor("pointer") }
                                                     onClick { 
                                                         viewModel.updateComprehensiveState(target) { it.copy(rootMode = template.rootMode, countLimitInput = template.totalCountLimit, nodes = template.nodes) }
-                                                        activeExecutionTemplateId = null 
                                                         editingTemplateId = template.id
+                                                        loadedForExecutionId = null 
                                                         newTemplateTitle = template.title
                                                     }
                                                 }) { Text("ویرایش") }
@@ -280,8 +295,8 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                                         if (window.confirm("آیا از حذف این الگو مطمئن هستید؟")) {
                                                             DistributionTemplateRepository.deleteTemplate(template.id)
                                                             savedTemplates = DistributionTemplateRepository.getAllTemplates()
-                                                            if (activeExecutionTemplateId == template.id) activeExecutionTemplateId = null
                                                             if (editingTemplateId == template.id) { editingTemplateId = null; newTemplateTitle = "" }
+                                                            if (loadedForExecutionId == template.id) { loadedForExecutionId = null }
                                                         }
                                                     }
                                                 }) { Text("حذف") }
@@ -293,16 +308,17 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         }
                     }
 
-                    if (isExecutionMode) {
-                        Div(attrs = { style { backgroundColor(Color("#E8F5E9")); border(1.px, LineStyle.Solid, Color("#4CAF50")); padding(12.px); borderRadius(8.px); marginBottom(16.px); textAlign("center") } }) {
-                            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(Color("#2E7D32")); fontWeight("bold") } }) { Text("شما در حال استفاده از الگوی آماده (حالت اجرا) هستید.") }
-                            Button(attrs = { style { backgroundColor(Color("white")); color(Color("#D32F2F")); border(1.px, LineStyle.Solid, Color("#D32F2F")); borderRadius(4.px); padding(6.px, 12.px); cursor("pointer") }; onClick { activeExecutionTemplateId = null } }) { Text("خروج از حالت اجرا و بازگشت به ویرایش") }
-                        }
-                    } else {
-                        Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(16.px); fontSize(1.cssRem) }; onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> viewModel.updateComprehensiveState(target) { st -> st.copy(rootMode = m) } } } }) {
-                            ComprehensiveMode.entries.forEach { mode -> 
-                                key(mode.name) { Option(value = mode.name, attrs = { if (compState.rootMode == mode) attr("selected", "true") }) { Text(mode.displayName) } }
-                            }
+                    Select(attrs = { 
+                        style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(16.px); fontSize(1.cssRem) }
+                        if (isExecutionMode) attr("disabled", "true")
+                        onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> 
+                            viewModel.updateComprehensiveState(target) { st -> st.copy(rootMode = m) }
+                            loadedForExecutionId = null
+                            editingTemplateId = null
+                        } } 
+                    }) {
+                        ComprehensiveMode.entries.forEach { mode -> 
+                            key(mode.name) { Option(value = mode.name, attrs = { if (compState.rootMode == mode) attr("selected", "true") }) { Text(mode.displayName) } }
                         }
                     }
 
@@ -338,7 +354,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         }
                     }
 
-                    // رندر امن گره‌ها با استفاده از key
                     compState.nodes.forEach { node ->
                         key(node.id) {
                             RecursiveComprehensiveNode(node, listOf(node.id), compState.rootMode, target, viewModel, allNodesFlat, isExecutionMode)
@@ -346,10 +361,13 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     }
 
                     if (!isExecutionMode && !isLimitReached && !isPersonAndEmpty) {
-                        Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(16.px) }; onClick { viewModel.addNode(target, emptyList()) } }) { Text("+ افزودن شریک جدید") }
+                        Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(16.px) }; onClick { 
+                            viewModel.addNode(target, emptyList()) 
+                            loadedForExecutionId = null // افزودن شریک جدید یعنی باطل کردن حالت اجرای فعلی
+                        } }) { Text("+ افزودن شریک جدید") }
                     }
 
-                    if (!isExecutionMode && compState.nodes.isNotEmpty()) {
+                    if (compState.nodes.isNotEmpty() && !isExecutionMode) {
                         Div(attrs = { style { marginTop(24.px); padding(16.px); backgroundColor(if(editingTemplateId != null) Color("#FFFDE7") else Color("#FFF3E0")); borderRadius(8.px); border(1.px, LineStyle.Dashed, if(editingTemplateId != null) Color("#FBC02D") else Color("#FFB74D")) } }) {
                             H6(attrs = { style { marginTop(0.px); marginBottom(12.px); color(if(editingTemplateId != null) Color("#F57F17") else Color("#E65100")) } }) { Text(if(editingTemplateId != null) "✏️ ذخیره تغییرات الگو" else "💾 ذخیره ساختار جدید برای دفعات بعد") }
                             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px); alignItems(AlignItems.Center) } }) {
@@ -360,6 +378,10 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                         val template = SavedDistributionTemplate(id = templateIdToSave, title = newTemplateTitle, rootMode = compState.rootMode, totalCountLimit = compState.countLimitInput, nodes = compState.nodes, createdAt = kotlin.js.Date.now().toLong())
                                         DistributionTemplateRepository.saveTemplate(template)
                                         savedTemplates = DistributionTemplateRepository.getAllTemplates()
+                                        
+                                        // پس از بروزرسانی، سیستم مستقیماً به حالت اجرا (لود شده) سوییچ می‌کند تا کادر ذخیره مخفی شود
+                                        loadedForExecutionId = templateIdToSave
+                                        
                                         newTemplateTitle = ""
                                         editingTemplateId = null
                                     }
@@ -373,7 +395,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                 }
                 DistributionMode.MODE_A_NO_BREAKDOWN -> { DistTextInput("نام گروه یا شخص گیرنده (اختیاری)", state.groupName, false) { viewModel.updateGroupName(target, it) } }
                 
-                // --- بخش محاسبات پیش‌فرض ---
                 DistributionMode.MODE_DEFAULT_MAKER -> { 
                     Select(attrs = { style { width(100.percent); padding(12.px); borderRadius(8.px); property("border", "1px solid #BDBDBD"); fontSize(1.cssRem); fontFamily("inherit"); marginBottom(12.px) }; onChange { event -> viewModel.updateDefaultStrategy(target, event.value ?: "") } }) { 
                         Option(value = "", attrs = { if (state.defaultStrategyTitle.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("انتخاب از محاسبات آماده...") } ; 
