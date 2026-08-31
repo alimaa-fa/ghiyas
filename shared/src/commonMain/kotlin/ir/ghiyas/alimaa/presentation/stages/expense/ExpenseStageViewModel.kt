@@ -100,9 +100,9 @@ class ExpenseStageViewModel {
             nimehkariResultsList.add(ResultItem("کسر سهم نیمه‌کاری $partnerName", agriOutput.nimehkariTotal))
         }
 
-        if (agricultureInput.isKeshavarzi || agricultureInput.isNimehkari) {
-            nimehkariResultsList.add(ResultItem("خالص باقی‌مانده برای تسهیم", agriOutput.remainingForStage4))
-        }
+        // --- اصلاح بسیار مهم و کلیدی ---
+        // شرط برداشته شد تا این باقیمانده‌ی دقیق، تحت هر شرایطی برای لایه رابط کاربری ارسال شود
+        nimehkariResultsList.add(ResultItem("خالص باقی‌مانده برای تسهیم", agriOutput.remainingForStage4))
 
         val finalSharesList = mutableListOf<ResultItem>()
         val poolAmount = agriOutput.remainingForStage4

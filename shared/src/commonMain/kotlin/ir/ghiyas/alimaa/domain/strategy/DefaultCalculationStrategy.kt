@@ -14,6 +14,7 @@ object DefaultCalculationsRegistry {
         DongMarikiCalculationStrategy,
         AbdolrahimCalculationStrategy,
         MohammadRahimCalculationStrategy,
-        SoghraNouriIslamabadStrategy // ثبت پروفایل جدید صغری-نوری اسلام‌آباد
+        SoghraNouriIslamabadStrategy,
+        BarkatCalculationStrategy // به انتهای لیست منتقل شد تا در لیست بازشو آخر نمایش داده شود
     )
 }

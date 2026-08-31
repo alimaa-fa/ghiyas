@@ -157,7 +157,6 @@ fun App() {
                     if (calendarFormState.isVisible) {
                         Span(attrs = { style { fontSize(18.px); fontWeight("bold") } }) { Text("مدیریت تقویم") }
                     } else if (workCalendars.isNotEmpty()) {
-                        // هدر اصلاح شده: قیاس + دراپ‌داون کشیده‌تر
                         Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); width(100.percent) } }) {
                             Span(attrs = { style { fontSize(20.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("قیاس") }
                             Select(attrs = {
@@ -231,19 +230,47 @@ fun App() {
                                         P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#424242")); fontSize(0.95.cssRem) } }) { Text("کل مقدار اولیه: ${snapshot!!.inputAmount.value.toGhiyasFormat(snapshot!!.baseUnit)} ${snapshot!!.baseUnit}") }
                                         P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#757575")); fontSize(0.85.cssRem) } }) { Text("زمان ثبت: $liveTimeString") }
                                     }
-                                    if (snapshot!!.expensesResults.isNotEmpty()) { snapshot!!.expensesResults.forEach { item -> ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) } }
-                                    if (snapshot!!.agricultureResults.isNotEmpty() || snapshot!!.nimehkariResults.isNotEmpty()) {
-                                        Div(attrs = { style { marginTop(16.px); paddingTop(16.px); property("border-top", "3px solid #AED581") } }) { H4(attrs = { style { color(Color("#2E7D32")); property("margin", "0px 0px 12px 0px") } }) { Text("کسورات کشاورزی و نیمه‌کاری") } }
-                                        snapshot!!.agricultureResults.forEach { item -> ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
-                                        snapshot!!.nimehkariResults.forEach { item -> ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                                    
+                                    if (snapshot!!.expensesResults.isNotEmpty()) { 
+                                        snapshot!!.expensesResults.forEach { item -> 
+                                            key("exp_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                                        }
                                     }
+                                    
+                                    // منطق جدید استخراج باقیمانده مستقیم از موتور به جای محاسبه دستی در UI
+                                    val actualNimResults = snapshot!!.nimehkariResults.filter { it.label != "خالص باقی‌مانده برای تسهیم" }
+                                    val remainingItem = snapshot!!.nimehkariResults.find { it.label == "خالص باقی‌مانده برای تسهیم" }
+                                    
+                                    if (snapshot!!.agricultureResults.isNotEmpty() || actualNimResults.isNotEmpty()) {
+                                        Div(attrs = { style { marginTop(16.px); paddingTop(16.px); property("border-top", "3px solid #AED581") } }) { H4(attrs = { style { color(Color("#2E7D32")); property("margin", "0px 0px 12px 0px") } }) { Text("کسورات کشاورزی و نیمه‌کاری") } }
+                                        snapshot!!.agricultureResults.forEach { item -> 
+                                            key("agr_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                                        }
+                                        
+                                        actualNimResults.forEach { item -> 
+                                            key("nim_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                                        }
+                                    }
+                                    
+                                    // نمایش باقیمانده بدون هیچگونه جمع و تفریق
+                                    if (remainingItem != null) {
+                                        key("final_remaining_box") {
+                                            Div(attrs = { style { backgroundColor(Color("#E8F5E9")); borderRadius(8.px); padding(4.px, 8.px); margin(16.px, 0.px); property("border-right", "4px solid #2E7D32") } }) {
+                                                ResultRowItem("باقیمانده نهایی (جهت تسهیم)", remainingItem.value.value, snapshot!!.baseUnit, isHighlight = true)
+                                            }
+                                        }
+                                    }
+                                    
                                     if (snapshot!!.finalSharesResults.isNotEmpty()) {
                                         Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) { H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") } }
                                         snapshot!!.finalSharesResults.forEach { item -> 
-                                            val isNimehkariRow = item.label.startsWith("🌾")
-                                            Div(attrs = { style { backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")); property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7"); borderRadius(8.px); padding(12.px); property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)") } }) { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true) }
+                                            key("fin_${item.label}") {
+                                                val isNimehkariRow = item.label.startsWith("🌾")
+                                                Div(attrs = { style { backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")); property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7"); borderRadius(8.px); padding(12.px); property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)") } }) { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true) }
+                                            }
                                         }
                                     }
+                                    
                                     Button(attrs = { style { width(100.percent); padding(12.px); property("margin-top", "24px"); backgroundColor(Color("white")); color(Color("#2E7D32")); property("border", "2px solid #2E7D32"); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { ir.ghiyas.alimaa.export.WebExportEngine.shareText(snapshot!!) } }) { Text("کپی نتایج به صورت متنی") }
                                 }
                             }

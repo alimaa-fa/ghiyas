@@ -73,7 +73,6 @@ fun RecursiveComprehensiveNode(
                         DistTextInput(if (currentMode == ComprehensiveMode.PERCENTAGE) "درصد" else "قیاس", node.rawValue, true, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(rawValue = v) } } 
                     }
                 } else {
-                    // در حالت اجرا، اگر شخص دختر نیست، اصلاً چک‌باکس را رندر نکن تا فضا اشغال نشود.
                     if (!isExecutionMode || node.isFemale) {
                         Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", if (isExecutionMode) "not-allowed" else "pointer"); fontSize(0.9.cssRem) } }) {
                             Input(type = InputType.Checkbox, attrs = { 
@@ -84,7 +83,6 @@ fun RecursiveComprehensiveNode(
                             Text("دختر (۰.۵)")
                         }
                     } else {
-                        // اشغال فضای خالی برای تراز ماندن کارت اگر پسر بود
                         Div(attrs = { style { flex(1) } }) {}
                     }
                 }
@@ -96,7 +94,6 @@ fun RecursiveComprehensiveNode(
         }
 
         if (!isExecutionMode) {
-            // --- حالت ویرایش (طراحی الگو) ---
             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); color(Color("#F57C00")); marginBottom(12.px); fontWeight("bold") } }) {
                 Input(type = InputType.Checkbox, attrs = { checked(node.canBeExcluded); onChange { e -> viewModel.updateNode(target, path) { it.copy(canBeExcluded = e.value) } }; style { marginRight(4.px) } })
                 Text("حساب شود/نشود؟ (مجوز حذف در اجرا)")
@@ -126,7 +123,6 @@ fun RecursiveComprehensiveNode(
                 }
             }
         } else {
-            // --- حالت اجرا (استفاده از الگو) ---
             if (node.canBeExcluded) {
                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); color(Color("#D32F2F")); marginBottom(12.px); fontWeight("bold") } }) {
                     Input(type = InputType.Checkbox, attrs = { checked(node.isExcluded); onChange { e -> viewModel.updateNode(target, path) { it.copy(isExcluded = e.value) } }; style { marginRight(4.px) } })
@@ -363,7 +359,7 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     if (!isExecutionMode && !isLimitReached && !isPersonAndEmpty) {
                         Button(attrs = { style { width(100.percent); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); property("border", "2px dashed #4CAF50"); borderRadius(8.px); padding(12.px); fontWeight("bold"); property("cursor", "pointer"); marginTop(16.px) }; onClick { 
                             viewModel.addNode(target, emptyList()) 
-                            loadedForExecutionId = null // افزودن شریک جدید یعنی باطل کردن حالت اجرای فعلی
+                            loadedForExecutionId = null 
                         } }) { Text("+ افزودن شریک جدید") }
                     }
 
@@ -379,7 +375,6 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                                         DistributionTemplateRepository.saveTemplate(template)
                                         savedTemplates = DistributionTemplateRepository.getAllTemplates()
                                         
-                                        // پس از بروزرسانی، سیستم مستقیماً به حالت اجرا (لود شده) سوییچ می‌کند تا کادر ذخیره مخفی شود
                                         loadedForExecutionId = templateIdToSave
                                         
                                         newTemplateTitle = ""
@@ -401,6 +396,14 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         DefaultCalculationsRegistry.strategies.forEach { strategy -> key(strategy.title) { Option(value = strategy.title, attrs = { if (state.defaultStrategyTitle == strategy.title) attr("selected", "true") }) { Text(strategy.title) } } } 
                     }
                     
+                    if (state.defaultStrategyTitle.contains("برکت")) {
+                        Div(attrs = { style { backgroundColor(Color("#FFF8E1")); border(1.px, LineStyle.Dashed, Color("#FFCA28")); padding(12.px); borderRadius(8.px); marginBottom(12.px); textAlign("center") } }) {
+                            P(attrs = { style { margin(0.px); color(Color("#F57F17")); fontWeight("bold"); fontSize(0.95.cssRem) } }) {
+                                Text("⚠️ توجه: برای محاسبه برکت (۹ حبه)، لطفاً مرحله سوم (کشاورزی) را خالی بگذارید. محاسبات کشاورزی درون همین استراتژی لحاظ شده است.")
+                            }
+                        }
+                    }
+
                     if (state.defaultStrategyTitle.contains("عبدالرحیم")) {
                         Div(attrs = { style { backgroundColor(Color("#F1F8E9")); border(1.px, LineStyle.Dashed, Color("#AED581")); padding(12.px); borderRadius(8.px) } }) {
                             Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#388E3C")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتخاب گروه هدف عبدالرحیم:") }

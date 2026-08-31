@@ -100,7 +100,8 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
 │       │                   │   └── CustomProfileRepository.kt
 │       │                   ├── domain
 │       │                   │   ├── calculator
-│       │                   │   │   └── CalculatorMathEngine.kt
+│       │                   │   │   ├── CalculatorMathEngine.kt
+│       │                   │   │   └── WorkCalendarEngine.kt
 │       │                   │   ├── config
 │       │                   │   │   └── AppLinksConfig.kt
 │       │                   │   ├── export
@@ -113,17 +114,19 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
 │       │                   │   │   ├── DistributionModels.kt
 │       │                   │   │   ├── ProfileIntegrationType.kt
 │       │                   │   │   ├── UnitType.kt
-│       │                   │   │   └── WalnutUnit.kt
-│       │                   └── strategy
-│       │                       ├── AbdolrahimCalculationStrategy.kt
-│       │                       ├── AgricultureStrategy.kt
-│       │                       ├── AsadCalculationStrategy.kt
-│       │                       ├── DefaultCalculationStrategy.kt
-│       │                       ├── DistributionEngine.kt
-│       │                       ├── DongMarikiCalculationStrategy.kt
-│       │                       ├── KharjkardStrategy.kt
-│       │                       ├── MohammadRahimCalculationStrategy.kt
-│       │                       └── SoghraNouriIslamabadStrategy.kt
+│       │                   │   │   ├── WalnutUnit.kt
+│       │                   │   │   └── WorkCalendarModels.kt
+│       │                   │   └── strategy
+│       │                   │       ├── AbdolrahimCalculationStrategy.kt
+│       │                   │       ├── AgricultureStrategy.kt
+│       │                   │       ├── AsadCalculationStrategy.kt
+│       │                   │       ├── BarkatCalculationStrategy.kt
+│       │                   │       ├── DefaultCalculationStrategy.kt
+│       │                   │       ├── DistributionEngine.kt
+│       │                   │       ├── DongMarikiCalculationStrategy.kt
+│       │                   │       ├── KharjkardStrategy.kt
+│       │                   │       ├── MohammadRahimCalculationStrategy.kt
+│       │                   │       └── SoghraNouriIslamabadStrategy.kt
 │       │                   ├── Greeting.kt
 │       │                   ├── GreetingUtil.kt
 │       │                   ├── Platform.kt
@@ -156,6 +159,7 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
 │       │                   │   └── strategy
 │       │                   │       ├── AbdolrahimStrategyTest.kt
 │       │                   │       ├── AsadStrategyTest.kt
+│       │                   │       ├── BarkatStrategyTest.kt
 │       │                   │       ├── DongMarikiStrategyTest.kt
 │       │                   │       ├── MohammadRahimStrategyTest.kt
 │       │                   │       └── SoghraNouriIslamabadTest.kt
@@ -192,7 +196,8 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
             │               │       └── PwaManager.kt
             │               ├── data
             │               │   ├── DistributionTemplateRepository.kt
-            │               │   └── LocalStorageRepository.kt
+            │               │   ├── LocalStorageRepository.kt
+            │               │   └── WorkCalendarRepository.kt
             │               ├── engine
             │               ├── export
             │               │   └── WebExportEngine.kt
@@ -213,10 +218,12 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
             │                   │   └── DynamicPlayerScreen.kt
             │                   ├── stages
             │                   │   ├── AgricultureStageScreen.kt
+            │                   │   ├── CalendarManagerForm.kt
             │                   │   ├── DistributionStageScreen.kt
             │                   │   ├── ExpenseStageScreen.kt
             │                   │   ├── HistoryScreen.kt
-            │                   │   └── InputStageScreen.kt
+            │                   │   ├── InputStageScreen.kt
+            │                   │   └── WorkCalendarScreen.kt
             │                   └── theme
             │                       └── AppStyleSheet.kt
             └── resources
