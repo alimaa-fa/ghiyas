@@ -2,6 +2,7 @@ package ir.ghiyas.alimaa.ui.stages
 
 import androidx.compose.runtime.*
 import org.jetbrains.compose.web.css.*
+import org.jetbrains.compose.web.attributes.*
 import org.jetbrains.compose.web.dom.*
 import ir.ghiyas.alimaa.domain.models.WorkCalendarProfile
 import ir.ghiyas.alimaa.domain.models.CalendarType
@@ -9,7 +10,6 @@ import ir.ghiyas.alimaa.domain.calculator.WorkCalendarEngine
 import kotlinx.browser.window
 import org.w3c.dom.TouchEvent
 
-// نام اختصاصی برای جلوگیری از تداخل با توابع موجود در FormatUtils.kt پروژه شما
 private fun String.toGhiyasPersianDigits(): String {
     val english = arrayOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9")
     val persian = arrayOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹")
@@ -62,11 +62,9 @@ fun WorkCalendarScreen(
     val (selJy, selJm, selJd) = WorkCalendarEngine.jdnToJalali(selectedJdn)
     val selectedDayName = WorkCalendarEngine.getJalaliDayName(selectedJdn)
     
-    // اعمال فونت فارسی برای اعداد در متون شیفت
     val lblShiftBefore = activeProfile.shiftBeforeTemplate.replace("{time}", activeProfile.turnTime).toGhiyasPersianDigits()
     val lblShiftAfter = activeProfile.shiftAfterTemplate.replace("{time}", activeProfile.turnTime).toGhiyasPersianDigits()
     
-    // متغیرهای محاسبه Swipe و تفکیک آن از Scroll
     var touchStartX by remember { mutableStateOf(0f) }
     var touchStartY by remember { mutableStateOf(0f) }
 
@@ -108,7 +106,6 @@ fun WorkCalendarScreen(
             }
         }
         
-        // گرید تقویم با منطق دقیق سوایپ (تمایز بین اسکرول و ورق زدن)
         Div(attrs = { 
             style { 
                 backgroundColor(Color("white")); borderRadius(12.px); padding(12.px)
@@ -131,12 +128,11 @@ fun WorkCalendarScreen(
                 val diffX = touchStartX - touchEndX
                 val diffY = kotlin.math.abs(touchStartY - touchEndY)
                 
-                // شرط هوشمند: حرکت افقی باید از ۷۰ پیکسل بیشتر باشه و از حرکت عمودی هم بیشتر باشه تا اسکرول محسوب نشه
                 if (kotlin.math.abs(diffX) > 70 && kotlin.math.abs(diffX) > diffY) {
-                    if (diffX > 0) { // کشیدن به چپ (ماه قبل در محیط راست‌چین)
+                    if (diffX > 0) { 
                         if (viewingJm == 1) { viewingJy--; viewingJm = 12 } else { viewingJm-- }
                         expandedBefore = false; expandedAfter = false
-                    } else { // کشیدن به راست (ماه بعد در محیط راست‌چین)
+                    } else { 
                         if (viewingJm == 12) { viewingJy++; viewingJm = 1 } else { viewingJm++ }
                         expandedBefore = false; expandedAfter = false
                     }
@@ -213,7 +209,6 @@ fun WorkCalendarScreen(
         }
 
         Div(attrs = { style { backgroundColor(Color("#FAFAFA")); borderRadius(12.px); padding(16.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); property("box-shadow", "0 2px 4px rgba(0,0,0,0.05)") } }) {
-            // اضافه شدن روز هفته و اعداد فارسی به عنوان جزئیات
             H4(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#424242")); fontSize(1.1.cssRem); textAlign("center") } }) { 
                 Text(if(selectedJdn == tehranNow.jdn) "جزئیات نوبت امروز ($selectedDayName ${selJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(selJm)})" else "جزئیات نوبت $selectedDayName ${selJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(selJm)}") 
             }
@@ -281,41 +276,55 @@ fun WorkCalendarScreen(
                     val tDayName = WorkCalendarEngine.getJalaliDayName(effectiveJdnForMessage)
                     val tMonthName = WorkCalendarEngine.getJalaliMonthName(selJm)
                     
+                    // نوبت دیروز (که در ساعت 18 امروز به پایان می‌رسد)
                     val yestJdn = effectiveJdnForMessage - 1
-                    val yestTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, yestJdn - baseJdn)
+                    val yestTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, yestJdn - 1 - baseJdn)
                     val (_, ym, yd) = WorkCalendarEngine.jdnToJalali(yestJdn)
                     
-                    val currTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, effectiveJdnForMessage - baseJdn)
+                    // نوبت جاری (که از امروز ساعت 18 تا فردا ساعت 18 فعال است)
+                    val currTurn = turnBefore 
                     
+                    // نوبت جدید پیش‌آگاهی (که از امروز ساعت 18 آغاز می‌شود)
+                    val newTurn = turnAfter 
                     val nextJdn = effectiveJdnForMessage + 1
-                    val nextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextJdn - baseJdn)
                     val (_, nm, nd) = WorkCalendarEngine.jdnToJalali(nextJdn)
+                    
+                    // نوبت پس‌فردا (که از فردا ساعت 18 آغاز می‌شود)
+                    val nextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextJdn - baseJdn)
                     
                     val notificationText = buildString {
                         appendLine("💧 اطلاعیه ${activeProfile.name}".toGhiyasPersianDigits())
                         appendLine("📅 $tDayName ${selJd.toGhiyasPersianDigits()} $tMonthName ${selJy.toGhiyasPersianDigits()}")
                         appendLine("───────────────────")
+                        
                         appendLine("⏮ نوبت دیروز ($lblShiftBefore، ${yd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(ym)}):")
                         appendLine("👤 ${yestTurn?.owner ?: ""}")
                         if (yestTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${yestTurn.notes.toGhiyasPersianDigits()}")
                         appendLine()
-                        appendLine("⏳ نوبت جاری ($lblShiftAfter، ${selJd.toGhiyasPersianDigits()} $tMonthName):")
-                        appendLine("👤 ${turnBefore?.owner ?: ""}")
-                        if (turnBefore?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${turnBefore.notes.toGhiyasPersianDigits()}")
-                        appendLine()
-                        appendLine("🔔 نوبت جدید (پیش‌آگاهی - $lblShiftAfter ${selJd.toGhiyasPersianDigits()} $tMonthName $lblShiftBefore، ${nd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(nm)}):")
+                        
+                        appendLine("⏳ نوبت جاری ($lblShiftBefore، ${selJd.toGhiyasPersianDigits()} $tMonthName):")
                         appendLine("👤 ${currTurn?.owner ?: ""}")
                         if (currTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${currTurn.notes.toGhiyasPersianDigits()}")
+                        appendLine()
                         
-                        if (currTurn != null && currTurn.owner.isNotBlank()) {
-                            val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, currTurn.owner, baseJdn, effectiveJdnForMessage)
+                        // حذف کلمه "تا" اضافی برای جلوگیری از تکرار و تصحیح برچسب‌ها
+                        appendLine("🔔 نوبت جدید (پیش‌آگاهی - $lblShiftAfter ${selJd.toGhiyasPersianDigits()} $tMonthName $lblShiftBefore ${nd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(nm)}):")
+                        appendLine("👤 ${newTurn?.owner ?: ""}")
+                        if (newTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${newTurn.notes.toGhiyasPersianDigits()}")
+                        
+                        if (newTurn != null && newTurn.owner.isNotBlank()) {
+                            val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, newTurn.owner, baseJdn, effectiveJdnForMessage)
                             if (ups.isNotEmpty()) {
                                 appendLine()
-                                appendLine("🗓 نوبت‌های پیش‌روی ${currTurn.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
+                                appendLine("🗓 نوبت‌های پیش‌روی ${newTurn.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
                                 appendLine("───────────────────")
                                 ups.take(4).forEach { (uJdn, uTurn) ->
                                     val uDiff = uJdn - effectiveJdnForMessage
-                                    val uRelStr = when { uDiff == 0 -> "همین روز"; uDiff == 1 -> "روز بعد"; else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" }
+                                    val uRelStr = when { 
+                                        uDiff == 0 -> "همین روز"
+                                        uDiff == 1 -> "روز بعد" 
+                                        else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" 
+                                    }
                                     val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
                                     val uDayName = WorkCalendarEngine.getJalaliDayName(uJdn)
                                     val uMonthName = WorkCalendarEngine.getJalaliMonthName(uJm)
@@ -329,6 +338,7 @@ fun WorkCalendarScreen(
                         appendLine("⏭ نوبت پس‌فردا ($lblShiftAfter، ${nd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(nm)}):")
                         appendLine("👤 ${nextTurn?.owner ?: ""}")
                         if (nextTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${nextTurn.notes.toGhiyasPersianDigits()}")
+                        
                         appendLine("───────────────────")
                         appendLine("✨ ذکر و صلوات روز:")
                         appendLine("🌸 اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَآلِ مُحَمَّدٍ وَعَجِّلْ فَرَجَهُمْ 🌸")
