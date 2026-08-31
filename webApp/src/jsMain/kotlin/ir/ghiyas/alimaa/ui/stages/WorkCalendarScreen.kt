@@ -213,26 +213,61 @@ fun WorkCalendarScreen(
                 Text(if(selectedJdn == tehranNow.jdn) "جزئیات نوبت امروز ($selectedDayName ${selJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(selJm)})" else "جزئیات نوبت $selectedDayName ${selJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(selJm)}") 
             }
             
+            val timeParts = activeProfile.turnTime.split(":")
+            val turnHour = timeParts.getOrNull(0)?.toIntOrNull() ?: 18
+            val turnMinute = timeParts.getOrNull(1)?.toIntOrNull() ?: 0
+            val hasShiftPassedToday = tehranNow.hour > turnHour || (tehranNow.hour == turnHour && tehranNow.minute >= turnMinute)
+
+            val isTurnBeforePast = selectedJdn < tehranNow.jdn || (selectedJdn == tehranNow.jdn && hasShiftPassedToday)
+            val isTurnBeforeActive = selectedJdn == tehranNow.jdn && !hasShiftPassedToday
+            val isTurnAfterPast = selectedJdn < tehranNow.jdn
+            val isTurnAfterActive = selectedJdn == tehranNow.jdn && hasShiftPassedToday
+
             if (turnBefore != null) {
-                Div(attrs = { style { backgroundColor(Color("white")); borderRadius(8.px); padding(12.px); marginBottom(12.px); border(1.px, LineStyle.Solid, Color("#B3E5FC")); property("border-right", "4px solid #1E88E5") } }) {
+                Div(attrs = { 
+                    style { 
+                        borderRadius(8.px); padding(12.px); marginBottom(12.px); property("transition", "all 0.3s ease")
+                        if (isTurnBeforePast) {
+                            backgroundColor(Color("#F5F5F5"))
+                            border(1.px, LineStyle.Solid, Color("#E0E0E0"))
+                            property("border-right", "4px solid #9E9E9E")
+                            opacity(0.7)
+                            property("filter", "grayscale(100%)") // اصلاح روش اعمال استایل آزمایشی فیلتر
+                        } else if (isTurnBeforeActive) {
+                            backgroundColor(Color("#E3F2FD"))
+                            border(2.px, LineStyle.Solid, Color("#1E88E5"))
+                            property("border-right", "6px solid #1565C0")
+                            property("box-shadow", "0 2px 8px rgba(30,136,229,0.15)")
+                        } else {
+                            backgroundColor(Color("white"))
+                            border(1.px, LineStyle.Solid, Color("#B3E5FC"))
+                            property("border-right", "4px solid #1E88E5")
+                        }
+                    } 
+                }) {
                     P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); fontSize(0.95.cssRem) } }) { 
-                        Span(attrs = { style { fontWeight("bold"); color(Color("#1565C0")) } }) { Text("⏳ $lblShiftBefore: ") }
+                        Span(attrs = { style { fontWeight("bold"); color(if(isTurnBeforePast) Color("#757575") else Color("#1565C0")) } }) { Text("⏳ $lblShiftBefore: ") }
                         Span(attrs = { style { color(Color("#424242")); fontWeight("bold") } }) { Text(turnBefore.owner) }
+                        if (isTurnBeforePast) {
+                            Span(attrs = { style { color(Color("#9E9E9E")); fontSize(0.8.cssRem); marginLeft(8.px) } }) { Text("(پایان یافته)") }
+                        } else if (isTurnBeforeActive) {
+                            Span(attrs = { style { color(Color("#1565C0")); fontSize(0.8.cssRem); marginLeft(8.px); fontWeight("bold") } }) { Text("(نوبت جاری)") }
+                        }
                     }
                     if (turnBefore.notes.isNotBlank()) {
-                        P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); fontSize(0.85.cssRem); color(Color("#616161")); backgroundColor(Color("#F5F5F5")); padding(6.px); borderRadius(6.px) } }) { Text("📝 " + turnBefore.notes.toGhiyasPersianDigits()) }
+                        P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); fontSize(0.85.cssRem); color(Color("#616161")); backgroundColor(if(isTurnBeforePast) Color("#EEEEEE") else Color("#F5F5F5")); padding(6.px); borderRadius(6.px) } }) { Text("📝 " + turnBefore.notes.toGhiyasPersianDigits()) }
                     }
-                    Div(attrs = { style { cursor("pointer"); color(Color("#1976D2")); fontSize(0.85.cssRem); fontWeight("bold") }; onClick { expandedBefore = !expandedBefore } }) { Text(if (expandedBefore) "🔼 بستن تقویم" else "🔽 مشاهده تقویم این شخص") }
+                    Div(attrs = { style { cursor("pointer"); color(if(isTurnBeforePast) Color("#757575") else Color("#1976D2")); fontSize(0.85.cssRem); fontWeight("bold") }; onClick { expandedBefore = !expandedBefore } }) { Text(if (expandedBefore) "🔼 بستن تقویم" else "🔽 مشاهده تقویم این شخص") }
                     if (expandedBefore) {
                         val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, turnBefore.owner, baseJdn, selectedJdn)
-                        Div(attrs = { style { marginTop(12.px); padding(8.px); borderRadius(6.px); backgroundColor(Color("#E3F2FD")) } }) {
+                        Div(attrs = { style { marginTop(12.px); padding(8.px); borderRadius(6.px); backgroundColor(if(isTurnBeforePast) Color("#EEEEEE") else Color("#E3F2FD")) } }) {
                             if (ups.isEmpty()) { P(attrs = { style { margin(0.px); color(Color("#757575")); fontSize(0.8.cssRem) } }) { Text("نوبتی در ماه آینده یافت نشد.") } } else {
                                 ups.take(4).forEach { (uJdn, uTurn) ->
                                     val diffDays = uJdn - selectedJdn
                                     val relStr = when { diffDays == 0 -> "همین روز"; diffDays == 1 -> "روز بعد"; else -> "${diffDays.toGhiyasPersianDigits()} روز بعد" }
                                     if (diffDays >= 0) {
                                         val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
-                                        P(attrs = { style { margin(0.px, 0.px, 4.px, 0.px); fontSize(0.85.cssRem); color(Color("#0D47A1")); property("border-bottom", "1px dotted #BBDEFB"); paddingBottom(4.px) } }) { Text("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: ${WorkCalendarEngine.getJalaliDayName(uJdn)} ${uJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(uJm)} ($relStr)") }
+                                        P(attrs = { style { margin(0.px, 0.px, 4.px, 0.px); fontSize(0.85.cssRem); color(if(isTurnBeforePast) Color("#616161") else Color("#0D47A1")); property("border-bottom", "1px dotted ${if(isTurnBeforePast) "#BDBDBD" else "#BBDEFB"}"); paddingBottom(4.px) } }) { Text("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: ${WorkCalendarEngine.getJalaliDayName(uJdn)} ${uJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(uJm)} ($relStr)") }
                                     }
                                 }
                             }
@@ -242,25 +277,50 @@ fun WorkCalendarScreen(
             }
             
             if (turnAfter != null) {
-                Div(attrs = { style { backgroundColor(Color("white")); borderRadius(8.px); padding(12.px); marginBottom(16.px); border(1.px, LineStyle.Solid, Color("#FFE0B2")); property("border-right", "4px solid #FB8C00") } }) {
+                Div(attrs = { 
+                    style { 
+                        borderRadius(8.px); padding(12.px); marginBottom(16.px); property("transition", "all 0.3s ease")
+                        if (isTurnAfterPast) {
+                            backgroundColor(Color("#F5F5F5"))
+                            border(1.px, LineStyle.Solid, Color("#E0E0E0"))
+                            property("border-right", "4px solid #9E9E9E")
+                            opacity(0.7)
+                            property("filter", "grayscale(100%)") // اصلاح روش اعمال استایل آزمایشی فیلتر
+                        } else if (isTurnAfterActive) {
+                            backgroundColor(Color("#FFF3E0"))
+                            border(2.px, LineStyle.Solid, Color("#EF6C00"))
+                            property("border-right", "6px solid #E65100")
+                            property("box-shadow", "0 2px 8px rgba(239,108,0,0.15)")
+                        } else {
+                            backgroundColor(Color("white"))
+                            border(1.px, LineStyle.Solid, Color("#FFE0B2"))
+                            property("border-right", "4px solid #FB8C00")
+                        }
+                    } 
+                }) {
                     P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); fontSize(0.95.cssRem) } }) { 
-                        Span(attrs = { style { fontWeight("bold"); color(Color("#E65100")) } }) { Text("⏳ $lblShiftAfter: ") }
+                        Span(attrs = { style { fontWeight("bold"); color(if(isTurnAfterPast) Color("#757575") else Color("#E65100")) } }) { Text("⏳ $lblShiftAfter: ") }
                         Span(attrs = { style { color(Color("#424242")); fontWeight("bold") } }) { Text(turnAfter.owner) }
+                        if (isTurnAfterPast) {
+                            Span(attrs = { style { color(Color("#9E9E9E")); fontSize(0.8.cssRem); marginLeft(8.px) } }) { Text("(پایان یافته)") }
+                        } else if (isTurnAfterActive) {
+                            Span(attrs = { style { color(Color("#E65100")); fontSize(0.8.cssRem); marginLeft(8.px); fontWeight("bold") } }) { Text("(نوبت جاری)") }
+                        }
                     }
                     if (turnAfter.notes.isNotBlank()) {
-                        P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); fontSize(0.85.cssRem); color(Color("#616161")); backgroundColor(Color("#F5F5F5")); padding(6.px); borderRadius(6.px) } }) { Text("📝 " + turnAfter.notes.toGhiyasPersianDigits()) }
+                        P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); fontSize(0.85.cssRem); color(Color("#616161")); backgroundColor(if(isTurnAfterPast) Color("#EEEEEE") else Color("#F5F5F5")); padding(6.px); borderRadius(6.px) } }) { Text("📝 " + turnAfter.notes.toGhiyasPersianDigits()) }
                     }
-                    Div(attrs = { style { cursor("pointer"); color(Color("#F57F17")); fontSize(0.85.cssRem); fontWeight("bold") }; onClick { expandedAfter = !expandedAfter } }) { Text(if (expandedAfter) "🔼 بستن تقویم" else "🔽 مشاهده تقویم این شخص") }
+                    Div(attrs = { style { cursor("pointer"); color(if(isTurnAfterPast) Color("#757575") else Color("#F57F17")); fontSize(0.85.cssRem); fontWeight("bold") }; onClick { expandedAfter = !expandedAfter } }) { Text(if (expandedAfter) "🔼 بستن تقویم" else "🔽 مشاهده تقویم این شخص") }
                     if (expandedAfter) {
                         val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, turnAfter.owner, baseJdn, selectedJdn)
-                        Div(attrs = { style { marginTop(12.px); padding(8.px); borderRadius(6.px); backgroundColor(Color("#FFF3E0")) } }) {
+                        Div(attrs = { style { marginTop(12.px); padding(8.px); borderRadius(6.px); backgroundColor(if(isTurnAfterPast) Color("#EEEEEE") else Color("#FFF3E0")) } }) {
                             if (ups.isEmpty()) { P(attrs = { style { margin(0.px); color(Color("#757575")); fontSize(0.8.cssRem) } }) { Text("نوبتی در ماه آینده یافت نشد.") } } else {
                                 ups.take(4).forEach { (uJdn, uTurn) ->
                                     val diffDays = uJdn - selectedJdn
                                     val relStr = when { diffDays == 0 -> "همین روز"; diffDays == 1 -> "روز بعد"; else -> "${diffDays.toGhiyasPersianDigits()} روز بعد" }
                                     if (diffDays >= 0) {
                                         val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
-                                        P(attrs = { style { margin(0.px, 0.px, 4.px, 0.px); fontSize(0.85.cssRem); color(Color("#E65100")); property("border-bottom", "1px dotted #FFE0B2"); paddingBottom(4.px) } }) { Text("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: ${WorkCalendarEngine.getJalaliDayName(uJdn)} ${uJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(uJm)} ($relStr)") }
+                                        P(attrs = { style { margin(0.px, 0.px, 4.px, 0.px); fontSize(0.85.cssRem); color(if(isTurnAfterPast) Color("#616161") else Color("#E65100")); property("border-bottom", "1px dotted ${if(isTurnAfterPast) "#BDBDBD" else "#FFE0B2"}"); paddingBottom(4.px) } }) { Text("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: ${WorkCalendarEngine.getJalaliDayName(uJdn)} ${uJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(uJm)} ($relStr)") }
                                     }
                                 }
                             }
@@ -269,94 +329,147 @@ fun WorkCalendarScreen(
                 }
             }
             
-            Button(attrs = { 
-                style { width(100.percent); padding(12.px); backgroundColor(Color("#2E7D32")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer") }
-                onClick {
-                    val effectiveJdnForMessage = selectedJdn
-                    val tDayName = WorkCalendarEngine.getJalaliDayName(effectiveJdnForMessage)
-                    val tMonthName = WorkCalendarEngine.getJalaliMonthName(selJm)
-                    
-                    // نوبت دیروز (که در ساعت 18 امروز به پایان می‌رسد)
-                    val yestJdn = effectiveJdnForMessage - 1
-                    val yestTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, yestJdn - 1 - baseJdn)
-                    val (_, ym, yd) = WorkCalendarEngine.jdnToJalali(yestJdn)
-                    
-                    // نوبت جاری (که از امروز ساعت 18 تا فردا ساعت 18 فعال است)
-                    val currTurn = turnBefore 
-                    
-                    // نوبت جدید پیش‌آگاهی (که از امروز ساعت 18 آغاز می‌شود)
-                    val newTurn = turnAfter 
-                    val nextJdn = effectiveJdnForMessage + 1
-                    val (_, nm, nd) = WorkCalendarEngine.jdnToJalali(nextJdn)
-                    
-                    // نوبت پس‌فردا (که از فردا ساعت 18 آغاز می‌شود)
-                    val nextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextJdn - baseJdn)
-                    
-                    val notificationText = buildString {
-                        appendLine("💧 اطلاعیه ${activeProfile.name}".toGhiyasPersianDigits())
-                        appendLine("📅 $tDayName ${selJd.toGhiyasPersianDigits()} $tMonthName ${selJy.toGhiyasPersianDigits()}")
-                        appendLine("───────────────────")
-                        
-                        appendLine("⏮ نوبت دیروز ($lblShiftBefore، ${yd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(ym)}):")
-                        appendLine("👤 ${yestTurn?.owner ?: ""}")
-                        if (yestTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${yestTurn.notes.toGhiyasPersianDigits()}")
-                        appendLine()
-                        
-                        appendLine("⏳ نوبت جاری ($lblShiftBefore، ${selJd.toGhiyasPersianDigits()} $tMonthName):")
-                        appendLine("👤 ${currTurn?.owner ?: ""}")
-                        if (currTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${currTurn.notes.toGhiyasPersianDigits()}")
-                        appendLine()
-                        
-                        // حذف کلمه "تا" اضافی برای جلوگیری از تکرار و تصحیح برچسب‌ها
-                        appendLine("🔔 نوبت جدید (پیش‌آگاهی - $lblShiftAfter ${selJd.toGhiyasPersianDigits()} $tMonthName $lblShiftBefore ${nd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(nm)}):")
-                        appendLine("👤 ${newTurn?.owner ?: ""}")
-                        if (newTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${newTurn.notes.toGhiyasPersianDigits()}")
-                        
-                        if (newTurn != null && newTurn.owner.isNotBlank()) {
-                            val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, newTurn.owner, baseJdn, effectiveJdnForMessage)
-                            if (ups.isNotEmpty()) {
-                                appendLine()
-                                appendLine("🗓 نوبت‌های پیش‌روی ${newTurn.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
-                                appendLine("───────────────────")
-                                ups.take(4).forEach { (uJdn, uTurn) ->
-                                    val uDiff = uJdn - effectiveJdnForMessage
-                                    val uRelStr = when { 
-                                        uDiff == 0 -> "همین روز"
-                                        uDiff == 1 -> "روز بعد" 
-                                        else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" 
+            if (selectedJdn == tehranNow.jdn) {
+                Button(attrs = { 
+                    style { width(100.percent); padding(12.px); backgroundColor(Color("#2E7D32")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer") }
+                    onClick {
+                        val currJdn = if (hasShiftPassedToday) tehranNow.jdn else tehranNow.jdn - 1
+                        val prevJdn = currJdn - 1
+                        val nextJdn = currJdn + 1
+                        val nextNextJdn = currJdn + 2
+
+                        val currTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, currJdn - baseJdn)
+                        val prevTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, prevJdn - baseJdn)
+                        val nextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextJdn - baseJdn)
+                        val nextNextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextNextJdn - baseJdn)
+
+                        fun formatTurnDate(jdn: Int, isAfterShift: Boolean): String {
+                            val (_, jm, jd) = WorkCalendarEngine.jdnToJalali(jdn)
+                            val dayName = WorkCalendarEngine.getJalaliDayName(jdn)
+                            val monthName = WorkCalendarEngine.getJalaliMonthName(jm)
+                            val shiftLbl = if(isAfterShift) lblShiftAfter else lblShiftBefore
+                            return "$shiftLbl، $dayName ${jd.toGhiyasPersianDigits()} $monthName"
+                        }
+
+                        val notificationText = buildString {
+                            appendLine("💧 اطلاعیه ${activeProfile.name}".toGhiyasPersianDigits())
+                            appendLine("📅 ${WorkCalendarEngine.getJalaliDayName(tehranNow.jdn)} ${tehranNow.jd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(tehranNow.jm)} ${tehranNow.jy.toGhiyasPersianDigits()}")
+                            appendLine("───────────────────")
+                            
+                            appendLine("⏮ نوبت گذشته (${formatTurnDate(prevJdn, !hasShiftPassedToday)}):")
+                            appendLine("👤 ${prevTurn?.owner ?: ""}")
+                            appendLine()
+                            
+                            appendLine("⏳ نوبت جاری (${formatTurnDate(currJdn, hasShiftPassedToday)}):")
+                            appendLine("👤 ${currTurn?.owner ?: ""}")
+                            if (currTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${currTurn.notes.toGhiyasPersianDigits()}")
+                            
+                            if (currTurn != null && currTurn.owner.isNotBlank()) {
+                                val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, currTurn.owner, baseJdn, currJdn)
+                                if (ups.isNotEmpty()) {
+                                    appendLine()
+                                    appendLine("🗓 نوبت‌های پیش‌روی ${currTurn.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
+                                    appendLine("───────────────────")
+                                    ups.take(4).forEach { (uJdn, uTurn) ->
+                                        val uDiff = uJdn - currJdn
+                                        val uRelStr = when { 
+                                            uDiff == 0 -> "همین دور"
+                                            uDiff == 1 -> "روز بعد" 
+                                            else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" 
+                                        }
+                                        if (uDiff >= 0) {
+                                            val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
+                                            val uDayName = WorkCalendarEngine.getJalaliDayName(uJdn)
+                                            val uMonthName = WorkCalendarEngine.getJalaliMonthName(uJm)
+                                            appendLine("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: $uDayName ${uJd.toGhiyasPersianDigits()} $uMonthName ($uRelStr)")
+                                        }
                                     }
-                                    val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
-                                    val uDayName = WorkCalendarEngine.getJalaliDayName(uJdn)
-                                    val uMonthName = WorkCalendarEngine.getJalaliMonthName(uJm)
-                                    appendLine("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: $uDayName ${uJd.toGhiyasPersianDigits()} $uMonthName ($uRelStr)")
+                                    appendLine("───────────────────")
+                                }
+                            }
+                            
+                            appendLine()
+                            appendLine("🔔 نوبت جدید (پیش‌آگاهی - ${formatTurnDate(nextJdn, !hasShiftPassedToday)}):")
+                            appendLine("👤 ${nextTurn?.owner ?: ""}")
+                            if (nextTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${nextTurn.notes.toGhiyasPersianDigits()}")
+                            appendLine()
+                            
+                            appendLine("⏭ نوبت پس‌فردا (${formatTurnDate(nextNextJdn, hasShiftPassedToday)}):")
+                            appendLine("👤 ${nextNextTurn?.owner ?: ""}")
+                            if (nextNextTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${nextNextTurn.notes.toGhiyasPersianDigits()}")
+                            
+                            appendLine("───────────────────")
+                            appendLine("✨ ذکر و صلوات روز:")
+                            appendLine("🌸 اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَآلِ مُحَمَّدٍ وَعَجِّلْ فَرَجَهُمْ 🌸")
+                            appendLine("🌷 صلوات حضرت فاطمه زهرا (سلام‌الله‌علیها):")
+                            appendLine("«اللَّهُمَّ صَلِّ عَلَى فَاطِمَةَ وَأَبِيهَا وَبَعْلِهَا وَبَنِيهَا وَالسِّرِّ الْمُسْتَوْدَعِ فِيهَا بِعَدَدِ مَا أَحَاطَ بِهِ عِلْمُكَ»")
+                            appendLine("───────────────────")
+                            if (dailyQuote != null) {
+                                appendLine("💬 جمله روز:")
+                                appendLine("«${dailyQuote.text.toGhiyasPersianDigits()}»")
+                                if (dailyQuote.translation.isNotBlank()) appendLine(dailyQuote.translation.toGhiyasPersianDigits())
+                                if (dailyQuote.source.isNotBlank()) appendLine("📖 منبع: ${dailyQuote.source.toGhiyasPersianDigits()}")
+                                appendLine("───────────────────")
+                            }
+                            val tJy = tehranNow.jy.toString()
+                            val tJm = tehranNow.jm.toString().padStart(2, '0')
+                            val tJd = tehranNow.jd.toString().padStart(2, '0')
+                            append("🆔 #WATER_${tJy}${tJm}${tJd}_DAILY")
+                        }
+                        window.navigator.clipboard.writeText(notificationText.trimEnd()).then { window.alert("متن اطلاعیه با فرمت صحیح کپی شد.") }
+                    }
+                }) { Text("💬 کپی پیام اطلاعیه این روز") }
+            } else {
+                Button(attrs = { 
+                    style { width(100.percent); padding(12.px); backgroundColor(Color("#1565C0")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer") }
+                    onClick {
+                        val detailsText = buildString {
+                            appendLine("📅 جزئیات نوبت $selectedDayName ${selJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(selJm)}")
+                            appendLine("───────────────────")
+                            if (turnBefore != null) {
+                                appendLine("⏳ $lblShiftBefore:")
+                                appendLine("👤 ${turnBefore.owner}")
+                                if (turnBefore.notes.isNotBlank()) appendLine("📝 توضیحات: ${turnBefore.notes.toGhiyasPersianDigits()}")
+                                
+                                val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, turnBefore.owner, baseJdn, selectedJdn)
+                                if (ups.isNotEmpty()) {
+                                    appendLine("🗓 نوبت‌های پیش‌روی ${turnBefore.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
+                                    ups.take(4).forEach { (uJdn, uTurn) ->
+                                        val uDiff = uJdn - selectedJdn
+                                        // رفع باگ diffDays که پیشتر تصحیح شده بود
+                                        val uRelStr = when { uDiff == 0 -> "همین روز"; uDiff == 1 -> "روز بعد"; else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" }
+                                        if (uDiff >= 0) {
+                                            val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
+                                            appendLine("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: ${WorkCalendarEngine.getJalaliDayName(uJdn)} ${uJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(uJm)} ($uRelStr)")
+                                        }
+                                    }
                                 }
                                 appendLine("───────────────────")
                             }
+                            if (turnAfter != null) {
+                                appendLine("⏳ $lblShiftAfter:")
+                                appendLine("👤 ${turnAfter.owner}")
+                                if (turnAfter.notes.isNotBlank()) appendLine("📝 توضیحات: ${turnAfter.notes.toGhiyasPersianDigits()}")
+                                
+                                val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, turnAfter.owner, baseJdn, selectedJdn)
+                                if (ups.isNotEmpty()) {
+                                    appendLine("🗓 نوبت‌های پیش‌روی ${turnAfter.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
+                                    ups.take(4).forEach { (uJdn, uTurn) ->
+                                        val uDiff = uJdn - selectedJdn
+                                        // رفع باگ diffDays
+                                        val uRelStr = when { uDiff == 0 -> "همین روز"; uDiff == 1 -> "روز بعد"; else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" }
+                                        if (uDiff >= 0) {
+                                            val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
+                                            appendLine("🔹 دور ${uTurn.cycle.toGhiyasPersianDigits()}: ${WorkCalendarEngine.getJalaliDayName(uJdn)} ${uJd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(uJm)} ($uRelStr)")
+                                        }
+                                    }
+                                }
+                            }
                         }
-                        
-                        appendLine()
-                        appendLine("⏭ نوبت پس‌فردا ($lblShiftAfter، ${nd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(nm)}):")
-                        appendLine("👤 ${nextTurn?.owner ?: ""}")
-                        if (nextTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${nextTurn.notes.toGhiyasPersianDigits()}")
-                        
-                        appendLine("───────────────────")
-                        appendLine("✨ ذکر و صلوات روز:")
-                        appendLine("🌸 اللَّهُمَّ صَلِّ عَلَى مُحَمَّدٍ وَآلِ مُحَمَّدٍ وَعَجِّلْ فَرَجَهُمْ 🌸")
-                        appendLine("🌷 صلوات حضرت فاطمه زهرا (سلام‌الله‌علیها):")
-                        appendLine("«اللَّهُمَّ صَلِّ عَلَى فَاطِمَةَ وَأَبِيهَا وَبَعْلِهَا وَبَنِيهَا وَالسِّرِّ الْمُسْتَوْدَعِ فِيهَا بِعَدَدِ مَا أَحَاطَ بِهِ عِلْمُكَ»")
-                        appendLine("───────────────────")
-                        if (dailyQuote != null) {
-                            appendLine("💬 جمله روز:")
-                            appendLine("«${dailyQuote.text.toGhiyasPersianDigits()}»")
-                            if (dailyQuote.translation.isNotBlank()) appendLine(dailyQuote.translation.toGhiyasPersianDigits())
-                            if (dailyQuote.source.isNotBlank()) appendLine("📖 منبع: ${dailyQuote.source.toGhiyasPersianDigits()}")
-                            appendLine("───────────────────")
-                        }
-                        append("🆔 #WATER_${selJy}${selJm.toString().padStart(2, '0')}${selJd.toString().padStart(2, '0')}_DAILY")
+                        window.navigator.clipboard.writeText(detailsText.trimEnd()).then { window.alert("جزئیات این روز کپی شد.") }
                     }
-                    window.navigator.clipboard.writeText(notificationText.trimEnd()).then { window.alert("متن اطلاعیه با فرمت صحیح کپی شد.") }
-                }
-            }) { Text("💬 کپی پیام اطلاعیه این روز") }
+                }) { Text("📋 کپی جزئیات این روز") }
+            }
         }
 
         if (dailyQuote != null) {
