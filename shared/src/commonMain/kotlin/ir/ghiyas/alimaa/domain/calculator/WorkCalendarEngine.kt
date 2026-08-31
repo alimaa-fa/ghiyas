@@ -5,7 +5,6 @@ import kotlin.math.floor
 
 object WorkCalendarEngine {
 
-    // محاسبه دقیق نوبت بر اساس روزهای سپری شده
     fun calculateTurnByDaysPassed(schedule: List<WorkTurn>, daysPassed: Int, offset: Int = 0): WorkTurn? {
         if (schedule.isEmpty()) return null
         val totalTurns = schedule.size
@@ -14,32 +13,32 @@ object WorkCalendarEngine {
         return schedule[index]
     }
 
-    // دریافت تاریخ و زمان فعلی بر اساس منطقه زمانی ایران (UTC+3:30)
+    // این نسخه به هیچ وجه تحت تاثیر Timezone مرورگر کاربر قرار نمی‌گیرد و همیشه وقت تهران است
     fun getTehranDateInfo(): TehranDate {
         val d = kotlin.js.Date()
-        val utcMs = d.getTime() + (d.getTimezoneOffset() * 60000)
-        val tehranMs = utcMs + 12600000 // +3:30
+        // متد getTime() در جاوااسکریپت مطلقاً UTC را برمی‌گرداند.
+        // با اضافه کردن 12600000 میلی‌ثانیه (3.5 ساعت) آن را به مبدا تهران می‌بریم.
+        val tehranMs = d.getTime() + 12600000.0 
         val tDate = kotlin.js.Date(tehranMs)
         
-        val gy = tDate.getFullYear()
-        val gm = tDate.getMonth() + 1
-        val gd = tDate.getDate()
-        val hours = tDate.getHours()
-        val mins = tDate.getMinutes()
+        // حالا حتماً باید مقادیر UTC را بخوانیم تا مرورگر آفست محلی خودش را دوباره اعمال نکند!
+        val gy = tDate.getUTCFullYear()
+        val gm = tDate.getUTCMonth() + 1
+        val gd = tDate.getUTCDate()
+        val hour = tDate.getUTCHours()
+        val minute = tDate.getUTCMinutes()
         
         val jdn = gregorianToJdn(gy, gm, gd)
         val (jy, jm, jd) = jdnToJalali(jdn)
         
-        return TehranDate(jy, jm, jd, hours, mins, jdn)
+        return TehranDate(jy, jm, jd, hour, minute, jdn)
     }
 
-    // محاسبه اختلاف روزِ مؤثر با در نظر گرفتن ساعت تغییر شیفت
     fun getEffectiveDaysPassed(baseJdn: Int, targetJdn: Int, targetHour: Int, turnHourStr: String): Int {
         val parts = turnHourStr.split(":")
         val turnHour = if (parts.isNotEmpty()) parts[0].toIntOrNull() ?: 18 else 18
         
         var effectiveTargetJdn = targetJdn
-        // اگر هنوز به ساعت تغییر شیفت نرسیده‌ایم، نوبتِ امروز متعلق به روز قبل است
         if (targetHour < turnHour) {
             effectiveTargetJdn -= 1
         }
@@ -47,14 +46,11 @@ object WorkCalendarEngine {
         return effectiveTargetJdn - baseJdn
     }
 
-    // استخراج نوبت‌های پیش روی یک شخص خاص در ۳۰ روز آینده
     fun getUpcomingTurns(schedule: List<WorkTurn>, owner: String, baseJdn: Int, currentEffectiveJdn: Int): List<Pair<Int, WorkTurn>> {
         if (owner.isBlank()) return emptyList()
-        val upcoming = mutableListOf<Pair<Int, WorkTurn>>() // Pair of (Jdn, Turn)
-        
+        val upcoming = mutableListOf<Pair<Int, WorkTurn>>()
         val currentDaysPassed = currentEffectiveJdn - baseJdn
         
-        // جستجو در 30 روز آینده
         for (i in 0..30) {
             val turn = calculateTurnByDaysPassed(schedule, currentDaysPassed, i)
             if (turn != null && turn.owner == owner) {
@@ -75,7 +71,8 @@ object WorkCalendarEngine {
         val epbase = jy - if (jy >= 0) 474 else 473
         val epyear = 474 + (epbase % 2820)
         val md = if (jm <= 7) (jm - 1) * 31 else (jm - 1) * 30 + 6
-        return jd + md + floor(((epyear * 682) - 110) / 2816.0).toInt() + (epyear - 1) * 365 + floor(epbase / 2820.0).toInt() * 1029983 + 1948319
+        // اصلاح قطعی باگ: تغییر عدد 1948319 به 1948320 برای تنظیم دقیق مبدأ تقویم جلالی
+        return jd + md + floor(((epyear * 682) - 110) / 2816.0).toInt() + (epyear - 1) * 365 + floor(epbase / 2820.0).toInt() * 1029983 + 1948320
     }
 
     fun jdnToJalali(jdn: Int): Triple<Int, Int, Int> {

@@ -24,9 +24,22 @@ class WorkCalendarFormState {
     var scheduleError by mutableStateOf<String?>(null)
     var quotesError by mutableStateOf<String?>(null)
     
-    var parsedStartYear by mutableStateOf(1405)
-    var parsedStartMonth by mutableStateOf(5)
-    var parsedStartDay by mutableStateOf(15)
+    // متغیرهای متنی برای جلوگیری از پرش فیلدها حین تایپ و پاک کردن
+    var parsedStartYearText by mutableStateOf("1405")
+    var parsedStartYear: Int
+        get() = parsedStartYearText.toIntOrNull() ?: 1400
+        set(value) { parsedStartYearText = value.toString() }
+
+    var parsedStartMonthText by mutableStateOf("5")
+    var parsedStartMonth: Int
+        get() = parsedStartMonthText.toIntOrNull() ?: 1
+        set(value) { parsedStartMonthText = value.toString() }
+
+    var parsedStartDayText by mutableStateOf("15")
+    var parsedStartDay: Int
+        get() = parsedStartDayText.toIntOrNull() ?: 1
+        set(value) { parsedStartDayText = value.toString() }
+
     var parsedTurnTime by mutableStateOf("18:00")
     
     var shiftBeforeTemplate by mutableStateOf("تا ساعت {time}")
@@ -42,9 +55,9 @@ class WorkCalendarFormState {
         configError = null
         scheduleError = null
         quotesError = null
-        parsedStartYear = 1405
-        parsedStartMonth = 5
-        parsedStartDay = 15
+        parsedStartYearText = "1405"
+        parsedStartMonthText = "5"
+        parsedStartDayText = "15"
         parsedTurnTime = "18:00"
         shiftBeforeTemplate = "تا ساعت {time}"
         shiftAfterTemplate = "از ساعت {time}"
@@ -103,15 +116,30 @@ fun CalendarManagerForm(
             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px); marginBottom(8.px) } }) {
                 Div(attrs = { style { flex(1) } }) {
                     Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#757575")) } }) { Text("سال مبدأ") }
-                    Input(InputType.Number) { value(state.parsedStartYear); onInput { state.parsedStartYear = it.value?.toString()?.toIntOrNull() ?: 1400 }; style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); boxSizing("border-box") } }
+                    // اصلاح نوع متغیر و جلوگیری از خطای Assignment type mismatch
+                    Input(InputType.Number) { 
+                        value(state.parsedStartYearText)
+                        onInput { state.parsedStartYearText = it.value?.toString() ?: "" }
+                        style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); boxSizing("border-box") } 
+                    }
                 }
                 Div(attrs = { style { flex(1) } }) {
                     Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#757575")) } }) { Text("ماه مبدأ") }
-                    Input(InputType.Number) { value(state.parsedStartMonth); onInput { state.parsedStartMonth = it.value?.toString()?.toIntOrNull() ?: 1 }; style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); boxSizing("border-box") } }
+                    // اصلاح نوع متغیر و جلوگیری از خطای Assignment type mismatch
+                    Input(InputType.Number) { 
+                        value(state.parsedStartMonthText)
+                        onInput { state.parsedStartMonthText = it.value?.toString() ?: "" }
+                        style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); boxSizing("border-box") } 
+                    }
                 }
                 Div(attrs = { style { flex(1) } }) {
                     Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#757575")) } }) { Text("روز مبدأ") }
-                    Input(InputType.Number) { value(state.parsedStartDay); onInput { state.parsedStartDay = it.value?.toString()?.toIntOrNull() ?: 1 }; style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); boxSizing("border-box") } }
+                    // اصلاح نوع متغیر و جلوگیری از خطای Assignment type mismatch
+                    Input(InputType.Number) { 
+                        value(state.parsedStartDayText)
+                        onInput { state.parsedStartDayText = it.value?.toString() ?: "" }
+                        style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); boxSizing("border-box") } 
+                    }
                 }
             }
             
@@ -124,7 +152,7 @@ fun CalendarManagerForm(
             Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#757575")); marginTop(8.px) } }) { Text("متن شیفت دوم (متغیر: {time})") }
             Input(InputType.Text) { value(state.shiftAfterTemplate); onInput { state.shiftAfterTemplate = it.value ?: "" }; style { width(100.percent); boxSizing("border-box"); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); fontFamily("Vazirmatn") } }
             
-            Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#2E7D32")); marginTop(12.px); cursor("pointer") } }) { Text("یا آپلود فایل config.json (اختیاری)") }
+            Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#2E7D32")); marginTop(12.px); cursor("pointer") } }) { Text("یا آپلود فایل config.json (اختیاری - برای پر کردن خودکار فرم بالا)") }
             Input(InputType.File) {
                 style { width(100.percent); fontFamily("Vazirmatn"); fontSize(0.8.cssRem); marginTop(4.px) }
                 onChange { event ->
@@ -151,7 +179,7 @@ fun CalendarManagerForm(
         }
 
         Div(attrs = { style { marginBottom(16.px); padding(12.px); backgroundColor(Color("#FAFAFA")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#9E9E9E")) } }) {
-            Label(attrs = { style { display(DisplayStyle.Block); marginBottom(8.px); color(Color("#424242")); fontSize(0.95.cssRem); fontWeight("bold") } }) { Text("بارگذاری فایل زمان‌بندی (irrigation_schedule.json)") }
+            Label(attrs = { style { display(DisplayStyle.Block); marginBottom(8.px); color(Color("#424242")); fontSize(0.95.cssRem); fontWeight("bold") } }) { Text("بارگذاری فایل زمان‌بندی (schedule.json)") }
             Input(InputType.File) {
                 style { width(100.percent); fontFamily("Vazirmatn"); fontSize(0.9.cssRem) }
                 onChange { event ->

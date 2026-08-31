@@ -135,7 +135,6 @@ fun App() {
     val calcState by calculatorViewModel.state.collectAsState()
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     val distributionState by distributionViewModel.state.collectAsState()
-    val hasUpdateAvailable by PwaManager.hasUpdateAvailable.collectAsState()
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"
@@ -152,47 +151,30 @@ fun App() {
         if (isCalendarTab) {
             GhiyasTopAppBar(
                 onMenuClick = { isDrawerOpen = true },
-                onClearClick = {}, onHistoryClick = {},
+                onClearClick = null,
+                onHistoryClick = null,
                 centerContent = {
                     if (calendarFormState.isVisible) {
                         Span(attrs = { style { fontSize(18.px); fontWeight("bold") } }) { Text("مدیریت تقویم") }
                     } else if (workCalendars.isNotEmpty()) {
-                        Select(attrs = {
-                            style { padding(4.px, 8.px); borderRadius(6.px); border(0.px); backgroundColor(Color("#81C784")); color(Color("white")); fontSize(1.cssRem); fontFamily("Vazirmatn"); fontWeight("bold"); outline("none") }
-                            onChange { e -> activeCalendarId = e.value }
-                        }) {
-                            workCalendars.forEach { cal ->
-                                Option(value = cal.id, attrs = { if (activeCalendarId == cal.id) selected() }) { 
-                                    Text(cal.name + if (cal.isDefault) " (پیش‌فرض)" else "") 
+                        // هدر اصلاح شده: قیاس + دراپ‌داون کشیده‌تر
+                        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); width(100.percent) } }) {
+                            Span(attrs = { style { fontSize(20.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("قیاس") }
+                            Select(attrs = {
+                                style { flex(1); minWidth(0.px); padding(6.px, 12.px); borderRadius(6.px); border(0.px); backgroundColor(Color("#81C784")); color(Color("white")); fontSize(0.95.cssRem); fontFamily("Vazirmatn"); fontWeight("bold"); outline("none"); property("text-overflow", "ellipsis") }
+                                onChange { e -> activeCalendarId = e.value }
+                            }) {
+                                workCalendars.forEach { cal ->
+                                    Option(value = cal.id, attrs = { if (activeCalendarId == cal.id) selected() }) { 
+                                        Text(cal.name + if (cal.isDefault) " (پیش‌فرض)" else "") 
+                                    }
                                 }
                             }
                         }
                     } else {
                         Span(attrs = { style { fontSize(20.px); fontWeight("bold") } }) { Text("تقویم کاری") }
                     }
-                },
-                onAddNewCalendar = { calendarFormState.reset(); calendarFormState.isVisible = true },
-                onEditCalendar = {
-                    workCalendars.find { it.id == activeCalendarId }?.let { prof ->
-                        calendarFormState.existingId = prof.id
-                        calendarFormState.calendarName = prof.name
-                        calendarFormState.parsedStartYear = prof.startYear
-                        calendarFormState.parsedStartMonth = prof.startMonth
-                        calendarFormState.parsedStartDay = prof.startDay
-                        calendarFormState.parsedTurnTime = prof.turnTime
-                        calendarFormState.parsedSchedule = prof.schedule
-                        calendarFormState.isVisible = true
-                    }
-                },
-                onDeleteCalendar = { showDeleteConfirmId = activeCalendarId },
-                onSetDefaultCalendar = {
-                    workCalendars.find { it.id == activeCalendarId }?.let { prof ->
-                        WorkCalendarRepository.saveProfile(prof.copy(isDefault = true))
-                        workCalendars = WorkCalendarRepository.getAllProfiles()
-                        window.alert("تقویم ${prof.name} به عنوان پیش‌فرض ثبت شد.")
-                    }
-                },
-                hasActiveCalendar = activeCalendarId != null && !calendarFormState.isVisible
+                }
             )
         } else {
             GhiyasTopAppBar(
@@ -302,9 +284,45 @@ fun App() {
                                     },
                                     onCancel = { calendarFormState.isVisible = false }
                                 )
+                            } else if (workCalendars.isEmpty()) {
+                                Div(attrs = { style { padding(32.px); textAlign("center"); marginTop(40.px) } }) {
+                                    Div(attrs = { style { fontSize(4.cssRem); marginBottom(16.px) } }) { Text("📅") }
+                                    H3(attrs = { style { color(Color("#2E7D32")); marginBottom(8.px) } }) { Text("تقویم کاری وجود ندارد") }
+                                    P(attrs = { style { color(Color("#757575")); marginBottom(24.px) } }) { Text("برای زمان‌بندی آبیاری یا شیفت‌های کاری، اولین تقویم خود را ایجاد کنید.") }
+                                    Button(attrs = { 
+                                        style { padding(12.px, 24.px); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer") }
+                                        onClick { calendarFormState.reset(); calendarFormState.isVisible = true }
+                                    }) { Text("➕ ایجاد تقویم جدید") }
+                                }
                             } else {
                                 val activeProfile = workCalendars.find { it.id == activeCalendarId }
-                                WorkCalendarScreen(activeProfile = activeProfile)
+                                WorkCalendarScreen(
+                                    activeProfile = activeProfile,
+                                    onAddNew = { calendarFormState.reset(); calendarFormState.isVisible = true },
+                                    onEdit = {
+                                        activeProfile?.let { prof ->
+                                            calendarFormState.existingId = prof.id
+                                            calendarFormState.calendarName = prof.name
+                                            calendarFormState.parsedStartYear = prof.startYear
+                                            calendarFormState.parsedStartMonth = prof.startMonth
+                                            calendarFormState.parsedStartDay = prof.startDay
+                                            calendarFormState.parsedTurnTime = prof.turnTime
+                                            calendarFormState.shiftBeforeTemplate = prof.shiftBeforeTemplate
+                                            calendarFormState.shiftAfterTemplate = prof.shiftAfterTemplate
+                                            calendarFormState.parsedSchedule = prof.schedule
+                                            calendarFormState.parsedQuotes = prof.quotes 
+                                            calendarFormState.isVisible = true
+                                        }
+                                    },
+                                    onDelete = { showDeleteConfirmId = activeCalendarId },
+                                    onSetDefault = {
+                                        activeProfile?.let { prof ->
+                                            WorkCalendarRepository.saveProfile(prof.copy(isDefault = true))
+                                            workCalendars = WorkCalendarRepository.getAllProfiles()
+                                            window.alert("تقویم ${prof.name} به عنوان پیش‌فرض ثبت شد.")
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
