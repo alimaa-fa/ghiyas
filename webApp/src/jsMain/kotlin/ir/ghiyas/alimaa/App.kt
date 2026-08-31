@@ -26,6 +26,7 @@ import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.domain.models.ProfileIntegrationType
 import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 import ir.ghiyas.alimaa.core.pwa.PwaManager
+import ir.ghiyas.alimaa.ui.backup.BackupRestoreScreen // اضافه شدن ایمپورت صفحه پشتیبان‌گیری
 import kotlinx.browser.window
 import org.w3c.dom.events.Event
 import ir.ghiyas.alimaa.domain.models.WorkCalendarProfile
@@ -109,9 +110,16 @@ fun App() {
         window.addEventListener("popstate", popStateHandler)
     }
 
+    // آپدیت شده: مدیریت هوشمند مسیریابی برای منوی کناری
     val navigateTo: (String) -> Unit = { route ->
-        currentScreen = route
-        window.history.pushState(null, "", "${window.location.pathname}#$route")
+        if (route == "profile_manager") {
+            currentMainTab = "standalone_runner"
+            currentScreen = "main"
+            window.history.pushState(null, "", "${window.location.pathname}#main")
+        } else {
+            currentScreen = route
+            window.history.pushState(null, "", "${window.location.pathname}#$route")
+        }
     }
 
     var customProfiles by remember { mutableStateOf(emptyList<ir.ghiyas.alimaa.domain.models.CustomProfile>()) }
@@ -358,6 +366,10 @@ fun App() {
                 "builder" -> { ir.ghiyas.alimaa.ui.builder.BuilderScreen(viewModel = builderViewModel, onBack = { window.history.back() }) }
                 "dynamic_player" -> { 
                     ir.ghiyas.alimaa.ui.player.DynamicPlayerScreen(viewModel = dynamicPlayerViewModel, onBack = { dynamicPlayerViewModel.clearState(); window.history.back() }) 
+                }
+                // اضافه شدن اتصال مسیریابی پشتیبان‌گیری
+                "backup_restore" -> {
+                    BackupRestoreScreen(onNavigateBack = { window.history.back() })
                 }
             }
         }

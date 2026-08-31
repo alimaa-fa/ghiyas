@@ -63,7 +63,7 @@ object LocalStorageRepository {
         }
     }
 
-    private fun saveAll(records: List<CalculationHistoryRecord>) {
+    fun saveAll(records: List<CalculationHistoryRecord>) {
         val jsArray = records.map { recordToJs(it) }.toTypedArray()
         window.localStorage.setItem(STORAGE_KEY, js("JSON.stringify(jsArray)") as String)
     }

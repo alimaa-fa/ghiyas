@@ -1,10 +1,14 @@
 package ir.ghiyas.alimaa.domain.models
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 enum class CalendarType {
     DAY_BASED,
     TIMELINE_BASED
 }
 
+@Serializable
 data class WorkTurn(
     val turnId: Int,
     val cycle: Int,
@@ -12,13 +16,14 @@ data class WorkTurn(
     val notes: String
 )
 
-// مدل مربوط به فایل جملات روز
+@Serializable
 data class QuoteItem(
     val text: String,
     val translation: String,
     val source: String
 )
 
+@Serializable
 data class WorkCalendarProfile(
     val id: String,
     val name: String,
@@ -31,5 +36,5 @@ data class WorkCalendarProfile(
     val shiftBeforeTemplate: String,
     val shiftAfterTemplate: String,
     val schedule: List<WorkTurn>,
-    val quotes: List<QuoteItem> // اضافه شدن لیست جملات
+    val quotes: List<QuoteItem>
 )

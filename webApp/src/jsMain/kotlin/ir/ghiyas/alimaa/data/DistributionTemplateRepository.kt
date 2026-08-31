@@ -44,7 +44,7 @@ object DistributionTemplateRepository {
         saveAll(templates)
     }
 
-    private fun saveAll(templates: List<SavedDistributionTemplate>) {
+    fun saveAll(templates: List<SavedDistributionTemplate>) {
         val jsArray = templates.map { templateToJs(it) }.toTypedArray()
         window.localStorage.setItem(STORAGE_KEY, js("JSON.stringify(jsArray)") as String)
     }

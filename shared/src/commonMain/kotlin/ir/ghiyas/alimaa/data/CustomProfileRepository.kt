@@ -30,11 +30,16 @@ object CustomProfileRepository {
         } else {
             currentProfiles.add(profile)
         }
-        window.localStorage.setItem(KEY, json.encodeToString(currentProfiles))
+        saveAll(currentProfiles)
     }
 
     fun deleteProfile(id: String) {
         val currentProfiles = getAllProfiles().filter { it.id != id }
-        window.localStorage.setItem(KEY, json.encodeToString(currentProfiles))
+        saveAll(currentProfiles)
+    }
+
+    // متد جدید برای ذخیره گروهی هنگام بازیابی بکاپ (جلوگیری از افت فریم در وب‌ویو)
+    fun saveAll(profiles: List<CustomProfile>) {
+        window.localStorage.setItem(KEY, json.encodeToString(profiles))
     }
 }

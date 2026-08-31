@@ -45,7 +45,7 @@ object WorkCalendarRepository {
         }
     }
 
-    private fun saveAll(profiles: List<WorkCalendarProfile>) {
+    fun saveAll(profiles: List<WorkCalendarProfile>) {
         val jsArray = profiles.map { profileToJs(it) }.toTypedArray()
         window.localStorage.setItem(STORAGE_KEY, js("JSON.stringify(jsArray)") as String)
     }
