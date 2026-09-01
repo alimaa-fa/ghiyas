@@ -9,8 +9,10 @@ import ir.ghiyas.alimaa.domain.models.QuoteItem
 import ir.ghiyas.alimaa.domain.models.WorkCalendarProfile
 import ir.ghiyas.alimaa.domain.models.WorkTurn
 import ir.ghiyas.alimaa.data.WorkCalendarRepository
+import ir.ghiyas.alimaa.data.SampleCalendarData
 import org.w3c.files.FileReader
 import org.w3c.files.get
+import kotlinx.browser.window
 import kotlin.js.json
 
 class WorkCalendarFormState {
@@ -24,7 +26,6 @@ class WorkCalendarFormState {
     var scheduleError by mutableStateOf<String?>(null)
     var quotesError by mutableStateOf<String?>(null)
     
-    // متغیرهای متنی برای جلوگیری از پرش فیلدها حین تایپ و پاک کردن
     var parsedStartYearText by mutableStateOf("1405")
     var parsedStartYear: Int
         get() = parsedStartYearText.toIntOrNull() ?: 1400
@@ -64,6 +65,57 @@ class WorkCalendarFormState {
         parsedSchedule = null
         parsedQuotes = emptyList()
     }
+
+    fun loadFromSampleJson(jsonStr: String) {
+        try {
+            val jsObj = JSON.parse<dynamic>(jsonStr)
+            
+            val typeStr = if (jsObj.type != undefined) jsObj.type as String else CalendarType.DAY_BASED.name
+            calendarType = try { CalendarType.valueOf(typeStr) } catch (e: Exception) { CalendarType.DAY_BASED }
+            
+            calendarName = if (jsObj.name != undefined) jsObj.name as String else "تقویم نمونه"
+            
+            if (jsObj.start_year != undefined) parsedStartYearText = (jsObj.start_year as Number).toString()
+            if (jsObj.start_month != undefined) parsedStartMonthText = (jsObj.start_month as Number).toString()
+            if (jsObj.start_day != undefined) parsedStartDayText = (jsObj.start_day as Number).toString()
+            
+            if (jsObj.turn_time != undefined) parsedTurnTime = jsObj.turn_time as String
+            if (jsObj.shift_before_template != undefined) shiftBeforeTemplate = jsObj.shift_before_template as String
+            if (jsObj.shift_after_template != undefined) shiftAfterTemplate = jsObj.shift_after_template as String
+
+            if (jsObj.schedule != undefined) {
+                val scheduleJs = jsObj.schedule as Array<dynamic>
+                parsedSchedule = scheduleJs.map { 
+                    WorkTurn(
+                        turnId = (it.turn_id as Number).toInt(),
+                        cycle = (it.cycle as Number).toInt(),
+                        owner = it.owner as String,
+                        notes = if (it.notes != undefined) it.notes as String else ""
+                    )
+                }
+            }
+
+            if (jsObj.quotes != undefined) {
+                val quotesJs = jsObj.quotes as Array<dynamic>
+                parsedQuotes = quotesJs.map {
+                    QuoteItem(
+                        text = if (it.text != undefined) it.text as String else "",
+                        translation = if (it.translation != undefined) it.translation as String else "",
+                        source = if (it.source != undefined) it.source as String else ""
+                    )
+                }
+            }
+            
+            configError = null
+            scheduleError = null
+            quotesError = null
+            
+            window.alert("نمونه پیش‌فرض سازنده با موفقیت بارگذاری شد.")
+        } catch (e: Exception) {
+            window.alert("خطا در بارگذاری نمونه.")
+            console.error(e)
+        }
+    }
     
     val isFormValid: Boolean
         get() = calendarType == CalendarType.DAY_BASED && calendarName.isNotBlank() && parsedSchedule != null && configError == null && scheduleError == null
@@ -76,8 +128,15 @@ fun CalendarManagerForm(
     onCancel: () -> Unit
 ) {
     Div(attrs = { style { padding(16.px); backgroundColor(Color("white")); borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")) } }) {
-        H3(attrs = { style { color(Color("#212121")); fontSize(1.2.cssRem); marginTop(0.px); marginBottom(20.px); textAlign("center") } }) { 
+        H3(attrs = { style { color(Color("#212121")); fontSize(1.2.cssRem); marginTop(0.px); marginBottom(16.px); textAlign("center") } }) { 
             Text(if (state.existingId != null) "ویرایش تقویم کاری" else "افزودن تقویم کاری جدید") 
+        }
+
+        if (state.existingId == null) {
+            Button(attrs = {
+                style { width(100.percent); padding(12.px); marginBottom(20.px); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); border(1.px, LineStyle.Dashed, Color("#81C784")); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.05)") }
+                onClick { state.loadFromSampleJson(SampleCalendarData.jsonString) }
+            }) { Text("✨ اضافه کردن نمونه تقویم (پیش‌فرض سازنده)") }
         }
 
         Div(attrs = { style { marginBottom(16.px) } }) {
@@ -116,7 +175,6 @@ fun CalendarManagerForm(
             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px); marginBottom(8.px) } }) {
                 Div(attrs = { style { flex(1) } }) {
                     Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#757575")) } }) { Text("سال مبدأ") }
-                    // اصلاح نوع متغیر و جلوگیری از خطای Assignment type mismatch
                     Input(InputType.Number) { 
                         value(state.parsedStartYearText)
                         onInput { state.parsedStartYearText = it.value?.toString() ?: "" }
@@ -125,7 +183,6 @@ fun CalendarManagerForm(
                 }
                 Div(attrs = { style { flex(1) } }) {
                     Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#757575")) } }) { Text("ماه مبدأ") }
-                    // اصلاح نوع متغیر و جلوگیری از خطای Assignment type mismatch
                     Input(InputType.Number) { 
                         value(state.parsedStartMonthText)
                         onInput { state.parsedStartMonthText = it.value?.toString() ?: "" }
@@ -134,7 +191,6 @@ fun CalendarManagerForm(
                 }
                 Div(attrs = { style { flex(1) } }) {
                     Label(attrs = { style { display(DisplayStyle.Block); fontSize(0.85.cssRem); color(Color("#757575")) } }) { Text("روز مبدأ") }
-                    // اصلاح نوع متغیر و جلوگیری از خطای Assignment type mismatch
                     Input(InputType.Number) { 
                         value(state.parsedStartDayText)
                         onInput { state.parsedStartDayText = it.value?.toString() ?: "" }
