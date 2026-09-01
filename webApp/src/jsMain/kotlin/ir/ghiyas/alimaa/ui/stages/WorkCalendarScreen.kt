@@ -232,7 +232,7 @@ fun WorkCalendarScreen(
                             border(1.px, LineStyle.Solid, Color("#E0E0E0"))
                             property("border-right", "4px solid #9E9E9E")
                             opacity(0.7)
-                            property("filter", "grayscale(100%)") // اصلاح روش اعمال استایل آزمایشی فیلتر
+                            property("filter", "grayscale(100%)")
                         } else if (isTurnBeforeActive) {
                             backgroundColor(Color("#E3F2FD"))
                             border(2.px, LineStyle.Solid, Color("#1E88E5"))
@@ -285,7 +285,7 @@ fun WorkCalendarScreen(
                             border(1.px, LineStyle.Solid, Color("#E0E0E0"))
                             property("border-right", "4px solid #9E9E9E")
                             opacity(0.7)
-                            property("filter", "grayscale(100%)") // اصلاح روش اعمال استایل آزمایشی فیلتر
+                            property("filter", "grayscale(100%)")
                         } else if (isTurnAfterActive) {
                             backgroundColor(Color("#FFF3E0"))
                             border(2.px, LineStyle.Solid, Color("#EF6C00"))
@@ -333,15 +333,29 @@ fun WorkCalendarScreen(
                 Button(attrs = { 
                     style { width(100.percent); padding(12.px); backgroundColor(Color("#2E7D32")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer") }
                     onClick {
-                        val currJdn = if (hasShiftPassedToday) tehranNow.jdn else tehranNow.jdn - 1
-                        val prevJdn = currJdn - 1
-                        val nextJdn = currJdn + 1
-                        val nextNextJdn = currJdn + 2
+                        // منطق ریاضیاتی قطعی برای تشخیص نوبت‌های امروز بر اساس عبور از زمان شیفت
+                        val J = tehranNow.jdn
+                        val pastOwnerIdx: Int; val currOwnerIdx: Int; val newOwnerIdx: Int; val nextOwnerIdx: Int
+                        val pastLabelJdn: Int; val currLabelJdn: Int; val newLabelJdn: Int; val nextLabelJdn: Int
+                        val pastIsAfter: Boolean; val currIsAfter: Boolean; val newIsAfter: Boolean; val nextIsAfter: Boolean
+                        val searchBaseJdn: Int
 
-                        val currTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, currJdn - baseJdn)
-                        val prevTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, prevJdn - baseJdn)
-                        val nextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextJdn - baseJdn)
-                        val nextNextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextNextJdn - baseJdn)
+                        if (hasShiftPassedToday) {
+                            searchBaseJdn = J
+                            pastOwnerIdx = J - 1 - baseJdn; currOwnerIdx = J - baseJdn; newOwnerIdx = J + 1 - baseJdn; nextOwnerIdx = J + 2 - baseJdn
+                            pastLabelJdn = J; currLabelJdn = J; newLabelJdn = J + 1; nextLabelJdn = J + 2
+                            pastIsAfter = false; currIsAfter = true; newIsAfter = true; nextIsAfter = true
+                        } else {
+                            searchBaseJdn = J - 1
+                            pastOwnerIdx = J - 2 - baseJdn; currOwnerIdx = J - 1 - baseJdn; newOwnerIdx = J - baseJdn; nextOwnerIdx = J + 1 - baseJdn
+                            pastLabelJdn = J - 1; currLabelJdn = J; newLabelJdn = J; nextLabelJdn = J + 1
+                            pastIsAfter = false; currIsAfter = false; newIsAfter = true; nextIsAfter = true
+                        }
+
+                        val pastTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, pastOwnerIdx)
+                        val currTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, currOwnerIdx)
+                        val newTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, newOwnerIdx)
+                        val nextTurn = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, nextOwnerIdx)
 
                         fun formatTurnDate(jdn: Int, isAfterShift: Boolean): String {
                             val (_, jm, jd) = WorkCalendarEngine.jdnToJalali(jdn)
@@ -356,22 +370,27 @@ fun WorkCalendarScreen(
                             appendLine("📅 ${WorkCalendarEngine.getJalaliDayName(tehranNow.jdn)} ${tehranNow.jd.toGhiyasPersianDigits()} ${WorkCalendarEngine.getJalaliMonthName(tehranNow.jm)} ${tehranNow.jy.toGhiyasPersianDigits()}")
                             appendLine("───────────────────")
                             
-                            appendLine("⏮ نوبت گذشته (${formatTurnDate(prevJdn, !hasShiftPassedToday)}):")
-                            appendLine("👤 ${prevTurn?.owner ?: ""}")
+                            appendLine("⏮ نوبت گذشته (${formatTurnDate(pastLabelJdn, pastIsAfter)}):")
+                            appendLine("👤 ${pastTurn?.owner ?: ""}")
                             appendLine()
                             
-                            appendLine("⏳ نوبت جاری (${formatTurnDate(currJdn, hasShiftPassedToday)}):")
+                            appendLine("⏳ نوبت جاری (${formatTurnDate(currLabelJdn, currIsAfter)}):")
                             appendLine("👤 ${currTurn?.owner ?: ""}")
                             if (currTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${currTurn.notes.toGhiyasPersianDigits()}")
+                            appendLine()
+                            
+                            appendLine("🔔 نوبت جدید (پیش‌آگاهی - ${formatTurnDate(newLabelJdn, newIsAfter)}):")
+                            appendLine("👤 ${newTurn?.owner ?: ""}")
+                            if (newTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${newTurn.notes.toGhiyasPersianDigits()}")
                             
                             if (currTurn != null && currTurn.owner.isNotBlank()) {
-                                val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, currTurn.owner, baseJdn, currJdn)
+                                val ups = WorkCalendarEngine.getUpcomingTurns(activeProfile.schedule, currTurn.owner, baseJdn, searchBaseJdn)
                                 if (ups.isNotEmpty()) {
                                     appendLine()
                                     appendLine("🗓 نوبت‌های پیش‌روی ${currTurn.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
                                     appendLine("───────────────────")
                                     ups.take(4).forEach { (uJdn, uTurn) ->
-                                        val uDiff = uJdn - currJdn
+                                        val uDiff = uJdn - searchBaseJdn
                                         val uRelStr = when { 
                                             uDiff == 0 -> "همین دور"
                                             uDiff == 1 -> "روز بعد" 
@@ -389,14 +408,9 @@ fun WorkCalendarScreen(
                             }
                             
                             appendLine()
-                            appendLine("🔔 نوبت جدید (پیش‌آگاهی - ${formatTurnDate(nextJdn, !hasShiftPassedToday)}):")
+                            appendLine("⏭ نوبت پس‌فردا (${formatTurnDate(nextLabelJdn, nextIsAfter)}):")
                             appendLine("👤 ${nextTurn?.owner ?: ""}")
                             if (nextTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${nextTurn.notes.toGhiyasPersianDigits()}")
-                            appendLine()
-                            
-                            appendLine("⏭ نوبت پس‌فردا (${formatTurnDate(nextNextJdn, hasShiftPassedToday)}):")
-                            appendLine("👤 ${nextNextTurn?.owner ?: ""}")
-                            if (nextNextTurn?.notes?.isNotBlank() == true) appendLine("📝 توضیحات: ${nextNextTurn.notes.toGhiyasPersianDigits()}")
                             
                             appendLine("───────────────────")
                             appendLine("✨ ذکر و صلوات روز:")
@@ -436,7 +450,6 @@ fun WorkCalendarScreen(
                                     appendLine("🗓 نوبت‌های پیش‌روی ${turnBefore.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
                                     ups.take(4).forEach { (uJdn, uTurn) ->
                                         val uDiff = uJdn - selectedJdn
-                                        // رفع باگ diffDays که پیشتر تصحیح شده بود
                                         val uRelStr = when { uDiff == 0 -> "همین روز"; uDiff == 1 -> "روز بعد"; else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" }
                                         if (uDiff >= 0) {
                                             val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
@@ -456,7 +469,6 @@ fun WorkCalendarScreen(
                                     appendLine("🗓 نوبت‌های پیش‌روی ${turnAfter.owner} (۱ ماه آینده):".toGhiyasPersianDigits())
                                     ups.take(4).forEach { (uJdn, uTurn) ->
                                         val uDiff = uJdn - selectedJdn
-                                        // رفع باگ diffDays
                                         val uRelStr = when { uDiff == 0 -> "همین روز"; uDiff == 1 -> "روز بعد"; else -> "${uDiff.toGhiyasPersianDigits()} روز بعد" }
                                         if (uDiff >= 0) {
                                             val (_, uJm, uJd) = WorkCalendarEngine.jdnToJalali(uJdn)
