@@ -41,7 +41,6 @@ jobs:
       - name: Build Android APK (Release)
         run: ./gradlew :androidApp:assembleRelease
 
-      # گام جدید: نصب سریع ابزار بیلد ۲۹ برای سازگاری کامل با اکشن امضا
       - name: Install Android Build Tools 29.0.3
         run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;29.0.3"
 
@@ -55,15 +54,19 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
+      - name: Rename Signed APK to Clean Name
+        run: |
+          mv ${{ steps.sign_app.outputs.signedReleaseFile }} androidApp/build/outputs/apk/release/ghiyas-release.apk
+
       - name: Upload Signed Ghiyas APK (Artifact)
         uses: actions/upload-artifact@v5
         with:
           name: ghiyas-android-signed-apk
-          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          path: androidApp/build/outputs/apk/release/ghiyas-release.apk
 
       - name: Publish to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{steps.sign_app.outputs.signedReleaseFile}}
+          files: androidApp/build/outputs/apk/release/ghiyas-release.apk
           generate_release_notes: true
