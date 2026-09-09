@@ -3,7 +3,6 @@ name: Build Ghiyas Offline Android APK
 on:
   workflow_dispatch:
   push:
-    # حذف بخش paths تا تداخلی با تگ‌ها ایجاد نکند
     branches:
       - main
     tags:
