@@ -87,7 +87,15 @@ fun InputStageScreen(
                 UnitType.getOrderedValues().forEach { type ->
                     Option(value = type.name, attrs = {
                         if (type == state.unitType) selected()
-                    }) { Text(type.displayName) }
+                        
+                        // غیرفعال‌سازی واحد زمان به دلیل ناسازگاری فعلی Base-60 با موتور Base-10
+                        if (type == UnitType.HOUR_MINUTE) {
+                            disabled()
+                            style { color(Color("#BDBDBD")) }
+                        }
+                    }) { 
+                        Text(if (type == UnitType.HOUR_MINUTE) "${type.displayName} (بزودی)" else type.displayName) 
+                    }
                 }
             }
             Label(attrs = {
@@ -103,7 +111,6 @@ fun InputStageScreen(
         if (state.unitType == UnitType.CUSTOM) {
             Div(attrs = {
                 style {
-                    // استفاده از property برای جلوگیری از خطای Type Mismatch در کامپایلر
                     property("border", "1px dashed #BDBDBD")
                     property("border-radius", "8px")
                     property("padding", "16px 16px 8px 16px")
@@ -154,7 +161,6 @@ fun InputStageScreen(
                             property("display", "flex")
                             property("align-items", "center")
                         }
-                        // تغییر وضعیت باز و بسته شدن با کلیک
                         onClick { isGuideOpen = !isGuideOpen }
                     }) {
                         Text(if (isGuideOpen) "💡 راهنمای قوانین گرد کردن (بستن)" else "💡 راهنمای قوانین گرد کردن (باز کردن)")
