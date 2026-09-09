@@ -3,7 +3,6 @@ name: Build Ghiyas Offline Android APK
 on:
   workflow_dispatch:
   push:
-    # فقط زمانی که یک تگ نسخه (مثل v1.0.5) ارسال شود، بیلد اندروید آغاز می‌گردد
     tags:
       - 'v*'
 
@@ -51,6 +50,8 @@ jobs:
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
+          # رفع خطای zipalign با اجبار اکشن به استفاده از ابزارهای هماهنگ با تارگت 34
+          buildToolsVersion: '34.0.0'
 
       - name: Upload Signed Ghiyas APK (Artifact)
         uses: actions/upload-artifact@v5
