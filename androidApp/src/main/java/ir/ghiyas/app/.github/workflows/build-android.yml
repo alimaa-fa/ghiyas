@@ -1,0 +1,55 @@
+name: Build Ghiyas Offline Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'shared/**'
+      - 'webApp/**'
+      - 'androidApp/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle Cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Build Web App (Compile KMP JS)
+        run: ./gradlew :webApp:jsBrowserDistribution
+
+      - name: Inject Web Files into Android Assets
+        run: |
+          mkdir -p androidApp/src/main/assets
+          cp -R webApp/build/dist/js/productionExecutable/* androidApp/src/main/assets/
+
+      - name: Build Android APK (Release)
+        run: ./gradlew :androidApp:assembleRelease
+
+      - name: Sign APK
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: androidApp/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.GHIYAS_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Upload Signed Ghiyas APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ghiyas-android-signed-apk
+          path: ${{steps.sign_app.outputs.signedReleaseFile}}

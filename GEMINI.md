@@ -99,6 +99,9 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
 │       │                   ├── data
 │       │                   │   └── CustomProfileRepository.kt
 │       │                   ├── domain
+│       │                   │   ├── backup
+│       │                   │   │   ├── BackupEngine.kt
+│       │                   │   │   └── BackupPayload.kt
 │       │                   │   ├── calculator
 │       │                   │   │   ├── CalculatorMathEngine.kt
 │       │                   │   │   └── WorkCalendarEngine.kt
@@ -192,11 +195,16 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
             │           └── alimaa
             │               ├── App.kt
             │               ├── core
-            │               │   └── pwa
-            │               │       └── PwaManager.kt
+            │               │   ├── backup
+            │               │   │   └── BackupOrchestrator.kt
+            │               │   ├── pwa
+            │               │   │   └── PwaManager.kt
+            │               │   └── utils
+            │               │       └── WebFileIO.kt
             │               ├── data
             │               │   ├── DistributionTemplateRepository.kt
             │               │   ├── LocalStorageRepository.kt
+            │               │   ├── SampleCalendarData.kt
             │               │   └── WorkCalendarRepository.kt
             │               ├── engine
             │               ├── export
@@ -206,6 +214,8 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
             │               │   └── stages
             │               │       └── custom_calc
             │               └── ui
+            │                   ├── backup
+            │                   │   └── BackupRestoreScreen.kt
             │                   ├── builder
             │                   │   └── BuilderScreen.kt
             │                   ├── calculator

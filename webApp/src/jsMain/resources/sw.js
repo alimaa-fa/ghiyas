@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ghiyas-core-v17';
+const CACHE_NAME = 'ghiyas-core-v18';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './styles.css?v=17',
+  './styles.css?v=18',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
@@ -11,7 +11,6 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // فعال‌سازی فوری بدون منتظر ماندن برای بسته شدن تب‌ها
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
@@ -28,7 +27,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => self.clients.claim()) // در دست گرفتن کنترل تمام صفحات بلافاصله
+    }).then(() => self.clients.claim())
   );
 });
 
@@ -37,9 +36,6 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
 
-  // استراتژی Network-First برای تمامی درخواست‌ها:
-  // اولویت ۱۰۰٪ با شبکه است تا کش ایتا همیشه شکسته شود.
-  // فقط در صورت قطعی اینترنت به سراغ کش می‌رود.
   event.respondWith(
     fetch(event.request).then((networkResponse) => {
       return caches.open(CACHE_NAME).then((cache) => {
