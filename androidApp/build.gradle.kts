@@ -1,17 +1,18 @@
 plugins {
-    // استفاده از کاتالوگ یکپارچه به جای استفاده از id متنی
     alias(libs.plugins.androidApplication)
     kotlin("android")
 }
 
 android {
     namespace = "ir.ghiyas.app"
-    compileSdk = 37
+    // تغییر به نسخه پایدار ۳۴ جهت رفع خطای سرور ابری گیت‌هاب
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "ir.ghiyas.app"
         minSdk = 21
-        targetSdk = 37
+        // تغییر به نسخه پایدار ۳۴
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0.0"
     }
