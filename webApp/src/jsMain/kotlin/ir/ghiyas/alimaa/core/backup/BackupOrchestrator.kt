@@ -26,6 +26,12 @@ object BackupOrchestrator {
         return Pair(jsonString, fileName)
     }
 
+    // فراخوانی پل بومی اندروید
+    fun exportBackupAndroidNative() {
+        val (jsonString, fileName) = generatePayloadAndFilename()
+        WebFileIO.exportViaAndroidNative(fileName, jsonString)
+    }
+
     fun exportBackupDirect() {
         val (jsonString, fileName) = generatePayloadAndFilename()
         WebFileIO.exportViaDirectDownload(fileName, jsonString)
@@ -36,7 +42,6 @@ object BackupOrchestrator {
         WebFileIO.exportViaWebShare(fileName, jsonString, onFallbackRequested)
     }
 
-    // متد جدید برای دریافت محتوای خام بکاپ جهت کپی در کلیپ‌بورد ایتا
     fun getBackupRawString(): String {
         return generatePayloadAndFilename().first
     }
@@ -69,9 +74,7 @@ object BackupOrchestrator {
         }
     }
 
-    // متد جدید برای بازیابی مستقیم از متن کپی شده
     fun importBackupFromRawText(rawText: String, onComplete: (Boolean, String) -> Unit) {
-        // پاکسازی فاصله‌ها یا شکستگی‌های احتمالی ناشی از کپی کردن در پیام‌رسان‌ها
         val cleanText = rawText.replace("\n", "").replace("\r", "").trim()
         if (!cleanText.startsWith("{")) {
             onComplete(false, "متن وارد شده معتبر نیست. لطفاً دقت کنید که تمام بخش‌های فایل پشتیبان را به درستی کپی کرده باشید.")

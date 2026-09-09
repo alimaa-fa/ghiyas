@@ -14,6 +14,18 @@ import kotlin.js.json
 
 object WebFileIO {
     
+    // متد تشخیص محیط: آیا در اپلیکیشن بومی اندروید هستیم؟
+    fun isAndroidNativeApp(): Boolean {
+        return js("typeof window.AndroidBridge !== 'undefined'").unsafeCast<Boolean>()
+    }
+
+    // متد فراخوانی ذخیره‌ساز بومی اندروید
+    fun exportViaAndroidNative(filename: String, content: String) {
+        if (isAndroidNativeApp()) {
+            js("window.AndroidBridge.saveBackup(content, filename)")
+        }
+    }
+
     fun exportViaDirectDownload(filename: String, content: String) {
         val blob = Blob(arrayOf(content), BlobPropertyBag(type = "application/json"))
         val url = URL.createObjectURL(blob)
@@ -59,7 +71,6 @@ object WebFileIO {
         }
     }
 
-    // متد جدید: کپی ایمن در کلیپ‌بورد با سیستم Fallback برای مرورگرهای قدیمی
     fun copyToClipboard(text: String, onResult: (Boolean) -> Unit) {
         val nav = window.navigator.asDynamic()
         if (nav.clipboard != undefined) {

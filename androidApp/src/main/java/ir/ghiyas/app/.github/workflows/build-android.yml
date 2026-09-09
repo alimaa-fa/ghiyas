@@ -9,6 +9,7 @@ on:
       - 'shared/**'
       - 'webApp/**'
       - 'androidApp/**'
+      - '.github/workflows/**'
 
 jobs:
   build:
@@ -32,13 +33,16 @@ jobs:
 
       - name: Inject Web Files into Android Assets
         run: |
+          # ساخت مسیر assets در ماژول اندروید در صورت عدم وجود
           mkdir -p androidApp/src/main/assets
+          
+          # انتقال تمام فایل‌های نهایی وب به داخل پوشه assets نرم‌افزار اندروید
           cp -R webApp/build/dist/js/productionExecutable/* androidApp/src/main/assets/
 
       - name: Build Android APK (Release)
         run: ./gradlew :androidApp:assembleRelease
 
-      - name: Sign APK
+      - name: Sign APK with Keystore
         uses: r0adkll/sign-android-release@v1
         id: sign_app
         with:
@@ -52,4 +56,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ghiyas-android-signed-apk
+          # دریافت مسیر فایل امضا شده از مرحله قبل
           path: ${{steps.sign_app.outputs.signedReleaseFile}}

@@ -63,6 +63,22 @@ You are the AI Assistant, Lead Architect, and Senior Developer for "Ghiyas", an 
 ## 13. Project Directory Structure
 ```text
 .
+├── androidApp
+│   ├── build.gradle.kts
+│   └── src
+│       └── main
+│           ├── AndroidManifest.xml
+│           ├── java
+│           │   └── ir
+│           │       └── ghiyas
+│           │           └── app
+│           │               ├── .github
+│           │               │   └── workflows
+│           │               │       └── build-android.yml
+│           │               └── MainActivity.kt
+│           └── res
+│               └── mipmap-xxxhdpi
+│                   └── ic_launcher.png
 ├── build.gradle.kts
 ├── dev.py
 ├── GEMINI.md

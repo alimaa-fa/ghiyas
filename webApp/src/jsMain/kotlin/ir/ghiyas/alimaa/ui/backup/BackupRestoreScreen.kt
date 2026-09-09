@@ -13,6 +13,9 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
     var isError by remember { mutableStateOf(false) }
     var backupUrl by remember { mutableStateOf("") }
     var manualPasteText by remember { mutableStateOf("") }
+    
+    // تشخیص هوشمند اجرای برنامه در اپلیکیشن بومی اندروید قیاس
+    val isNativeAndroid = remember { WebFileIO.isAndroidNativeApp() }
 
     Div({
         style {
@@ -52,7 +55,6 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
             }) { Text("بازگشت 🏠") }
         }
 
-        // پیام وضعیت عمومی
         if (statusMessage.isNotEmpty()) {
             Div({
                 style {
@@ -62,7 +64,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                     borderRadius(8.px)
                     border(1.px, LineStyle.Solid, if (isError) Color("#ef9a9a") else Color("#a5d6a7"))
                     fontSize(14.px)
-                    lineHeight("1.6") // کمی افزایش فاصله خطوط برای خوانایی بهتر متن‌های طولانی
+                    lineHeight("1.6")
                 }
             }) { Text(statusMessage) }
         }
@@ -84,48 +86,69 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                 Text("بر اساس مرورگر یا اپلیکیشنی که در آن هستید، بهترین روش را انتخاب کنید.")
             }
             
-            Button({
-                onClick {
-                    statusMessage = "در حال آماده‌سازی پنجره اشتراک‌گذاری..."
-                    isError = false
-                    BackupOrchestrator.exportBackupShare(
-                        onFallbackRequested = {
-                            statusMessage = "اشتراک‌گذاری پشتیبانی نشد. فایل روی دستگاه دانلود می‌شود."
-                            BackupOrchestrator.exportBackupDirect()
-                        }
-                    )
-                }
-                style {
-                    backgroundColor(Color("#FF9800"))
-                    color(Color("white"))
-                    border(0.px)
-                    borderRadius(8.px)
-                    padding(12.px)
-                    cursor("pointer")
-                    fontWeight("bold")
-                    fontFamily("inherit")
-                }
-            }) { Text("📤 اشتراک‌گذاری فایل (مناسب فایرفاکس)") }
+            // رندر هوشمند دکمه‌های دانلود بر اساس پلتفرم
+            if (isNativeAndroid) {
+                Button({
+                    onClick {
+                        statusMessage = "در حال باز کردن فایل منیجر اندروید... محل ذخیره را انتخاب کنید."
+                        isError = false
+                        BackupOrchestrator.exportBackupAndroidNative()
+                    }
+                    style {
+                        backgroundColor(Color("#00838F"))
+                        color(Color("white"))
+                        border(0.px)
+                        borderRadius(8.px)
+                        padding(12.px)
+                        cursor("pointer")
+                        fontWeight("bold")
+                        fontFamily("inherit")
+                    }
+                }) { Text("💾 ذخیره فایل در گوشی (مخصوص نسخه اندروید قیاس)") }
+            } else {
+                Button({
+                    onClick {
+                        statusMessage = "در حال آماده‌سازی پنجره اشتراک‌گذاری..."
+                        isError = false
+                        BackupOrchestrator.exportBackupShare(
+                            onFallbackRequested = {
+                                statusMessage = "اشتراک‌گذاری پشتیبانی نشد. فایل روی دستگاه دانلود می‌شود."
+                                BackupOrchestrator.exportBackupDirect()
+                            }
+                        )
+                    }
+                    style {
+                        backgroundColor(Color("#FF9800"))
+                        color(Color("white"))
+                        border(0.px)
+                        borderRadius(8.px)
+                        padding(12.px)
+                        cursor("pointer")
+                        fontWeight("bold")
+                        fontFamily("inherit")
+                    }
+                }) { Text("📤 اشتراک‌گذاری فایل (مناسب فایرفاکس)") }
 
-            Button({
-                onClick {
-                    BackupOrchestrator.exportBackupDirect()
-                    statusMessage = "فایل با موفقیت در پوشه دانلودها ذخیره شد."
-                    isError = false
-                }
-                style {
-                    backgroundColor(Color("#2e7d32"))
-                    color(Color("white"))
-                    border(0.px)
-                    borderRadius(8.px)
-                    padding(12.px)
-                    cursor("pointer")
-                    fontWeight("bold")
-                    fontFamily("inherit")
-                }
-            }) { Text("💾 دانلود فایل فیزیکی (مناسب کروم / PWA)") }
+                Button({
+                    onClick {
+                        BackupOrchestrator.exportBackupDirect()
+                        statusMessage = "فایل با موفقیت در پوشه دانلودها ذخیره شد."
+                        isError = false
+                    }
+                    style {
+                        backgroundColor(Color("#2e7d32"))
+                        color(Color("white"))
+                        border(0.px)
+                        borderRadius(8.px)
+                        padding(12.px)
+                        cursor("pointer")
+                        fontWeight("bold")
+                        fontFamily("inherit")
+                    }
+                }) { Text("💾 دانلود فایل فیزیکی (مناسب کروم / PWA)") }
+            }
 
-            // دکمه کپی متن (آپدیت شده طبق درخواست)
+            // دکمه کپی متن همیشه برای مینی‌اپ ایتا در دسترس است
             Button({
                 onClick {
                     isError = false
@@ -173,7 +196,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
         }) {
             H4({ style { margin(0.px); color(Color("#333")) } }) { Text("بازیابی اطلاعات (Import)") }
             
-            // زیربخش ۱: فایل آفلاین
+            // بازیابی از فایل (به‌طور جادویی در اندروید به فایل منیجر متصل است)
             Div({ style { property("border-bottom", "1px dashed #ccc"); paddingBottom(16.px) } }) {
                 P({ style { margin(0.px, 0.px, 8.px, 0.px); fontSize(14.px); color(Color("#555")) } }) {
                     Text("۱. اگر فایل پشتیبان (.json) روی گوشی شماست:")
@@ -201,10 +224,10 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                 }) { Text("📂 انتخاب فایل از حافظه گوشی") }
             }
 
-            // زیربخش ۲: متن کپی شده
+            // بخش کپی/پیست متن (متن دقیقاً طبق دستور شما اصلاح شد)
             Div({ style { property("border-bottom", "1px dashed #ccc"); paddingBottom(16.px) } }) {
                 P({ style { margin(0.px, 0.px, 8.px, 0.px); fontSize(14.px); color(Color("#555")) } }) {
-                    Text("۲. اگر در ایتا هستید، متن پشتیبان (یا تمام بخش‌های آن را به صورت پشت سر هم) اینجا جای‌گذاری (Paste) کنید:")
+                    Text("۲. متن پشتیبان را اینجا جای‌گذاری (Paste) کنید:")
                 }
                 TextArea(value = manualPasteText) {
                     onInput { manualPasteText = it.value }
@@ -254,7 +277,7 @@ fun BackupRestoreScreen(onNavigateBack: () -> Unit) {
                 }) { Text("📝 استخراج و بازیابی از متن") }
             }
 
-            // زیربخش ۳: از طریق لینک
+            // بخش لینک ابری
             Div({ style { paddingTop(8.px) } }) {
                 P({ style { margin(0.px, 0.px, 8.px, 0.px); fontSize(14.px); color(Color("#555")) } }) {
                     Text("۳. اگر فایل پشتیبان را در آپلودسنتر ذخیره کرده‌اید، لینک مستقیم آن را وارد کنید:")
