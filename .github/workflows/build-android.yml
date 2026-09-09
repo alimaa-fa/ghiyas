@@ -41,6 +41,10 @@ jobs:
       - name: Build Android APK (Release)
         run: ./gradlew :androidApp:assembleRelease
 
+      # گام جدید: نصب سریع ابزار بیلد ۲۹ برای سازگاری کامل با اکشن امضا
+      - name: Install Android Build Tools 29.0.3
+        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;29.0.3"
+
       - name: Sign APK with Keystore
         uses: r0adkll/sign-android-release@v1
         id: sign_app
@@ -50,8 +54,6 @@ jobs:
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-          # رفع خطای zipalign با اجبار اکشن به استفاده از ابزارهای هماهنگ با تارگت 34
-          buildToolsVersion: '34.0.0'
 
       - name: Upload Signed Ghiyas APK (Artifact)
         uses: actions/upload-artifact@v5
