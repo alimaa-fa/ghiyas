@@ -36,10 +36,9 @@ object BackupOrchestrator {
         WebFileIO.exportViaWebShare(fileName, jsonString, onFallbackRequested)
     }
 
-    // متد آماده‌سازی برای اتصال به Eitaa SDK در آینده
-    fun exportBackupCloud(onResult: (Boolean, String) -> Unit) {
-        // TODO: در فاز بعدی این بخش به EitaaCloud.save(jsonString) متصل می‌شود
-        onResult(false, "این قابلیت به‌زودی و پس از یکپارچه‌سازی با فضای ابری ایتا فعال خواهد شد.")
+    // متد جدید برای دریافت محتوای خام بکاپ جهت کپی در کلیپ‌بورد ایتا
+    fun getBackupRawString(): String {
+        return generatePayloadAndFilename().first
     }
 
     fun importBackupFromFile(onStartProcessing: () -> Unit, onComplete: (Boolean, String) -> Unit) {
@@ -70,10 +69,21 @@ object BackupOrchestrator {
         }
     }
 
+    // متد جدید برای بازیابی مستقیم از متن کپی شده
+    fun importBackupFromRawText(rawText: String, onComplete: (Boolean, String) -> Unit) {
+        // پاکسازی فاصله‌ها یا شکستگی‌های احتمالی ناشی از کپی کردن در پیام‌رسان‌ها
+        val cleanText = rawText.replace("\n", "").replace("\r", "").trim()
+        if (!cleanText.startsWith("{")) {
+            onComplete(false, "متن وارد شده معتبر نیست. لطفاً دقت کنید که تمام بخش‌های فایل پشتیبان را به درستی کپی کرده باشید.")
+            return
+        }
+        processAndMergePayload(cleanText, onComplete)
+    }
+
     private fun processAndMergePayload(jsonString: String, onComplete: (Boolean, String) -> Unit) {
         val payload = BackupEngine.parseBackupJson(jsonString)
         if (payload == null) {
-            onComplete(false, "فایل پشتیبان نامعتبر است یا ساختار آن خراب شده است.")
+            onComplete(false, "فایل پشتیبان نامعتبر است یا ساختار آن در هنگام کپی شدن ناقص شده است.")
             return
         }
         try {
@@ -92,7 +102,7 @@ object BackupOrchestrator {
             DistributionTemplateRepository.saveAll(mergedTemplates)
             CustomProfileRepository.saveAll(mergedProfiles)
 
-            onComplete(true, "اطلاعات با موفقیت از فایل استخراج و به صورت هوشمند ادغام شد.")
+            onComplete(true, "اطلاعات با موفقیت استخراج و به صورت هوشمند ادغام شد.")
         } catch (e: Exception) {
             console.error("خطا در بازیابی اطلاعات:", e)
             onComplete(false, "خطای سیستمی در هنگام بازیابی و ادغام اطلاعات رخ داد.")

@@ -4,6 +4,7 @@ import kotlinx.browser.document
 import kotlinx.browser.window
 import org.w3c.dom.HTMLAnchorElement
 import org.w3c.dom.HTMLInputElement
+import org.w3c.dom.HTMLTextAreaElement
 import org.w3c.dom.url.URL
 import org.w3c.files.Blob
 import org.w3c.files.BlobPropertyBag
@@ -42,7 +43,7 @@ object WebFileIO {
                     nav.share(shareData).asDynamic()
                         .then { console.log("اشتراک‌گذاری موفق بود") }
                         .catch { _: Throwable ->
-                            console.error("اشتراک‌گذاری لغو شد")
+                            console.error("اشتراک‌گذاری لغو شد یا در این مرورگر پشتیبانی نمی‌شود")
                             onFailed()
                         }
                     return
@@ -55,6 +56,39 @@ object WebFileIO {
             }
         } else {
             onFailed()
+        }
+    }
+
+    // متد جدید: کپی ایمن در کلیپ‌بورد با سیستم Fallback برای مرورگرهای قدیمی
+    fun copyToClipboard(text: String, onResult: (Boolean) -> Unit) {
+        val nav = window.navigator.asDynamic()
+        if (nav.clipboard != undefined) {
+            nav.clipboard.writeText(text)
+                .then { onResult(true) }
+                .catch { _: Throwable ->
+                    fallbackCopy(text, onResult)
+                }
+        } else {
+            fallbackCopy(text, onResult)
+        }
+    }
+
+    private fun fallbackCopy(text: String, onResult: (Boolean) -> Unit) {
+        try {
+            val textArea = document.createElement("textarea") as HTMLTextAreaElement
+            textArea.value = text
+            textArea.style.position = "fixed"
+            textArea.style.left = "-999999px"
+            textArea.style.top = "-999999px"
+            document.body?.appendChild(textArea)
+            textArea.focus()
+            textArea.select()
+            val successful = document.asDynamic().execCommand("copy") as Boolean
+            document.body?.removeChild(textArea)
+            onResult(successful)
+        } catch (e: Exception) {
+            console.error("خطا در کپی کلیپ‌بورد", e)
+            onResult(false)
         }
     }
 
@@ -97,51 +131,34 @@ object WebFileIO {
         input.click()
     }
 
-    // متد جدید با مکانیزم دور زدن خطای CORS
     fun importFromUrl(url: String, onResult: (String?, String?) -> Unit) {
-        
         val processText = { text: String ->
             val textStr = text.trim()
             if (textStr.startsWith("{") || textStr.startsWith("[")) {
                 onResult(textStr, null)
             } else {
-                onResult(null, "این لینک حاوی یک صفحه اینترنتی (مثل صفحه دانلود آپلودسنتر) است. لطفاً لینک دانلود مستقیم (Direct Link) را وارد کنید.")
+                onResult(null, "این لینک حاوی یک صفحه اینترنتی است. لطفاً لینک دانلود مستقیم (Direct Link) را وارد کنید.")
             }
         }
 
-        // تلاش اول: دریافت مستقیم
         window.fetch(url).asDynamic()
             .then { response ->
-                if (response.ok) {
-                    return@then response.text()
-                } else {
-                    throw Exception("HTTP_ERROR")
-                }
+                if (response.ok) return@then response.text()
+                else throw Exception("HTTP_ERROR")
             }
-            .then { text ->
-                processText(text as String)
-            }
+            .then { text -> processText(text as String) }
             .catch { _: Throwable ->
-                console.warn("Direct fetch blocked by CORS. Attempting Proxy Fallback...")
-                
-                // تلاش دوم: دور زدن CORS با استفاده از پروکسی عمومی و معتبر AllOrigins
                 val encodedUrl = js("encodeURIComponent(url)") as String
                 val proxyUrl = "https://api.allorigins.win/raw?url=$encodedUrl"
                 
                 window.fetch(proxyUrl).asDynamic()
                     .then { response ->
-                        if (response.ok) {
-                            return@then response.text()
-                        } else {
-                            throw Exception("PROXY_ERROR")
-                        }
+                        if (response.ok) return@then response.text()
+                        else throw Exception("PROXY_ERROR")
                     }
-                    .then { text ->
-                        processText(text as String)
-                    }
+                    .then { text -> processText(text as String) }
                     .catch { _: Throwable ->
-                        // اگر سرور مبدا حتی پروکسی را هم بلاک کرد، راهنمای انسانی می‌دهیم
-                        onResult(null, "سرور میزبان فایل (آپلودسنتر) اجازه خواندن مستقیم فایل را نمی‌دهد. \nراهکار: لینک را در مرورگر باز کنید، فایل را دانلود کرده و سپس از گزینه «انتخاب فایل از حافظه گوشی» استفاده کنید.")
+                        onResult(null, "سرور میزبان اجازه خواندن فایل را نمی‌دهد. لطفاً لینک را در مرورگر باز کرده و فایل را مستقیماً دانلود کنید.")
                     }
             }
     }

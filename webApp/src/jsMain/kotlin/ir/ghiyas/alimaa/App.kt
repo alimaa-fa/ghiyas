@@ -60,7 +60,8 @@ fun ExitConfirmDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
     Div(attrs = { style { position(Position.Fixed); top(0.px); left(0.px); width(100.percent); height(100.vh); backgroundColor(Color("rgba(0,0,0,0.5)")); display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); property("z-index", "9999") } }) {
         Div(attrs = { dir(DirType.Rtl); style { backgroundColor(Color("white")); padding(24.px); borderRadius(16.px); width(90.percent); maxWidth(400.px) } }) {
             H3(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#D32F2F")) } }) { Text("خروج از برنامه") }
-            P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#424242")) } }) { Text("آیا مطمئن هستید که می‌خواهید خارج شوید؟") }
+            P(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(Color("#424242")) } }) { Text("آیا مطمئن هستید که می‌خواهید خارج شوید؟") }
+            P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#757575")); fontSize(0.95.cssRem) } }) { Text("برای خروج دو بار کلید بازگشت را بزنید") }
             Div(attrs = { style { display(DisplayStyle.Flex); gap(12.px) } }) {
                 Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#F5F5F5")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onCancel() } }) { Text("لغو") }
                 Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#D32F2F")); color(Color("white")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onConfirm() } }) { Text("بله") }
