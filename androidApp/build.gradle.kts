@@ -1,17 +1,16 @@
 plugins {
-    id("com.android.application")
+    // استفاده از کاتالوگ یکپارچه به جای استفاده از id متنی
+    alias(libs.plugins.androidApplication)
     kotlin("android")
 }
 
 android {
     namespace = "ir.ghiyas.app"
-    // تنظیم کامپایلر برای اندروید 17
     compileSdk = 37
 
     defaultConfig {
         applicationId = "ir.ghiyas.app"
         minSdk = 21
-        // تنظیم تارگت نهایی برای اندروید 17
         targetSdk = 37
         versionCode = 1
         versionName = "1.0.0"
@@ -27,7 +26,6 @@ android {
         }
     }
     compileOptions {
-        // نسخه زبان جاوا 17 (نیاز ضروری کاتلین و بیلد سیستم)
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
