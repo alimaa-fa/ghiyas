@@ -3,16 +3,15 @@ name: Build Ghiyas Offline Android APK
 on:
   workflow_dispatch:
   push:
+    # حذف بخش paths تا تداخلی با تگ‌ها ایجاد نکند
     branches:
       - main
-    # اضافه شدن تریگر برای تگ‌های نسخه (مثلاً v1.0.0 یا v1.1.2)
     tags:
       - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    # این دسترسی برای ایجاد اتوماتیک صفحه Release در گیت‌هاب الزامی است
     permissions:
       contents: write
 
@@ -61,11 +60,9 @@ jobs:
           name: ghiyas-android-signed-apk
           path: ${{steps.sign_app.outputs.signedReleaseFile}}
 
-      # مرحله جدید: انتشار در GitHub Releases (فقط در صورت وجود تگ نسخه)
       - name: Publish to GitHub Releases
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: ${{steps.sign_app.outputs.signedReleaseFile}}
-          # این گزینه به طور خودکار لاگ کامیت‌ها را به عنوان توضیحات آپدیت می‌نویسد
           generate_release_notes: true
