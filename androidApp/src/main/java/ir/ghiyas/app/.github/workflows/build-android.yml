@@ -5,19 +5,25 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'shared/**'
-      - 'webApp/**'
-      - 'androidApp/**'
-      - '.github/workflows/**'
+    # اضافه شدن تریگر برای تگ‌های نسخه (مثلاً v1.0.0 یا v1.1.2)
+    tags:
+      - 'v*'
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # این دسترسی برای ایجاد اتوماتیک صفحه Release در گیت‌هاب الزامی است
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -26,17 +32,14 @@ jobs:
           distribution: 'temurin'
 
       - name: Setup Gradle Cache
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Build Web App (Compile KMP JS)
         run: ./gradlew :webApp:jsBrowserDistribution
 
       - name: Inject Web Files into Android Assets
         run: |
-          # ساخت مسیر assets در ماژول اندروید در صورت عدم وجود
           mkdir -p androidApp/src/main/assets
-          
-          # انتقال تمام فایل‌های نهایی وب به داخل پوشه assets نرم‌افزار اندروید
           cp -R webApp/build/dist/js/productionExecutable/* androidApp/src/main/assets/
 
       - name: Build Android APK (Release)
@@ -52,9 +55,17 @@ jobs:
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload Signed Ghiyas APK
-        uses: actions/upload-artifact@v4
+      - name: Upload Signed Ghiyas APK (Artifact)
+        uses: actions/upload-artifact@v5
         with:
           name: ghiyas-android-signed-apk
-          # دریافت مسیر فایل امضا شده از مرحله قبل
           path: ${{steps.sign_app.outputs.signedReleaseFile}}
+
+      # مرحله جدید: انتشار در GitHub Releases (فقط در صورت وجود تگ نسخه)
+      - name: Publish to GitHub Releases
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{steps.sign_app.outputs.signedReleaseFile}}
+          # این گزینه به طور خودکار لاگ کامیت‌ها را به عنوان توضیحات آپدیت می‌نویسد
+          generate_release_notes: true
