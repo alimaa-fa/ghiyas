@@ -132,7 +132,6 @@ fun CalendarManagerForm(
             Text(if (state.existingId != null) "ویرایش تقویم کاری" else "افزودن تقویم کاری جدید") 
         }
 
-        // بخش بارگذاری نمونه پیش‌فرض و لینک ارتباط با سازنده (ایتا)
         if (state.existingId == null) {
             Div(attrs = { style { marginBottom(20.px) } }) {
                 Button(attrs = {
@@ -140,7 +139,6 @@ fun CalendarManagerForm(
                     onClick { state.loadFromSampleJson(SampleCalendarData.jsonString) }
                 }) { Text("✨ اضافه کردن نمونه تقویم (پیش‌فرض سازنده)") }
                 
-                // باکس راهنما و لینک ایتا
                 Div(attrs = { 
                     style { 
                         backgroundColor(Color("#FFF8E1")); padding(12.px); 
@@ -151,8 +149,9 @@ fun CalendarManagerForm(
                 }) {
                     Text("اگر خود تخصص ساخت فایل جیسون زمانبندی تقویم آبیاری و کشاورزی و... را ندارید برای ساختش با من در ایتا با این آی دی تماس بگیرید:")
                     Br()
+                    // لینک استاندارد و ایمن بدون دستکاری‌های JS که باعث جلوگیری از فریز شدن PWA می‌شود
                     A(href = "https://eitaa.com/AlirezaMariki", attrs = {
-                        target(ATarget.Blank) // رفع خطای کامپایلر با استفاده از نوع مشخص شده در Compose HTML
+                        target(ATarget.Blank)
                         style { 
                             display(DisplayStyle.InlineBlock); marginTop(10.px); 
                             padding(8.px, 20.px); backgroundColor(Color("#FF9800")); 

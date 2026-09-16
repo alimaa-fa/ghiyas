@@ -1,6 +1,7 @@
 package ghiyas.alimaa.fa
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
@@ -68,6 +69,36 @@ class MainActivity : AppCompatActivity() {
             ): android.webkit.WebResourceResponse? {
                 return assetLoader.shouldInterceptRequest(request.url)
             }
+
+            // اضافه شدن متد مهم برای رهگیری لینک‌های خارجی (مثل ایتا) و جلوگیری از خطای Scheme
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: android.webkit.WebResourceRequest?
+            ): Boolean {
+                val url = request?.url.toString()
+                
+                // اگر لینک مربوط به فایل‌های داخلی اپلیکیشن نیست، آن را بیرون از وب‌ویو باز کن
+                if (!url.startsWith("https://appassets.androidplatform.net/")) {
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        // اگر لینک مربوط به سایت ایتا بود، پکیج اختصاصی ایتا را برای اجرای مستقیم تنظیم می‌کنیم
+                        if (url.contains("eitaa.com")) {
+                            intent.setPackage("ir.eitaa.messenger")
+                        }
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        // در صورتی که اپلیکیشن ایتا نصب نباشد، لینک را به طور عادی در مرورگر باز می‌کنیم
+                        try {
+                            val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                            startActivity(fallbackIntent)
+                        } catch (ex: Exception) {
+                            ex.printStackTrace()
+                        }
+                    }
+                    return true // به وب‌ویو اعلام می‌کنیم که لینک توسط ما مدیریت شد و نیازی به لود کردن ندارد
+                }
+                return false
+            }
         }
         
         webView.webChromeClient = object : WebChromeClient() {
@@ -87,35 +118,28 @@ class MainActivity : AppCompatActivity() {
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
         
-        // اصلاحیه ۱: قفل کردن مقیاس متن روی ۱۰۰٪ برای جلوگیری از بزرگ شدن فرم‌ها و تب‌ها در گوشی‌های مختلف
         settings.textZoom = 100
-        // اصلاحیه ۲: مجبور کردن وب‌ویو به استفاده از ابعاد تعیین شده در تگ viewport
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
-        // اصلاحیه ۳: غیرفعال کردن زوم دستی
         settings.setSupportZoom(false)
         settings.builtInZoomControls = false
         settings.displayZoomControls = false
 
         webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
 
-        // مدیریت کلید بازگشت (Back Button)
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
-                // اگر وب‌ویو دارای تاریخچه باشد (مثلاً داخل فرم‌ها باشیم)، فقط یک مرحله به عقب برمی‌گردد
                 if (webView.canGoBack()) {
                     webView.goBack()
                 } else {
-                    // اگر در صفحه اصلی باشیم، منطق دوبار کلیک اجرا می‌شود
                     if (doubleBackToExitPressedOnce) {
-                        finish() // خروج از برنامه
+                        finish()
                         return
                     }
 
                     doubleBackToExitPressedOnce = true
                     Toast.makeText(this@MainActivity, "برای خروج یک‌بار دیگر کلید بازگشت را بزنید", Toast.LENGTH_SHORT).show()
 
-                    // ریست کردن وضعیت پس از ۲ ثانیه
                     Handler(Looper.getMainLooper()).postDelayed({
                         doubleBackToExitPressedOnce = false
                     }, 2000)
