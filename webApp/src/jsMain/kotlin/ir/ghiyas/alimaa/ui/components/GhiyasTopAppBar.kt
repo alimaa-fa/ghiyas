@@ -24,13 +24,46 @@ fun GhiyasTopAppBar(
             position(Position.Relative) 
         }
     }) {
-        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px) } }) {
-            Span(attrs = { style { cursor("pointer"); fontSize(24.px) }; onClick { onMenuClick() } }) { Text("☰") }
-            if (centerContent != null) centerContent() else Span(attrs = { style { fontSize(20.px); fontWeight("bold") } }) { Text("قیاس") }
+        Div(attrs = { 
+            style { 
+                display(DisplayStyle.Flex)
+                alignItems(AlignItems.Center)
+                gap(12.px)
+                flex(1)
+                property("min-width", "0")
+            } 
+        }) {
+            Span(attrs = { 
+                style { cursor("pointer"); fontSize(24.px); flexShrink(0) }
+                onClick { onMenuClick() } 
+            }) { Text("☰") }
+            
+            if (centerContent != null) {
+                // کانتینر انعطاف‌پذیر با کوچک‌نمایی فونت داینامیک (جایگزین سه‌نقطه)
+                Div(attrs = { 
+                    style { 
+                        flex(1)
+                        property("min-width", "0")
+                        property("white-space", "nowrap")
+                        property("overflow", "hidden")
+                        display(DisplayStyle.Flex)
+                        alignItems(AlignItems.Center)
+                        // کلید حل مشکل: استفاده از کانتینری که اجازه کوچک شدن به المان فرزند را می‌دهد
+                    } 
+                }) { centerContent() }
+            } else {
+                Span(attrs = { 
+                    style { 
+                        fontSize(20.px)
+                        fontWeight("bold")
+                        property("white-space", "nowrap")
+                        property("overflow", "hidden")
+                    } 
+                }) { Text("قیاس") }
+            }
         }
 
-        // آیکون‌ها فقط در صورتی رندر می‌شوند که تابع آن‌ها پاس داده شده باشد
-        Div(attrs = { style { display(DisplayStyle.Flex); gap(16.px) } }) {
+        Div(attrs = { style { display(DisplayStyle.Flex); gap(16.px); flexShrink(0) } }) {
             if (onShareClick != null) Span(attrs = { style { cursor("pointer"); fontSize(20.px) }; title("اشتراک‌گذاری"); onClick { onShareClick() } }) { Text("📤") }
             if (onClearClick != null) Span(attrs = { style { cursor("pointer"); fontSize(20.px) }; title("پاک کردن فرم"); onClick { onClearClick() } }) { Text("🧹") }
             if (onHistoryClick != null) Span(attrs = { style { cursor("pointer"); fontSize(20.px) }; title("تاریخچه"); onClick { onHistoryClick() } }) { Text("🕒") }

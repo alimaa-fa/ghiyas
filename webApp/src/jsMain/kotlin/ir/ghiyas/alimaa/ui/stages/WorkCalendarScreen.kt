@@ -186,6 +186,8 @@ fun WorkCalendarScreen(
                                 backgroundColor(if (isSelected) Color("#C8E6C9") else if (isToday) Color("#FFF3E0") else Color("white"))
                                 border(if (isSelected) 2.px else 1.px, LineStyle.Solid, if (isSelected) Color("#4CAF50") else Color("#E0E0E0"))
                                 cursor("pointer"); boxSizing("border-box")
+                                // اضافه شدن ویژگی overflow برای جلوگیری از بیرون‌زدگی
+                                property("overflow", "hidden")
                             } else backgroundColor(Color("transparent"))
                         }
                         if (isWithinMonth) { onClick { selectedJdn = cellJdn; expandedBefore = false; expandedAfter = false } }
@@ -196,9 +198,18 @@ fun WorkCalendarScreen(
                             if (turnStart != null && turnStart.owner.isNotBlank()) {
                                 Span(attrs = { 
                                     style { 
-                                        fontSize(0.6.cssRem); color(Color("#2E7D32")); width(100.percent)
-                                        textAlign("center"); property("word-wrap", "break-word"); property("overflow-wrap", "break-word")
-                                        property("hyphens", "auto"); lineHeight("1.1") 
+                                        // اصلاحیه متن اسامی داخل سلول تقویم
+                                        fontSize(0.55.cssRem) // کوچکتر برای جا شدن بهتر
+                                        color(Color("#2E7D32"))
+                                        width(100.percent)
+                                        textAlign("center")
+                                        lineHeight("1.1")
+                                        property("display", "-webkit-box")
+                                        property("-webkit-line-clamp", "2") // محدود کردن به حداکثر ۲ خط
+                                        property("-webkit-box-orient", "vertical")
+                                        property("overflow", "hidden")
+                                        property("text-overflow", "ellipsis")
+                                        property("word-break", "break-word") 
                                     } 
                                 }) { Text(turnStart.owner) }
                             }
@@ -333,7 +344,6 @@ fun WorkCalendarScreen(
                 Button(attrs = { 
                     style { width(100.percent); padding(12.px); backgroundColor(Color("#2E7D32")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer") }
                     onClick {
-                        // منطق ریاضیاتی قطعی برای تشخیص نوبت‌های امروز بر اساس عبور از زمان شیفت
                         val J = tehranNow.jdn
                         val pastOwnerIdx: Int; val currOwnerIdx: Int; val newOwnerIdx: Int; val nextOwnerIdx: Int
                         val pastLabelJdn: Int; val currLabelJdn: Int; val newLabelJdn: Int; val nextLabelJdn: Int

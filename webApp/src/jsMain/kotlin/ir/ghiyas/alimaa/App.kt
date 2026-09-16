@@ -26,7 +26,7 @@ import ir.ghiyas.alimaa.domain.models.WalnutUnit
 import ir.ghiyas.alimaa.domain.models.ProfileIntegrationType
 import ir.ghiyas.alimaa.core.utils.toGhiyasFormat
 import ir.ghiyas.alimaa.core.pwa.PwaManager
-import ir.ghiyas.alimaa.ui.backup.BackupRestoreScreen // اضافه شدن ایمپورت صفحه پشتیبان‌گیری
+import ir.ghiyas.alimaa.ui.backup.BackupRestoreScreen
 import kotlinx.browser.window
 import org.w3c.dom.events.Event
 import ir.ghiyas.alimaa.domain.models.WorkCalendarProfile
@@ -111,7 +111,6 @@ fun App() {
         window.addEventListener("popstate", popStateHandler)
     }
 
-    // آپدیت شده: مدیریت هوشمند مسیریابی برای منوی کناری
     val navigateTo: (String) -> Unit = { route ->
         if (route == "profile_manager") {
             currentMainTab = "standalone_runner"
@@ -164,12 +163,29 @@ fun App() {
                 onHistoryClick = null,
                 centerContent = {
                     if (calendarFormState.isVisible) {
-                        Span(attrs = { style { fontSize(18.px); fontWeight("bold") } }) { Text("مدیریت تقویم") }
+                        Span(attrs = { style { fontSize(18.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("مدیریت تقویم") }
                     } else if (workCalendars.isNotEmpty()) {
-                        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); width(100.percent) } }) {
+                        Div(attrs = { 
+                            style { 
+                                display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); width(100.percent)
+                                property("min-width", "0") // برای جلوگیری از بیرون‌زدگی
+                            } 
+                        }) {
                             Span(attrs = { style { fontSize(20.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("قیاس") }
                             Select(attrs = {
-                                style { flex(1); minWidth(0.px); padding(6.px, 12.px); borderRadius(6.px); border(0.px); backgroundColor(Color("#81C784")); color(Color("white")); fontSize(0.95.cssRem); fontFamily("Vazirmatn"); fontWeight("bold"); outline("none"); property("text-overflow", "ellipsis") }
+                                style { 
+                                    flex(1)
+                                    property("min-width", "0") 
+                                    padding(6.px, 12.px)
+                                    borderRadius(6.px)
+                                    border(0.px)
+                                    backgroundColor(Color("#81C784"))
+                                    color(Color("white"))
+                                    fontSize(0.95.cssRem)
+                                    fontFamily("Vazirmatn")
+                                    fontWeight("bold")
+                                    outline("none")
+                                }
                                 onChange { e -> activeCalendarId = e.value }
                             }) {
                                 workCalendars.forEach { cal ->
@@ -180,7 +196,7 @@ fun App() {
                             }
                         }
                     } else {
-                        Span(attrs = { style { fontSize(20.px); fontWeight("bold") } }) { Text("تقویم کاری") }
+                        Span(attrs = { style { fontSize(20.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("تقویم کاری") }
                     }
                 }
             )
@@ -198,10 +214,32 @@ fun App() {
             when (currentScreen) {
                 "main" -> {
                     HeroBanner()
-                    Div(attrs = { classes(AppStyleSheet.tabContainer); classes("hide-scrollbar") }) {
-                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "default_pipeline") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "default_pipeline" } }) { Text("محاسبات پیش‌فرض") }
-                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "standalone_runner") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "standalone_runner" } }) { Text("مدیریت الگوها") }
-                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "work_calendar") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); onClick { currentMainTab = "work_calendar" } }) { Text("تقویم کاری") }
+                    // اصلاحیه تب‌ها: اسکرول افقی نرم و عدم فشرده‌سازی
+                    Div(attrs = { 
+                        classes(AppStyleSheet.tabContainer); classes("hide-scrollbar")
+                        style {
+                            display(DisplayStyle.Flex)
+                            property("overflow-x", "auto")
+                            property("-webkit-overflow-scrolling", "touch")
+                        } 
+                    }) {
+                        Div(attrs = { 
+                            classes(AppStyleSheet.tabItem, if (currentMainTab == "default_pipeline") AppStyleSheet.tabActive else AppStyleSheet.tabInactive)
+                            style { flexShrink(0) }
+                            onClick { currentMainTab = "default_pipeline" } 
+                        }) { Text("محاسبات پیش‌فرض") }
+                        
+                        Div(attrs = { 
+                            classes(AppStyleSheet.tabItem, if (currentMainTab == "standalone_runner") AppStyleSheet.tabActive else AppStyleSheet.tabInactive)
+                            style { flexShrink(0) }
+                            onClick { currentMainTab = "standalone_runner" } 
+                        }) { Text("مدیریت الگوها") }
+                        
+                        Div(attrs = { 
+                            classes(AppStyleSheet.tabItem, if (currentMainTab == "work_calendar") AppStyleSheet.tabActive else AppStyleSheet.tabInactive)
+                            style { flexShrink(0) }
+                            onClick { currentMainTab = "work_calendar" } 
+                        }) { Text("تقویم کاری") }
                     }
 
                     when (currentMainTab) {
@@ -246,7 +284,6 @@ fun App() {
                                         }
                                     }
                                     
-                                    // منطق جدید استخراج باقیمانده مستقیم از موتور به جای محاسبه دستی در UI
                                     val actualNimResults = snapshot!!.nimehkariResults.filter { it.label != "خالص باقی‌مانده برای تسهیم" }
                                     val remainingItem = snapshot!!.nimehkariResults.find { it.label == "خالص باقی‌مانده برای تسهیم" }
                                     
@@ -261,7 +298,6 @@ fun App() {
                                         }
                                     }
                                     
-                                    // نمایش باقیمانده بدون هیچگونه جمع و تفریق
                                     if (remainingItem != null) {
                                         key("final_remaining_box") {
                                             Div(attrs = { style { backgroundColor(Color("#E8F5E9")); borderRadius(8.px); padding(4.px, 8.px); margin(16.px, 0.px); property("border-right", "4px solid #2E7D32") } }) {
@@ -368,7 +404,6 @@ fun App() {
                 "dynamic_player" -> { 
                     ir.ghiyas.alimaa.ui.player.DynamicPlayerScreen(viewModel = dynamicPlayerViewModel, onBack = { dynamicPlayerViewModel.clearState(); window.history.back() }) 
                 }
-                // اضافه شدن اتصال مسیریابی پشتیبان‌گیری
                 "backup_restore" -> {
                     BackupRestoreScreen(onNavigateBack = { window.history.back() })
                 }
