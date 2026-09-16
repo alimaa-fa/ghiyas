@@ -3,12 +3,16 @@ package ir.ghiyas.app
 import android.annotation.SuppressLint
 import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.webkit.WebViewAssetLoader
@@ -17,19 +21,20 @@ class MainActivity : AppCompatActivity() {
 
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private var pendingBackupJson: String? = null
+    private lateinit var webView: WebView
+    
+    // متغیر برای مدیریت دوبار فشردن کلید بازگشت
+    private var doubleBackToExitPressedOnce = false
 
-    // لانچر بازیابی فایل: متصل به تگ <input type="file"> در کدهای PWA
     private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         if (uri != null) {
             filePathCallback?.onReceiveValue(arrayOf(uri))
         } else {
-            // بسیار مهم: اگر کاربر انصراف داد باید null برگردانیم تا وب‌ویو قفل نشود
             filePathCallback?.onReceiveValue(null)
         }
         filePathCallback = null
     }
 
-    // لانچر ذخیره فایل بومی: پشتیبانی تا اندروید 17 بدون نیاز به پرمیشن
     private val createDocumentLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri: Uri? ->
         uri?.let { destinationUri ->
             pendingBackupJson?.let { json ->
@@ -49,7 +54,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val webView = WebView(this)
+        webView = WebView(this)
         setContentView(webView)
 
         val assetLoader = WebViewAssetLoader.Builder()
@@ -66,7 +71,6 @@ class MainActivity : AppCompatActivity() {
         }
         
         webView.webChromeClient = object : WebChromeClient() {
-            // اتصال سیستم آپلود فایل وب به فایل‌منیجر بومی اندروید
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
@@ -82,19 +86,50 @@ class MainActivity : AppCompatActivity() {
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
+        
+        // اصلاحیه ۱: قفل کردن مقیاس متن روی ۱۰۰٪ برای جلوگیری از بزرگ شدن فرم‌ها و تب‌ها در گوشی‌های مختلف
+        settings.textZoom = 100
+        // اصلاحیه ۲: مجبور کردن وب‌ویو به استفاده از ابعاد تعیین شده در تگ viewport
+        settings.useWideViewPort = true
+        settings.loadWithOverviewMode = true
+        // اصلاحیه ۳: غیرفعال کردن زوم دستی
+        settings.setSupportZoom(false)
+        settings.builtInZoomControls = false
+        settings.displayZoomControls = false
 
-        // تزریق پل ارتباطی (JS Bridge) با نام AndroidBridge به وب‌ویو
         webView.addJavascriptInterface(AndroidBridge(), "AndroidBridge")
+
+        // مدیریت کلید بازگشت (Back Button)
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                // اگر وب‌ویو دارای تاریخچه باشد (مثلاً داخل فرم‌ها باشیم)، فقط یک مرحله به عقب برمی‌گردد
+                if (webView.canGoBack()) {
+                    webView.goBack()
+                } else {
+                    // اگر در صفحه اصلی باشیم، منطق دوبار کلیک اجرا می‌شود
+                    if (doubleBackToExitPressedOnce) {
+                        finish() // خروج از برنامه
+                        return
+                    }
+
+                    doubleBackToExitPressedOnce = true
+                    Toast.makeText(this@MainActivity, "برای خروج یک‌بار دیگر کلید بازگشت را بزنید", Toast.LENGTH_SHORT).show()
+
+                    // ریست کردن وضعیت پس از ۲ ثانیه
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        doubleBackToExitPressedOnce = false
+                    }, 2000)
+                }
+            }
+        })
 
         webView.loadUrl("https://appassets.androidplatform.net/assets/index.html")
     }
 
-    // کلاسی که متدهای آن مستقیماً از داخل کاتلین/JS صدا زده می‌شوند
     inner class AndroidBridge {
         @JavascriptInterface
         fun saveBackup(jsonContent: String, filename: String) {
             pendingBackupJson = jsonContent
-            // باز کردن رابط کاربری اندروید باید حتماً روی ترد اصلی (UI Thread) باشد
             runOnUiThread {
                 createDocumentLauncher.launch(filename)
             }
