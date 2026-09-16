@@ -4,17 +4,17 @@ plugins {
 }
 
 android {
-    namespace = "ir.ghiyas.app"
+    namespace = "ghiyas.alimaa.fa"
     // تغییر به نسخه پایدار ۳۴ جهت رفع خطای سرور ابری گیت‌هاب
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "ir.ghiyas.app"
+        applicationId = "ghiyas.alimaa.fa"
         minSdk = 21
         // تغییر به نسخه پایدار ۳۴
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.12"
+        versionCode = 4
+        versionName = "1.0.15"
     }
 
     buildTypes {
