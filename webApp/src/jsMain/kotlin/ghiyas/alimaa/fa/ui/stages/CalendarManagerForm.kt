@@ -132,11 +132,37 @@ fun CalendarManagerForm(
             Text(if (state.existingId != null) "ویرایش تقویم کاری" else "افزودن تقویم کاری جدید") 
         }
 
+        // بخش بارگذاری نمونه پیش‌فرض و لینک ارتباط با سازنده (ایتا)
         if (state.existingId == null) {
-            Button(attrs = {
-                style { width(100.percent); padding(12.px); marginBottom(20.px); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); border(1.px, LineStyle.Dashed, Color("#81C784")); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.05)") }
-                onClick { state.loadFromSampleJson(SampleCalendarData.jsonString) }
-            }) { Text("✨ اضافه کردن نمونه تقویم (پیش‌فرض سازنده)") }
+            Div(attrs = { style { marginBottom(20.px) } }) {
+                Button(attrs = {
+                    style { width(100.percent); padding(12.px); marginBottom(12.px); backgroundColor(Color("#E8F5E9")); color(Color("#2E7D32")); border(1.px, LineStyle.Dashed, Color("#81C784")); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.05)") }
+                    onClick { state.loadFromSampleJson(SampleCalendarData.jsonString) }
+                }) { Text("✨ اضافه کردن نمونه تقویم (پیش‌فرض سازنده)") }
+                
+                // باکس راهنما و لینک ایتا
+                Div(attrs = { 
+                    style { 
+                        backgroundColor(Color("#FFF8E1")); padding(12.px); 
+                        borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFECB3")); 
+                        textAlign("center"); fontSize(0.85.cssRem); 
+                        color(Color("#5D4037")); lineHeight("1.7") 
+                    } 
+                }) {
+                    Text("اگر خود تخصص ساخت فایل جیسون زمانبندی تقویم آبیاری و کشاورزی و... را ندارید برای ساختش با من در ایتا با این آی دی تماس بگیرید:")
+                    Br()
+                    A(href = "https://eitaa.com/AlirezaMariki", attrs = {
+                        target("_blank")
+                        style { 
+                            display(DisplayStyle.InlineBlock); marginTop(10.px); 
+                            padding(8.px, 20.px); backgroundColor(Color("#FF9800")); 
+                            color(Color("white")); borderRadius(20.px); 
+                            fontWeight("bold"); textDecoration("none"); 
+                            property("direction", "ltr") 
+                        }
+                    }) { Text("🆔 @AlirezaMariki") }
+                }
+            }
         }
 
         Div(attrs = { style { marginBottom(16.px) } }) {
