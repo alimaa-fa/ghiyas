@@ -177,16 +177,18 @@ fun WorkCalendarScreen(
                     
                     Div(attrs = { 
                         style {
-                            height(65.px)
-                            borderRadius(6.px); padding(4.px, 1.px)
+                            // افزایش ارتفاع سلول برای جا دادن ۲ خط متن به صورت کامل
+                            height(76.px)
+                            borderRadius(6.px); padding(4.px, 2.px)
                             display(DisplayStyle.Flex); flexDirection(FlexDirection.Column)
-                            justifyContent(JustifyContent.SpaceBetween)
+                            // تنظیم محتوا در وسط برای تعادل ظاهری
+                            justifyContent(JustifyContent.Center)
                             alignItems(AlignItems.Center)
+                            gap(4.px)
                             if (isWithinMonth) {
                                 backgroundColor(if (isSelected) Color("#C8E6C9") else if (isToday) Color("#FFF3E0") else Color("white"))
                                 border(if (isSelected) 2.px else 1.px, LineStyle.Solid, if (isSelected) Color("#4CAF50") else Color("#E0E0E0"))
                                 cursor("pointer"); boxSizing("border-box")
-                                // اضافه شدن ویژگی overflow برای جلوگیری از بیرون‌زدگی
                                 property("overflow", "hidden")
                             } else backgroundColor(Color("transparent"))
                         }
@@ -194,22 +196,18 @@ fun WorkCalendarScreen(
                     }) {
                         if (isWithinMonth) {
                             val turnStart = WorkCalendarEngine.calculateTurnByDaysPassed(activeProfile.schedule, cellJdn - baseJdn)
-                            Span(attrs = { style { fontSize(1.cssRem); fontWeight(if(isToday || isSelected) "bold" else "normal"); color(if (isSelected) Color("#1B5E20") else Color("#424242")) } }) { Text(currentDay.toGhiyasPersianDigits()) }
+                            Span(attrs = { style { fontSize(1.1.cssRem); fontWeight(if(isToday || isSelected) "bold" else "normal"); color(if (isSelected) Color("#1B5E20") else Color("#424242")) } }) { Text(currentDay.toGhiyasPersianDigits()) }
                             if (turnStart != null && turnStart.owner.isNotBlank()) {
                                 Span(attrs = { 
                                     style { 
-                                        // اصلاحیه متن اسامی داخل سلول تقویم
-                                        fontSize(0.55.cssRem) // کوچکتر برای جا شدن بهتر
+                                        // آزادسازی کامل متن برای شکستن در دو خط
+                                        fontSize(0.65.cssRem)
                                         color(Color("#2E7D32"))
                                         width(100.percent)
                                         textAlign("center")
-                                        lineHeight("1.1")
-                                        property("display", "-webkit-box")
-                                        property("-webkit-line-clamp", "2") // محدود کردن به حداکثر ۲ خط
-                                        property("-webkit-box-orient", "vertical")
-                                        property("overflow", "hidden")
-                                        property("text-overflow", "ellipsis")
-                                        property("word-break", "break-word") 
+                                        lineHeight("1.3")
+                                        property("white-space", "normal")
+                                        property("overflow-wrap", "break-word")
                                     } 
                                 }) { Text(turnStart.owner) }
                             }
