@@ -152,7 +152,7 @@ fun CalendarManagerForm(
                     Text("اگر خود تخصص ساخت فایل جیسون زمانبندی تقویم آبیاری و کشاورزی و... را ندارید برای ساختش با من در ایتا با این آی دی تماس بگیرید:")
                     Br()
                     A(href = "https://eitaa.com/AlirezaMariki", attrs = {
-                        target("_blank")
+                        target(ATarget.Blank) // رفع خطای کامپایلر با استفاده از نوع مشخص شده در Compose HTML
                         style { 
                             display(DisplayStyle.InlineBlock); marginTop(10.px); 
                             padding(8.px, 20.px); backgroundColor(Color("#FF9800")); 
