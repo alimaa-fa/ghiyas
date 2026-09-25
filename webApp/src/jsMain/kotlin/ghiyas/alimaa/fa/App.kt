@@ -34,11 +34,11 @@ import ghiyas.alimaa.fa.data.WorkCalendarRepository
 import ghiyas.alimaa.fa.data.LocalStorageRepository
 
 @Composable
-fun DeleteConfirmDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
+fun DeleteConfirmDialog(title: String, message: String, onConfirm: () -> Unit, onCancel: () -> Unit) {
     Div(attrs = { style { position(Position.Fixed); top(0.px); left(0.px); width(100.percent); height(100.vh); backgroundColor(Color("rgba(0,0,0,0.5)")); display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); property("z-index", "9999") } }) {
         Div(attrs = { dir(DirType.Rtl); style { backgroundColor(Color("white")); padding(24.px); borderRadius(16.px); width(90.percent); maxWidth(400.px) } }) {
-            H3(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#D32F2F")) } }) { Text("حذف تقویم") }
-            P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#424242")) } }) { Text("آیا مطمئن هستید که می‌خواهید این تقویم را به طور کامل حذف کنید؟ این عمل غیرقابل بازگشت است.") }
+            H3(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#D32F2F")) } }) { Text(title) }
+            P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#424242")) } }) { Text(message) }
             Div(attrs = { style { display(DisplayStyle.Flex); gap(12.px) } }) {
                 Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#F5F5F5")); color(Color("#424242")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onCancel() } }) { Text("لغو") }
                 Button(attrs = { style { flex(1); padding(12.px); backgroundColor(Color("#D32F2F")); color(Color("white")); border(0.px); borderRadius(8.px); cursor("pointer") }; onClick { onConfirm() } }) { Text("بله، حذف کن") }
@@ -90,9 +90,10 @@ fun App() {
     var workCalendars by remember { mutableStateOf(emptyList<WorkCalendarProfile>()) }
     var activeCalendarId by remember { mutableStateOf<String?>(null) }
     val calendarFormState = remember { WorkCalendarFormState() }
-    var showDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     
-    // ۱. تزریق تاریخچه ماشین‌حساب به هنگام بارگذاری برنامه
+    var showCalendarDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+    var showProfileDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+    
     LaunchedEffect(Unit) { 
         PwaManager.initialize() 
         val savedCalcHistory = LocalStorageRepository.getCalculatorHistory()
@@ -152,7 +153,6 @@ fun App() {
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     val distributionState by distributionViewModel.state.collectAsState()
 
-    // ۲. سیستم ذخیره خودکار تاریخچه ماشین‌حساب هنگام ایجاد تغییر
     LaunchedEffect(calcState.history) {
         LocalStorageRepository.saveCalculatorHistory(calcState.history)
     }
@@ -278,59 +278,6 @@ fun App() {
                                     expenseViewModel.snapshot.value?.let { newRecord -> ghiyas.alimaa.fa.data.LocalStorageRepository.saveRecord(newRecord) }
                                 }
                             }) { Text("محاسبه کن") }
-
-                            if (snapshot != null) {
-                                Div(attrs = { style { property("margin", "16px"); padding(24.px); backgroundColor(Color("#F1F8E9")); borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")) } }) {
-                                    Div(attrs = { style { backgroundColor(Color("#F5F5F5")); color(Color("#1B5E20")); padding(14.px, 24.px); borderRadius(8.px); textAlign("center"); fontWeight("bold"); fontSize(1.25.cssRem); marginBottom(20.px); property("border", "1px solid #C8E6C9"); property("border-left", "5px solid #2E7D32") } }) { Text("نتایج محاسبات نهایی قیاس") }
-                                    val dateTimeOptions = kotlin.js.json("year" to "numeric", "month" to "long", "day" to "numeric", "hour" to "2-digit", "minute" to "2-digit").unsafeCast<kotlin.js.Date.LocaleOptions>()
-                                    val liveTimeString = kotlin.js.Date(snapshot!!.timestamp).toLocaleString("fa-IR", dateTimeOptions)
-                                    Div(attrs = { style { marginBottom(16.px); paddingBottom(16.px); property("border-bottom", "2px dashed #C8E6C9") } }) {
-                                        P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) { Text("نام محاسبه: ${snapshot!!.calculationName}") }
-                                        P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#424242")); fontSize(0.95.cssRem) } }) { Text("کل مقدار اولیه: ${snapshot!!.inputAmount.value.toGhiyasFormat(snapshot!!.baseUnit)} ${snapshot!!.baseUnit}") }
-                                        P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#757575")); fontSize(0.85.cssRem) } }) { Text("زمان ثبت: $liveTimeString") }
-                                    }
-                                    
-                                    if (snapshot!!.expensesResults.isNotEmpty()) { 
-                                        snapshot!!.expensesResults.forEach { item -> 
-                                            key("exp_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
-                                        }
-                                    }
-                                    
-                                    val actualNimResults = snapshot!!.nimehkariResults.filter { it.label != "خالص باقی‌مانده برای تسهیم" }
-                                    val remainingItem = snapshot!!.nimehkariResults.find { it.label == "خالص باقی‌مانده برای تسهیم" }
-                                    
-                                    if (snapshot!!.agricultureResults.isNotEmpty() || actualNimResults.isNotEmpty()) {
-                                        Div(attrs = { style { marginTop(16.px); paddingTop(16.px); property("border-top", "3px solid #AED581") } }) { H4(attrs = { style { color(Color("#2E7D32")); property("margin", "0px 0px 12px 0px") } }) { Text("کسورات کشاورزی و نیمه‌کاری") } }
-                                        snapshot!!.agricultureResults.forEach { item -> 
-                                            key("agr_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
-                                        }
-                                        
-                                        actualNimResults.forEach { item -> 
-                                            key("nim_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
-                                        }
-                                    }
-                                    
-                                    if (remainingItem != null) {
-                                        key("final_remaining_box") {
-                                            Div(attrs = { style { backgroundColor(Color("#E8F5E9")); borderRadius(8.px); padding(4.px, 8.px); margin(16.px, 0.px); property("border-right", "4px solid #2E7D32") } }) {
-                                                ResultRowItem("باقیمانده نهایی (جهت تسهیم)", remainingItem.value.value, snapshot!!.baseUnit, isHighlight = true)
-                                            }
-                                        }
-                                    }
-                                    
-                                    if (snapshot!!.finalSharesResults.isNotEmpty()) {
-                                        Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) { H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") } }
-                                        snapshot!!.finalSharesResults.forEach { item -> 
-                                            key("fin_${item.label}") {
-                                                val isNimehkariRow = item.label.startsWith("🌾")
-                                                Div(attrs = { style { backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")); property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7"); borderRadius(8.px); padding(12.px); property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)") } }) { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true) }
-                                            }
-                                        }
-                                    }
-                                    
-                                    Button(attrs = { style { width(100.percent); padding(12.px); property("margin-top", "24px"); backgroundColor(Color("white")); color(Color("#2E7D32")); property("border", "2px solid #2E7D32"); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { ghiyas.alimaa.fa.export.WebExportEngine.shareText(snapshot!!) } }) { Text("کپی نتایج به صورت متنی") }
-                                }
-                            }
                         }
                         "standalone_runner" -> {
                             Div(attrs = { style { padding(24.px) } }) {
@@ -348,7 +295,7 @@ fun App() {
                                                     Button(attrs = { style { flex(1); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { dynamicPlayerViewModel.loadProfile(prof.id); navigateTo("dynamic_player") } }) { Text("▶ اجرا") }
                                                 }
                                                 Button(attrs = { style { flex(1); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { builderViewModel.loadProfileForEdit(prof); navigateTo("builder") } }) { Text("✏️ ویرایش") }
-                                                Button(attrs = { style { flex(1); backgroundColor(Color("#F44336")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { ghiyas.alimaa.fa.data.CustomProfileRepository.deleteProfile(prof.id); try { customProfiles = ghiyas.alimaa.fa.data.CustomProfileRepository.getAllProfiles() } catch (e:Exception) {} } }) { Text("🗑️ حذف") }
+                                                Button(attrs = { style { flex(1); backgroundColor(Color("#F44336")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { showProfileDeleteConfirmId = prof.id } }) { Text("🗑️ حذف") }
                                             }
                                         }
                                     }
@@ -398,7 +345,7 @@ fun App() {
                                             calendarFormState.isVisible = true
                                         }
                                     },
-                                    onDelete = { showDeleteConfirmId = activeCalendarId },
+                                    onDelete = { showCalendarDeleteConfirmId = activeCalendarId },
                                     onSetDefault = {
                                         activeProfile?.let { prof ->
                                             WorkCalendarRepository.saveProfile(prof.copy(isDefault = true))
@@ -410,11 +357,80 @@ fun App() {
                             }
                         }
                     }
+
+                    // رندر کارت نتایج به صورت گلوبال زیر تب‌ها (عدم پرش تب)
+                    if (snapshot != null && currentMainTab != "work_calendar") {
+                        Div(attrs = { style { property("margin", "16px"); padding(24.px); backgroundColor(Color("#F1F8E9")); borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")) } }) {
+                            val isCustomProfileSnapshot = snapshot!!.associated_profile_id != null
+                            
+                            Div(attrs = { style { backgroundColor(Color("#F5F5F5")); color(Color("#1B5E20")); padding(14.px, 24.px); borderRadius(8.px); textAlign("center"); fontWeight("bold"); fontSize(1.25.cssRem); marginBottom(20.px); property("border", "1px solid #C8E6C9"); property("border-left", "5px solid #2E7D32") } }) { 
+                                Text(if (isCustomProfileSnapshot) "نتایج محاسبه اختصاصی (${snapshot!!.calculationName})" else "نتایج محاسبات نهایی قیاس") 
+                            }
+                            val dateTimeOptions = kotlin.js.json("year" to "numeric", "month" to "long", "day" to "numeric", "hour" to "2-digit", "minute" to "2-digit").unsafeCast<kotlin.js.Date.LocaleOptions>()
+                            val liveTimeString = kotlin.js.Date(snapshot!!.timestamp).toLocaleString("fa-IR", dateTimeOptions)
+                            Div(attrs = { style { marginBottom(16.px); paddingBottom(16.px); property("border-bottom", "2px dashed #C8E6C9") } }) {
+                                P(attrs = { style { margin(0.px); fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) { Text("نام محاسبه: ${snapshot!!.calculationName}") }
+                                P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#424242")); fontSize(0.95.cssRem) } }) { Text("کل مقدار اولیه: ${snapshot!!.inputAmount.value.toGhiyasFormat(snapshot!!.baseUnit)} ${snapshot!!.baseUnit}") }
+                                P(attrs = { style { property("margin", "8px 0px 0px 0px"); color(Color("#757575")); fontSize(0.85.cssRem) } }) { Text("زمان ثبت: $liveTimeString") }
+                            }
+                            
+                            if (snapshot!!.expensesResults.isNotEmpty()) { 
+                                snapshot!!.expensesResults.forEach { item -> 
+                                    key("exp_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                                }
+                            }
+                            
+                            val actualNimResults = snapshot!!.nimehkariResults.filter { it.label != "خالص باقی‌مانده برای تسهیم" }
+                            val remainingItem = snapshot!!.nimehkariResults.find { it.label == "خالص باقی‌مانده برای تسهیم" }
+                            
+                            if (snapshot!!.agricultureResults.isNotEmpty() || actualNimResults.isNotEmpty()) {
+                                Div(attrs = { style { marginTop(16.px); paddingTop(16.px); property("border-top", "3px solid #AED581") } }) { H4(attrs = { style { color(Color("#2E7D32")); property("margin", "0px 0px 12px 0px") } }) { Text("کسورات کشاورزی و نیمه‌کاری") } }
+                                snapshot!!.agricultureResults.forEach { item -> 
+                                    key("agr_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                                }
+                                
+                                actualNimResults.forEach { item -> 
+                                    key("nim_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
+                                }
+                            }
+                            
+                            if (remainingItem != null) {
+                                key("final_remaining_box") {
+                                    Div(attrs = { style { backgroundColor(Color("#E8F5E9")); borderRadius(8.px); padding(4.px, 8.px); margin(16.px, 0.px); property("border-right", "4px solid #2E7D32") } }) {
+                                        ResultRowItem("باقیمانده نهایی (جهت تسهیم)", remainingItem.value.value, snapshot!!.baseUnit, isHighlight = true)
+                                    }
+                                }
+                            }
+                            
+                            if (snapshot!!.finalSharesResults.isNotEmpty()) {
+                                Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) { H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") } }
+                                snapshot!!.finalSharesResults.forEach { item -> 
+                                    key("fin_${item.label}") {
+                                        val isNimehkariRow = item.label.startsWith("🌾")
+                                        Div(attrs = { style { backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")); property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7"); borderRadius(8.px); padding(12.px); property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)") } }) { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true) }
+                                    }
+                                }
+                            }
+                            
+                            Button(attrs = { style { width(100.percent); padding(12.px); property("margin-top", "24px"); backgroundColor(Color("white")); color(Color("#2E7D32")); property("border", "2px solid #2E7D32"); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { ghiyas.alimaa.fa.export.WebExportEngine.shareText(snapshot!!) } }) { Text("کپی نتایج به صورت متنی") }
+                        }
+                    }
                 }
                 "history" -> { HistoryScreen(onBack = { window.history.back() }) }
                 "builder" -> { ghiyas.alimaa.fa.ui.builder.BuilderScreen(viewModel = builderViewModel, onBack = { window.history.back() }) }
                 "dynamic_player" -> { 
-                    ghiyas.alimaa.fa.ui.player.DynamicPlayerScreen(viewModel = dynamicPlayerViewModel, onBack = { dynamicPlayerViewModel.clearState(); window.history.back() }) 
+                    ghiyas.alimaa.fa.ui.player.DynamicPlayerScreen(
+                        viewModel = dynamicPlayerViewModel, 
+                        baseUnit = inputState.unitType.displayName, // پاس دادن واحد اپلیکیشن به پلیر
+                        onBack = { dynamicPlayerViewModel.clearState(); window.history.back() },
+                        onCalculationComplete = { record ->
+                            ghiyas.alimaa.fa.data.LocalStorageRepository.saveRecord(record)
+                            expenseViewModel.setExternalSnapshot(record)
+                            // دیگر تب را به اجبار تغییر نمی‌دهیم
+                            dynamicPlayerViewModel.clearState()
+                            window.history.back()
+                        }
+                    ) 
                 }
                 "backup_restore" -> {
                     BackupRestoreScreen(onNavigateBack = { window.history.back() })
@@ -422,15 +438,30 @@ fun App() {
             }
         }
         
-        if (showDeleteConfirmId != null) {
+        if (showCalendarDeleteConfirmId != null) {
             DeleteConfirmDialog(
+                title = "حذف تقویم کاری",
+                message = "آیا مطمئن هستید که می‌خواهید این تقویم را به طور کامل حذف کنید؟ این عمل غیرقابل بازگشت است.",
                 onConfirm = {
-                    WorkCalendarRepository.deleteProfile(showDeleteConfirmId!!)
+                    WorkCalendarRepository.deleteProfile(showCalendarDeleteConfirmId!!)
                     workCalendars = WorkCalendarRepository.getAllProfiles()
                     activeCalendarId = workCalendars.find { it.isDefault }?.id ?: workCalendars.firstOrNull()?.id
-                    showDeleteConfirmId = null
+                    showCalendarDeleteConfirmId = null
                 },
-                onCancel = { showDeleteConfirmId = null }
+                onCancel = { showCalendarDeleteConfirmId = null }
+            )
+        }
+        
+        if (showProfileDeleteConfirmId != null) {
+            DeleteConfirmDialog(
+                title = "حذف الگوی اختصاصی",
+                message = "آیا از حذف دائم این الگوی اختصاصی اطمینان دارید؟",
+                onConfirm = {
+                    ghiyas.alimaa.fa.data.CustomProfileRepository.deleteProfile(showProfileDeleteConfirmId!!)
+                    try { customProfiles = ghiyas.alimaa.fa.data.CustomProfileRepository.getAllProfiles() } catch (e:Exception) {}
+                    showProfileDeleteConfirmId = null
+                },
+                onCancel = { showProfileDeleteConfirmId = null }
             )
         }
         

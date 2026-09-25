@@ -2,10 +2,9 @@ package ghiyas.alimaa.fa.domain.strategy
 
 import com.ionspin.kotlin.bignum.decimal.BigDecimal
 import com.ionspin.kotlin.bignum.decimal.DecimalMode
-import ghiyas.alimaa.fa.domain.models.ResultItem
-import ghiyas.alimaa.fa.domain.models.WalnutUnit
-import ghiyas.alimaa.fa.domain.models.ShareholderNode
-import ghiyas.alimaa.fa.domain.models.ComprehensiveMode
+import com.ionspin.kotlin.bignum.decimal.RoundingMode
+import ghiyas.alimaa.fa.domain.models.*
+import ghiyas.alimaa.fa.data.CustomProfileRepository
 
 enum class DistributionMode {
     MODE_A_NO_BREAKDOWN, MODE_COMPREHENSIVE, MODE_B_SIMPLE, MODE_C_GHIYAS, MODE_DEFAULT_MAKER, MODE_CUSTOM_BUILDER
@@ -45,19 +44,20 @@ data class DistributionInput(
     val isNimehkari: Boolean = false,
     val nimehkariPool: WalnutUnit = WalnutUnit.ZERO,
     val targetGroup: String = "کل عبدالرحیمی‌ها",
-    val transferDadallah: Boolean = false
+    val transferDadallah: Boolean = false,
+    val dynamicBooleans: Map<String, Boolean> = emptyMap() // Added for dynamic runner
 )
 
 object DistributionEngine {
 
-    // فیلتر قدرتمند برای تبدیل تمام اعداد فارسی/عربی و ممیزها به فرمت استاندارد انگلیسی
+    private val decimalMode = DecimalMode(decimalPrecision = 15, roundingMode = RoundingMode.ROUND_HALF_AWAY_FROM_ZERO)
+
     private fun String.toEnglishDecimals(): String {
         return this.replace('۰', '0').replace('۱', '1').replace('۲', '2').replace('۳', '3')
             .replace('۴', '4').replace('۵', '5').replace('۶', '6').replace('۷', '7')
             .replace('۸', '8').replace('۹', '9').replace('٫', '.').replace(',', '.')
     }
 
-    // پارسر امن: اگر تبدیل با خطا مواجه شد، هرگز کرش نمی‌کند و مقدار پیش‌فرض را برمی‌گرداند
     private fun safeParseBigDecimal(value: String, default: String = "0"): BigDecimal {
         val clean = value.toEnglishDecimals().trim()
         if (clean.isEmpty()) return BigDecimal.parseString(default)
@@ -114,9 +114,8 @@ object DistributionEngine {
             for (node in activeNodes) {
                 val weight = nodeWeights[node.id] ?: BigDecimal.ZERO
                 val share = try {
-                    pool.multiply(weight).divide(denominator, DecimalMode(decimalPrecision = 15))
+                    pool.multiply(weight).divide(denominator, decimalMode)
                 } catch (e: Exception) {
-                    // سیستم نجات: اگر کتابخانه در جاوااسکریپت کرش کرد، با Double بومی محاسبه را انجام بده
                     val pDouble = pool.doubleValue(false)
                     val wDouble = weight.doubleValue(false)
                     val dDouble = denominator.doubleValue(false)
@@ -151,9 +150,106 @@ object DistributionEngine {
             if (node.hasSubDistribution && share.compareTo(BigDecimal.ZERO) > 0 && node.transferredToId.isEmpty()) {
                 results.addAll(processComprehensiveTree(share, node.children, node.subDistributionMode, nodeName))
             } else {
-                results.add(ResultItem(fullLabel, WalnutUnit(share.doubleValue(false))))
+                results.add(ResultItem(fullLabel, WalnutUnit(share.roundToDigitPositionAfterDecimalPoint(3, RoundingMode.ROUND_HALF_AWAY_FROM_ZERO).doubleValue(false))))
             }
         }
+        return results
+    }
+
+    private fun processCustomProfile(pool: BigDecimal, profile: CustomProfile, dynamicBooleans: Map<String, Boolean>): List<ResultItem> {
+        val rawShares = mutableListOf<Pair<String, BigDecimal>>()
+
+        fun parsePersonNodes(nodes: List<BuilderPersonNode>, parentMultiplier: BigDecimal) {
+            for (node in nodes) {
+                // Check if disabled dynamically by user in player
+                if (node.hasToggle && dynamicBooleans[node.id] == false) continue
+
+                val baseWeight = safeParseBigDecimal(node.weightInput, "1")
+                val genderFactor = if (node.isFemale) safeParseBigDecimal("0.5") else safeParseBigDecimal("1")
+                val nodeTotalWeight = baseWeight.multiply(genderFactor).multiply(parentMultiplier)
+
+                if (node.isSubDivided && node.subNodes.isNotEmpty()) {
+                    var childrenSum = BigDecimal.ZERO
+                    val childrenWeights = mutableListOf<BigDecimal>()
+                    
+                    val activeChildren = node.subNodes.filter { !it.hasToggle || dynamicBooleans[it.id] != false }
+                    
+                    for (child in activeChildren) {
+                        val cWeight = safeParseBigDecimal(child.weightInput, "1")
+                        val cGender = if (child.isFemale) safeParseBigDecimal("0.5") else safeParseBigDecimal("1")
+                        val cw = cWeight.multiply(cGender)
+                        childrenWeights.add(cw)
+                        childrenSum = childrenSum.add(cw)
+                    }
+                    if (childrenSum > BigDecimal.ZERO) {
+                        activeChildren.forEachIndexed { index, child ->
+                            val childFraction = childrenWeights[index].divide(childrenSum, decimalMode)
+                            parsePersonNodes(listOf(child), nodeTotalWeight.multiply(childFraction))
+                        }
+                    } else {
+                        rawShares.add(Pair(node.name.ifEmpty { "ناشناس" }, nodeTotalWeight))
+                    }
+                } else {
+                    rawShares.add(Pair(node.name.ifEmpty { "ناشناس" }, nodeTotalWeight))
+                }
+            }
+        }
+
+        fun traverseBlocks(blocks: List<CustomBlock>) {
+            for (block in blocks) {
+                when (block) {
+                    is MemberBlock -> {
+                        when (block.distributionType) {
+                            DistributionType.HEADCOUNT_BASED -> parsePersonNodes(block.headcountNodes, safeParseBigDecimal("1"))
+                            DistributionType.GHIYAS_BASED -> block.ghiyasShareholders.filter { !it.hasToggle || dynamicBooleans[it.id] != false }.forEach { rawShares.add(Pair(it.name, safeParseBigDecimal(it.shareInput, "1"))) }
+                            DistributionType.PERCENTAGE, DistributionType.CUSTOM_UNIT -> block.percentageShareholders.filter { !it.hasToggle || dynamicBooleans[it.id] != false }.forEach { rawShares.add(Pair(it.name, safeParseBigDecimal(it.shareInput, "0"))) }
+                        }
+                        traverseBlocks(block.childBlocks)
+                    }
+                    is PartnerBlock -> {
+                        when (block.distributionType) {
+                            DistributionType.HEADCOUNT_BASED -> parsePersonNodes(block.headcountNodes, safeParseBigDecimal("1"))
+                            DistributionType.GHIYAS_BASED -> block.ghiyasShareholders.filter { !it.hasToggle || dynamicBooleans[it.id] != false }.forEach { rawShares.add(Pair(it.name, safeParseBigDecimal(it.shareInput, "1"))) }
+                            DistributionType.PERCENTAGE, DistributionType.CUSTOM_UNIT -> block.percentageShareholders.filter { !it.hasToggle || dynamicBooleans[it.id] != false }.forEach { rawShares.add(Pair(it.name, safeParseBigDecimal(it.shareInput, "0"))) }
+                        }
+                        traverseBlocks(block.siblingBlocks)
+                    }
+                    is StageBlock -> traverseBlocks(block.childBlocks)
+                    is ConditionGate -> {
+                        if (dynamicBooleans[block.block_id] == true) {
+                            traverseBlocks(block.childBlocks)
+                        }
+                    }
+                    is BaseInputBlock -> traverseBlocks(block.childBlocks)
+                    else -> {} 
+                }
+            }
+        }
+
+        traverseBlocks(profile.rootBlocks)
+
+        if (rawShares.isEmpty()) return listOf(ResultItem("سهم ${profile.name} (بدون شریک فعال)", WalnutUnit(pool.doubleValue(false))))
+
+        var totalWeight = BigDecimal.ZERO
+        for (item in rawShares) totalWeight = totalWeight.add(item.second)
+
+        val results = mutableListOf<ResultItem>()
+        if (totalWeight.compareTo(BigDecimal.ZERO) > 0) {
+            for (item in rawShares) {
+                val share = try {
+                    pool.multiply(item.second).divide(totalWeight, decimalMode)
+                } catch (e: Exception) {
+                    val p = pool.doubleValue(false)
+                    val w = item.second.doubleValue(false)
+                    val t = totalWeight.doubleValue(false)
+                    BigDecimal.fromDouble((p * w) / t)
+                }
+                results.add(ResultItem("سهم " + item.first.ifEmpty { "ناشناس" }, WalnutUnit(share.roundToDigitPositionAfterDecimalPoint(3, RoundingMode.ROUND_HALF_AWAY_FROM_ZERO).doubleValue(false))))
+            }
+        } else {
+            results.add(ResultItem("سهم ${profile.name} (مجموع وزن صفر)", WalnutUnit(pool.doubleValue(false))))
+        }
+
         return results
     }
 
@@ -168,7 +264,17 @@ object DistributionEngine {
                 input.shareholders.map { ResultItem("سهم ${it.name}", valuePerGhiyas * it.ghiyas) }
             }
             DistributionMode.MODE_DEFAULT_MAKER -> DefaultCalculationsRegistry.strategies.find { it.title == input.defaultStrategyTitle }?.calculate(input) ?: emptyList()
-            DistributionMode.MODE_CUSTOM_BUILDER -> listOf(ResultItem(if (input.groupName.isNotBlank()) input.groupName else "سهم محاسبات اختصاصی (در حال توسعه)", input.poolAmount))
+            DistributionMode.MODE_CUSTOM_BUILDER -> {
+                val customProfile = try {
+                    CustomProfileRepository.getAllProfiles().find { it.id == input.customProfileId }
+                } catch (e: Exception) { null }
+                
+                if (customProfile != null) {
+                    processCustomProfile(BigDecimal.fromDouble(input.poolAmount.value), customProfile, input.dynamicBooleans)
+                } else {
+                    listOf(ResultItem("سهم الگو (پیدا نشد)", input.poolAmount))
+                }
+            }
         }
     }
 }

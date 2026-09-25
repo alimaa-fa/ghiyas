@@ -10,11 +10,7 @@ import ghiyas.alimaa.fa.presentation.stages.distribution.PoolTarget
 import ghiyas.alimaa.fa.presentation.stages.agriculture.AgricultureInputState
 import ghiyas.alimaa.fa.domain.strategy.DistributionMode
 import ghiyas.alimaa.fa.domain.strategy.DefaultCalculationsRegistry
-import ghiyas.alimaa.fa.domain.models.ShareholderNode
-import ghiyas.alimaa.fa.domain.models.ComprehensiveMode
-import ghiyas.alimaa.fa.domain.models.CustomProfile
-import ghiyas.alimaa.fa.domain.models.ProfileIntegrationType
-import ghiyas.alimaa.fa.domain.models.SavedDistributionTemplate
+import ghiyas.alimaa.fa.domain.models.*
 import ghiyas.alimaa.fa.data.DistributionTemplateRepository
 import ghiyas.alimaa.fa.ui.theme.AppStyleSheet
 import kotlinx.browser.window
@@ -151,6 +147,78 @@ fun RecursiveComprehensiveNode(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistributionState, target: PoolTarget, viewModel: DistributionStageViewModel) {
+    for (block in blocks) {
+        when (block) {
+            is MemberBlock, is PartnerBlock -> {
+                val title = if (block is MemberBlock) block.title else (block as PartnerBlock).title
+                val nodes = if (block is MemberBlock) block.headcountNodes else (block as PartnerBlock).headcountNodes
+                val shareholders = if (block is MemberBlock) block.ghiyasShareholders + block.percentageShareholders else (block as PartnerBlock).ghiyasShareholders + (block as PartnerBlock).percentageShareholders
+
+                fun hasAnyToggle(n: BuilderPersonNode): Boolean = if (n.hasToggle) true else n.subNodes.any { hasAnyToggle(it) }
+                val shouldShowCard = nodes.any { hasAnyToggle(it) } || shareholders.any { it.hasToggle }
+
+                if (shouldShowCard) {
+                    Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginTop(12.px) } }) {
+                        H5(attrs = { style { property("margin", "0 0 12px 0"); color(Color("#1B5E20")) } }) { Text("شرط‌های وابسته: $title") }
+
+                        @Composable
+                        fun renderNodeToggles(n: BuilderPersonNode) {
+                            if (n.hasToggle) {
+                                val isChecked = state.dynamicBooleans[n.id] ?: true
+                                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); cursor("pointer"); marginBottom(8.px); fontSize(0.9.cssRem); color(Color("#33691E")) } }) {
+                                    Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, n.id, e.value) } })
+                                    // اضافه شدن نام شخص در پرانتز برای وضوح
+                                    Text("${n.toggleLabel.ifBlank { "لحاظ شود؟" }} (${n.name.ifBlank { "ناشناس" }})")
+                                }
+                            }
+                            n.subNodes.forEach { renderNodeToggles(it) }
+                        }
+                        
+                        nodes.forEach { renderNodeToggles(it) }
+                        
+                        shareholders.forEach { sh ->
+                            if (sh.hasToggle) {
+                                val isChecked = state.dynamicBooleans[sh.id] ?: true
+                                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); cursor("pointer"); marginBottom(8.px); fontSize(0.9.cssRem); color(Color("#33691E")) } }) {
+                                    Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, sh.id, e.value) } })
+                                    // اضافه شدن نام شخص در پرانتز برای وضوح
+                                    Text("${sh.toggleLabel.ifBlank { "لحاظ شود؟" }} (${sh.name.ifBlank { "ناشناس" }})")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            is ConditionGate -> {
+                val isChecked = state.dynamicBooleans[block.block_id] ?: false
+                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); backgroundColor(Color("#FFFDE7")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFF59D")); cursor("pointer"); marginTop(12.px); fontSize(0.95.cssRem); fontWeight("bold"); color(Color("#F57F17")) } }) {
+                    Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, block.block_id, e.value) } })
+                    Text(block.title)
+                }
+            }
+            else -> {}
+        }
+        
+        val children = when (block) {
+            is BaseInputBlock -> block.childBlocks
+            is StageBlock -> block.childBlocks
+            is ConditionGate -> block.childBlocks
+            is MemberBlock -> block.childBlocks
+            is PartnerBlock -> block.siblingBlocks
+            else -> emptyList()
+        }
+        
+        if (children.isNotEmpty()) {
+            val shouldRender = if (block is ConditionGate) (state.dynamicBooleans[block.block_id] ?: false) else true
+            if (shouldRender) {
+                RenderDependentProfileBlocks(children, state, target, viewModel)
             }
         }
     }
@@ -436,7 +504,30 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                     }
                 }
                 
-                DistributionMode.MODE_CUSTOM_BUILDER -> { Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") } }
+                DistributionMode.MODE_CUSTOM_BUILDER -> { 
+                    val dependentProfiles = customProfiles.filter { it.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4 }
+                    if (dependentProfiles.isEmpty()) {
+                        Div(attrs = { style { textAlign("center"); padding(12.px); backgroundColor(Color("#FFF3E0")); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFE0B2")); marginBottom(12.px) } }) {
+                            Text("هنوز هیچ الگوی وابسته‌ای ساخته نشده است.")
+                        }
+                    } else {
+                        Select(attrs = {
+                            style { width(100.percent); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(12.px); fontSize(1.cssRem) }
+                            onChange { e -> viewModel.updateCustomProfile(target, e.value ?: "") }
+                        }) {
+                            Option(value = "", attrs = { if (state.customProfileId.isEmpty()) { attr("selected", "true"); attr("disabled", "true") } }) { Text("انتخاب الگوی اختصاصی...") }
+                            dependentProfiles.forEach { prof ->
+                                key(prof.id) { Option(value = prof.id, attrs = { if (state.customProfileId == prof.id) attr("selected", "true") }) { Text(prof.name) } }
+                            }
+                        }
+                        
+                        val activeDependentProfile = dependentProfiles.find { it.id == state.customProfileId }
+                        if (activeDependentProfile != null) {
+                            RenderDependentProfileBlocks(activeDependentProfile.rootBlocks, state, target, viewModel)
+                        }
+                    }
+                    Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem); marginTop(12.px) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") } 
+                }
                 else -> { P(attrs = { style { color(Color("#D32F2F")) } }) { Text("گزینه برای سازگاری گذشته.") } }
             }
         }

@@ -11,22 +11,21 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlin.random.Random
 
-// این کلاس ShareholderInput باید حتماً اینجا باشد تا ExpenseStageViewModel خطا ندهد
 data class ShareholderInput(val name: String = "", val ghiyasInput: String = "")
 
 data class PoolDistributionState(
     val mode: DistributionMode = DistributionMode.MODE_A_NO_BREAKDOWN, 
     val groupName: String = "",                           
     val comprehensiveState: ComprehensiveState = ComprehensiveState(), 
-    val modeBState: ModeBState = ModeBState(), // Legacy
+    val modeBState: ModeBState = ModeBState(),
     val shareholders: List<ShareholderInput> = listOf(ShareholderInput()),
     val defaultStrategyTitle: String = "",
     val customProfileId: String = "", 
     val calculateZivar: Boolean = true,
     val targetGroup: String = "کل عبدالرحیمی‌ها",
     val transferDadallah: Boolean = false,
-    // فلگ جدید برای ادغام محاسبه شریک دوم در شریک اول در حالت جامع
-    val isUnifiedComprehensiveCalculation: Boolean = false
+    val isUnifiedComprehensiveCalculation: Boolean = false,
+    val dynamicBooleans: Map<String, Boolean> = emptyMap() // اضافه شدن پشتیبانی از شرط‌های الگو
 )
 
 data class DistributionStageState(
@@ -61,11 +60,17 @@ class DistributionStageViewModel {
     fun updateCalculateZivar(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(calculateZivar = isChecked) } }
     fun updateTargetGroup(target: PoolTarget, group: String) { updatePoolState(target) { it.copy(targetGroup = group) } }
     fun updateTransferDadallah(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(transferDadallah = isChecked) } }
-    
-    // متد جدید برای به‌روزرسانی تیک محاسبه یکپارچه
     fun updateUnifiedComprehensive(target: PoolTarget, isUnified: Boolean) { updatePoolState(target) { it.copy(isUnifiedComprehensiveCalculation = isUnified) } }
 
-    // === متدهای موتور جدید جامع (Comprehensive) ===
+    // متد جدید برای آپدیت تیک‌های شرطی الگوهای وابسته در مرحله ۴
+    fun updateDynamicBoolean(target: PoolTarget, blockId: String, isChecked: Boolean) {
+        updatePoolState(target) {
+            val newMap = it.dynamicBooleans.toMutableMap()
+            newMap[blockId] = isChecked
+            it.copy(dynamicBooleans = newMap)
+        }
+    }
+
     fun updateComprehensiveState(target: PoolTarget, update: (ComprehensiveState) -> ComprehensiveState) {
         updatePoolState(target) { it.copy(comprehensiveState = update(it.comprehensiveState)) }
     }

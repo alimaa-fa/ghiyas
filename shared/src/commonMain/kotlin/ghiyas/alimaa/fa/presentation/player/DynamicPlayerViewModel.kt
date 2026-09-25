@@ -1,6 +1,9 @@
 package ghiyas.alimaa.fa.presentation.player
 
-import ghiyas.alimaa.fa.domain.models.CustomProfile
+import ghiyas.alimaa.fa.domain.models.*
+import ghiyas.alimaa.fa.domain.strategy.DistributionEngine
+import ghiyas.alimaa.fa.domain.strategy.DistributionInput
+import ghiyas.alimaa.fa.domain.strategy.DistributionMode
 import ghiyas.alimaa.fa.data.CustomProfileRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,7 +25,7 @@ class DynamicPlayerViewModel {
         _state.update { 
             it.copy(
                 activeProfile = profile,
-                textInputs = emptyMap(), // ریست کردن مقادیر قبلی
+                textInputs = emptyMap(),
                 booleanInputs = emptyMap()
             ) 
         }
@@ -42,6 +45,48 @@ class DynamicPlayerViewModel {
             newInputs[blockId] = isChecked
             currentState.copy(booleanInputs = newInputs)
         }
+    }
+
+    // Real Execution Engine Connection
+    fun executeCalculation(currentYear: String, timestampLong: Long, baseUnit: String = "کیلوگرم"): CalculationHistoryRecord? {
+        val profile = _state.value.activeProfile ?: return null
+        
+        var totalInput = 0.0
+        var mainInputName = profile.name
+
+        // Extract values from the dynamic UI forms
+        val baseBlock = profile.rootBlocks.filterIsInstance<BaseInputBlock>().firstOrNull()
+        if (baseBlock != null) {
+            totalInput = _state.value.textInputs[baseBlock.block_id + "_amount"]?.toDoubleOrNull() ?: 0.0
+            val potentialName = _state.value.textInputs[baseBlock.block_id + "_name"]
+            if (!potentialName.isNullOrBlank()) {
+                mainInputName = potentialName
+            }
+        }
+
+        // Send to Engine to calculate actual shares based on profile structure
+        val distInput = DistributionInput(
+            poolAmount = WalnutUnit(totalInput),
+            mode = DistributionMode.MODE_CUSTOM_BUILDER,
+            customProfileId = profile.id,
+            dynamicBooleans = _state.value.booleanInputs
+        )
+        
+        val sharesList = DistributionEngine.calculate(distInput)
+
+        return CalculationHistoryRecord(
+            id = timestampLong.toString(),
+            timestamp = timestampLong,
+            calculationName = mainInputName,
+            persianYear = currentYear,
+            baseUnit = baseUnit, // Kept dynamic/customizable parameter
+            inputAmount = WalnutUnit(totalInput),
+            expensesResults = emptyList(), // Can add custom expenses logic later
+            agricultureResults = emptyList(),
+            nimehkariResults = emptyList(),
+            finalSharesResults = sharesList, // Correctly calculated shares
+            associated_profile_id = profile.id
+        )
     }
 
     fun clearState() {

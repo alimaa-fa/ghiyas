@@ -49,6 +49,10 @@ class ExpenseStageViewModel {
     fun updateKooleh(update: (ExpenseCategoryState) -> ExpenseCategoryState) { _inputState.update { it.copy(kooleh = update(it.kooleh)) } }
     fun updateSarkari(update: (SarkariCategoryState) -> SarkariCategoryState) { _inputState.update { it.copy(sarkari = update(it.sarkari)) } }
 
+    fun setExternalSnapshot(record: CalculationHistoryRecord) {
+        _snapshot.value = record
+    }
+
     fun calculateAndSnapshot(
         calculationName: String, 
         baseUnit: String, 
@@ -100,7 +104,6 @@ class ExpenseStageViewModel {
             nimehkariResultsList.add(ResultItem("کسر سهم نیمه‌کاری $partnerName", agriOutput.nimehkariTotal))
         }
 
-        // --- بررسی فعال بودن انتقال سهم دادالله به عبدالرحیم ---
         var isDadallahTransferActive = false
         if (agricultureInput.isNimehkari) {
             val p1State = distributionInput.partner1PoolState
@@ -114,7 +117,6 @@ class ExpenseStageViewModel {
             }
         }
 
-        // رندر داینامیک لیبل باقیمانده بر اساس وضعیت انتقال
         if (isDadallahTransferActive) {
             nimehkariResultsList.add(ResultItem("باقیمانده (جهت تسهیم سهم زیور)", agriOutput.remainingForStage4))
             nimehkariResultsList.add(ResultItem("باقیمانده (بعد از انتقال سهم دادالله)", agriOutput.remainingForStage4 + agriOutput.nimehkariTotal))
@@ -127,83 +129,61 @@ class ExpenseStageViewModel {
 
         if (agricultureInput.isNimehkari) {
             val p1State = distributionInput.partner1PoolState
-            
             val p1Strategy = ghiyas.alimaa.fa.domain.strategy.DefaultCalculationsRegistry.strategies.find { it.title == p1State.defaultStrategyTitle }
             val isP1GlobalMacro = p1State.mode == DistributionMode.MODE_DEFAULT_MAKER && p1Strategy?.isGlobalMacro == true
 
             if (isP1GlobalMacro) {
                 val p1Input = DistributionInput(
-                    poolAmount = agriOutput.remainingForStage4, 
-                    mode = p1State.mode, 
-                    groupName = p1State.groupName, 
-                    comprehensiveState = p1State.comprehensiveState,
-                    modeBState = p1State.modeBState,
+                    poolAmount = agriOutput.remainingForStage4, mode = p1State.mode, groupName = p1State.groupName, 
+                    comprehensiveState = p1State.comprehensiveState, modeBState = p1State.modeBState,
                     shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                    defaultStrategyTitle = p1State.defaultStrategyTitle, 
-                    customProfileId = p1State.customProfileId,
-                    defaultLabel = "سهم یکجا کل",
-                    calculateZivar = p1State.calculateZivar, isNimehkari = true, nimehkariPool = agriOutput.nimehkariTotal,
-                    targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah
+                    defaultStrategyTitle = p1State.defaultStrategyTitle, customProfileId = p1State.customProfileId,
+                    defaultLabel = "سهم یکجا کل", calculateZivar = p1State.calculateZivar, isNimehkari = true, nimehkariPool = agriOutput.nimehkariTotal,
+                    targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah,
+                    dynamicBooleans = p1State.dynamicBooleans // متصل کردن تیک‌های شرطی
                 )
-                val results = DistributionEngine.calculate(p1Input)
-                finalSharesList.addAll(results)
+                finalSharesList.addAll(DistributionEngine.calculate(p1Input))
             } else {
                 val p1Pool = agriOutput.nimehkariTotal 
                 val p2Pool = agriOutput.remainingForStage4 
                 
                 val p1Input = DistributionInput(
-                    poolAmount = p1Pool, 
-                    mode = p1State.mode, 
-                    groupName = p1State.groupName, 
-                    comprehensiveState = p1State.comprehensiveState,
-                    modeBState = p1State.modeBState,
+                    poolAmount = p1Pool, mode = p1State.mode, groupName = p1State.groupName, 
+                    comprehensiveState = p1State.comprehensiveState, modeBState = p1State.modeBState,
                     shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                    defaultStrategyTitle = p1State.defaultStrategyTitle, 
-                    customProfileId = p1State.customProfileId,
-                    defaultLabel = "سهم شریک ۱",
-                    calculateZivar = p1State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
-                    targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah
+                    defaultStrategyTitle = p1State.defaultStrategyTitle, customProfileId = p1State.customProfileId,
+                    defaultLabel = "سهم شریک ۱", calculateZivar = p1State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
+                    targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah,
+                    dynamicBooleans = p1State.dynamicBooleans // متصل کردن تیک‌های شرطی
                 )
                 val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " (${agricultureInput.partner1Name})" else ""
-                val p1Results = DistributionEngine.calculate(p1Input).map { ResultItem(it.label + p1NameSuffix, it.value) }
-                finalSharesList.addAll(p1Results)
+                finalSharesList.addAll(DistributionEngine.calculate(p1Input).map { ResultItem(it.label + p1NameSuffix, it.value) })
 
                 val p2State = distributionInput.partner2PoolState
                 val p2Input = DistributionInput(
-                    poolAmount = p2Pool, 
-                    mode = p2State.mode, 
-                    groupName = p2State.groupName, 
-                    comprehensiveState = p2State.comprehensiveState,
-                    modeBState = p2State.modeBState,
+                    poolAmount = p2Pool, mode = p2State.mode, groupName = p2State.groupName, 
+                    comprehensiveState = p2State.comprehensiveState, modeBState = p2State.modeBState,
                     shareholders = p2State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                    defaultStrategyTitle = p2State.defaultStrategyTitle, 
-                    customProfileId = p2State.customProfileId,
-                    defaultLabel = "سهم شریک ۲",
-                    calculateZivar = p2State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
-                    targetGroup = p2State.targetGroup, transferDadallah = p2State.transferDadallah
+                    defaultStrategyTitle = p2State.defaultStrategyTitle, customProfileId = p2State.customProfileId,
+                    defaultLabel = "سهم شریک ۲", calculateZivar = p2State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
+                    targetGroup = p2State.targetGroup, transferDadallah = p2State.transferDadallah,
+                    dynamicBooleans = p2State.dynamicBooleans // متصل کردن تیک‌های شرطی
                 )
                 val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " (${agricultureInput.partner2Name})" else ""
-                val p2Results = DistributionEngine.calculate(p2Input).map { ResultItem(it.label + p2NameSuffix, it.value) }
-                finalSharesList.addAll(p2Results)
+                finalSharesList.addAll(DistributionEngine.calculate(p2Input).map { ResultItem(it.label + p2NameSuffix, it.value) })
             }
-            
         } else {
             val mainState = distributionInput.mainPoolState
             val distInput = DistributionInput(
-                poolAmount = poolAmount, 
-                mode = mainState.mode, 
-                groupName = mainState.groupName, 
-                comprehensiveState = mainState.comprehensiveState,
-                modeBState = mainState.modeBState, 
+                poolAmount = poolAmount, mode = mainState.mode, groupName = mainState.groupName, 
+                comprehensiveState = mainState.comprehensiveState, modeBState = mainState.modeBState, 
                 shareholders = mainState.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
-                defaultStrategyTitle = mainState.defaultStrategyTitle, 
-                customProfileId = mainState.customProfileId,
-                defaultLabel = "سهم کل یکجا",
-                calculateZivar = mainState.calculateZivar, isNimehkari = false, nimehkariPool = WalnutUnit.ZERO,
-                targetGroup = mainState.targetGroup, transferDadallah = mainState.transferDadallah
+                defaultStrategyTitle = mainState.defaultStrategyTitle, customProfileId = mainState.customProfileId,
+                defaultLabel = "سهم کل یکجا", calculateZivar = mainState.calculateZivar, isNimehkari = false, nimehkariPool = WalnutUnit.ZERO,
+                targetGroup = mainState.targetGroup, transferDadallah = mainState.transferDadallah,
+                dynamicBooleans = mainState.dynamicBooleans // متصل کردن تیک‌های شرطی
             )
-            val results = DistributionEngine.calculate(distInput)
-            finalSharesList.addAll(results)
+            finalSharesList.addAll(DistributionEngine.calculate(distInput))
         }
 
         val finalName = if (calculationName.isNotBlank()) "$calculationName - $currentYear" else "بدون نام - $currentYear"

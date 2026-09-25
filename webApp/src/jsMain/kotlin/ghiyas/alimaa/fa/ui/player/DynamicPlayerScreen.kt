@@ -6,9 +6,15 @@ import org.jetbrains.compose.web.attributes.*
 import org.jetbrains.compose.web.dom.*
 import ghiyas.alimaa.fa.domain.models.*
 import ghiyas.alimaa.fa.presentation.player.DynamicPlayerViewModel
+import kotlin.js.Date
 
 @Composable
-fun DynamicPlayerScreen(viewModel: DynamicPlayerViewModel, onBack: () -> Unit) {
+fun DynamicPlayerScreen(
+    viewModel: DynamicPlayerViewModel, 
+    baseUnit: String,
+    onBack: () -> Unit,
+    onCalculationComplete: (CalculationHistoryRecord) -> Unit
+) {
     val state by viewModel.state.collectAsState()
     val profile = state.activeProfile
 
@@ -41,7 +47,18 @@ fun DynamicPlayerScreen(viewModel: DynamicPlayerViewModel, onBack: () -> Unit) {
                     border(0.px); borderRadius(8.px); fontSize(1.2.cssRem); fontWeight("bold"); cursor("pointer")
                     marginTop(32.px); property("box-shadow", "0 4px 12px rgba(255, 152, 0, 0.3)")
                 }
-                onClick { kotlinx.browser.window.alert("در فاز بعدی (موتور ریاضی)، مقادیر این فرم محاسبه خواهند شد.") }
+                onClick {
+                    val yearOptions = kotlin.js.json("year" to "numeric").unsafeCast<Date.LocaleOptions>()
+                    val rawPersianYear = Date().toLocaleDateString("fa-IR", yearOptions).trim()
+                    val timestamp = Date().getTime().toLong()
+                    
+                    val record = viewModel.executeCalculation(rawPersianYear, timestamp, baseUnit)
+                    if (record != null) {
+                        onCalculationComplete(record)
+                    } else {
+                        kotlinx.browser.window.alert("خطا در ایجاد خروجی محاسبه.")
+                    }
+                }
             }) { Text("🧮 محاسبه نهایی نتایج") }
         }
     }
@@ -132,14 +149,14 @@ fun RenderPlayerBlock(block: CustomBlock, viewModel: DynamicPlayerViewModel, sta
                 Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(16.px); borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginBottom(12.px) } }) {
                     H4(attrs = { style { property("margin", "0 0 12px 0"); color(Color("#1B5E20")) } }) { Text("تنظیمات شرطی: $title") }
                     
-                    // رفع خطا: اضافه شدن انوتیشن کامپوز به تابع محلی
                     @Composable
                     fun renderPlayerNodeToggles(n: BuilderPersonNode) {
                         if (n.hasToggle) {
-                            val isChecked = state.booleanInputs[n.id] ?: true // پیش‌فرض: محاسبه شود
+                            val isChecked = state.booleanInputs[n.id] ?: true
                             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px); backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); cursor("pointer"); marginBottom(8.px); fontWeight("bold"); color(Color("#33691E")) } }) {
                                 Input(type = InputType.Checkbox, attrs = { style { width(20.px); height(20.px) }; checked(isChecked); onChange { e -> viewModel.updateBooleanInput(n.id, e.value) } })
-                                Text(n.toggleLabel.ifBlank { "لحاظ شدن سهم ${n.name}" })
+                                // اضافه شدن نام شخص در پرانتز برای وضوح
+                                Text("${n.toggleLabel.ifBlank { "لحاظ شود؟" }} (${n.name.ifBlank { "ناشناس" }})")
                             }
                         }
                         n.subNodes.forEach { renderPlayerNodeToggles(it) }
@@ -152,7 +169,8 @@ fun RenderPlayerBlock(block: CustomBlock, viewModel: DynamicPlayerViewModel, sta
                             val isChecked = state.booleanInputs[sh.id] ?: true
                             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px); backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); cursor("pointer"); marginBottom(8.px); fontWeight("bold"); color(Color("#33691E")) } }) {
                                 Input(type = InputType.Checkbox, attrs = { style { width(20.px); height(20.px) }; checked(isChecked); onChange { e -> viewModel.updateBooleanInput(sh.id, e.value) } })
-                                Text(sh.toggleLabel.ifBlank { "لحاظ شدن سهم ${sh.name}" })
+                                // اضافه شدن نام شخص در پرانتز برای وضوح
+                                Text("${sh.toggleLabel.ifBlank { "لحاظ شود؟" }} (${sh.name.ifBlank { "ناشناس" }})")
                             }
                         }
                     }
@@ -163,7 +181,12 @@ fun RenderPlayerBlock(block: CustomBlock, viewModel: DynamicPlayerViewModel, sta
     }
 
     val children = when (block) {
-        is BaseInputBlock -> block.childBlocks; is StageBlock -> block.childBlocks; is ConditionGate -> block.childBlocks; is MemberBlock -> block.childBlocks; else -> emptyList()
+        is BaseInputBlock -> block.childBlocks
+        is StageBlock -> block.childBlocks
+        is ConditionGate -> block.childBlocks
+        is MemberBlock -> block.childBlocks
+        is PartnerBlock -> block.siblingBlocks
+        else -> emptyList()
     }
 
     val shouldRenderChildren = if (block is ConditionGate) {
