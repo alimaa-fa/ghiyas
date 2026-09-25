@@ -11,7 +11,6 @@ object TextExportFormatter {
         
         sb.appendLine("عنوان: ${record.calculationName}")
         sb.appendLine("تاریخ و زمان: ${formatTimestampToPersianDateTime(record.timestamp)}")
-        // ارسال مستقیم نام واحد (String) به جای Boolean
         sb.appendLine("مقدار کل: ${record.inputAmount.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
         sb.appendLine("-------------------")
         
@@ -22,19 +21,35 @@ object TextExportFormatter {
             }
             sb.appendLine("-------------------")
         }
+
+        // استخراج و تفکیک باقیمانده‌ها از سایر موارد جهت نمایش مجزا
+        val remainders = record.agricultureResults.filter { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") } +
+                         record.nimehkariResults.filter { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") }
+                         
+        val pureAgri = record.agricultureResults.filterNot { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") }
+        val pureNimehkari = record.nimehkariResults.filterNot { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") }
         
-        if (record.agricultureResults.isNotEmpty()) {
+        if (pureAgri.isNotEmpty()) {
             sb.appendLine("کشاورزی:")
-            record.agricultureResults.forEach { 
+            pureAgri.forEach { 
                 sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
         
-        if (record.nimehkariResults.isNotEmpty()) {
+        if (pureNimehkari.isNotEmpty()) {
             sb.appendLine("نیمه‌کاری:")
-            record.nimehkariResults.forEach { 
+            pureNimehkari.forEach { 
                 sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+            }
+            sb.appendLine("-------------------")
+        }
+        
+        // نمایش باقیمانده‌ها به صورت برجسته و مستقل
+        if (remainders.isNotEmpty()) {
+            sb.appendLine("باقیمانده جهت تسهیم:")
+            remainders.forEach { 
+                sb.appendLine("✅ ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }

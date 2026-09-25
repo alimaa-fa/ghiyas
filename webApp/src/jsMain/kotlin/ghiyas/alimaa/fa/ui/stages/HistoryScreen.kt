@@ -20,7 +20,7 @@ enum class SortOption(val label: String) {
 fun HistoryItemCard(
     record: CalculationHistoryRecord,
     onDeleteRequest: (CalculationHistoryRecord) -> Unit,
-    onNameUpdated: () -> Unit // کال‌بک برای به روز رسانی لیست پس از ویرایش نام
+    onNameUpdated: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
@@ -41,10 +41,8 @@ fun HistoryItemCard(
             cursor(if (isEditing) "default" else "pointer")
             property("transition", "all 0.3s ease")
         }
-        // اگر در حالت ویرایش نیستیم، کلیک روی کل کارت باعث باز و بسته شدن می‌شود
         onClick { if (!isEditing) expanded = !expanded }
     }) {
-        // Visible Header
         Div(attrs = {
             style {
                 display(DisplayStyle.Flex)
@@ -54,7 +52,6 @@ fun HistoryItemCard(
                 gap(12.px)
             }
         }) {
-            // Title & Date Area
             Div(attrs = {
                 style {
                     display(DisplayStyle.Flex)
@@ -63,12 +60,10 @@ fun HistoryItemCard(
                     flex(1)
                     minWidth(150.px)
                 }
-                // اصلاح مهم: stopPropagation از اینجا حذف شد تا کلیک روی عنوان به کارت اصلی برسد و آن را باز کند
             }) {
                 if (isEditing) {
                     Div(attrs = { 
                         style { display(DisplayStyle.Flex); gap(8.px); alignItems(AlignItems.Center) }
-                        // هنگام ویرایش فرم، از بسته شدن یا رفتار ناخواسته جلوگیری می‌کنیم
                         onClick { it.stopPropagation() } 
                     }) {
                         Input(type = InputType.Text, attrs = {
@@ -143,14 +138,12 @@ fun HistoryItemCard(
                 }
             }
 
-            // Actions
             if (!isEditing) {
                 Div(attrs = {
                     style {
                         display(DisplayStyle.Flex)
                         gap(8.px)
                     }
-                    // کلیک روی دکمه‌ها نباید باعث باز و بسته شدن کارت شود
                     onClick { it.stopPropagation() } 
                 }) {
                     Button(attrs = {
@@ -195,7 +188,6 @@ fun HistoryItemCard(
             }
         }
 
-        // Expandable Details (AnimatedVisibility equivalent for DOM)
         if (expanded && !isEditing) {
             Div(attrs = {
                 style {
@@ -226,11 +218,16 @@ fun HistoryItemCard(
                     }
                 }
                 
-                if (record.agricultureResults.isNotEmpty()) {
+                val remainders = record.agricultureResults.filter { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") } + 
+                                 record.nimehkariResults.filter { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") }
+                val pureAgri = record.agricultureResults.filterNot { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") }
+                val pureNimehkari = record.nimehkariResults.filterNot { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") }
+                
+                if (pureAgri.isNotEmpty()) {
                     Div {
                         Span(attrs = { style { fontWeight("bold"); color(Color("#2E7D32")); fontSize(0.9.cssRem) } }) { Text("کشاورزی:") }
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
-                            record.agricultureResults.forEach { res ->
+                            pureAgri.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
                                     Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                                 }
@@ -239,14 +236,47 @@ fun HistoryItemCard(
                     }
                 }
                 
-                if (record.nimehkariResults.isNotEmpty()) {
+                if (pureNimehkari.isNotEmpty()) {
                     Div {
                         Span(attrs = { style { fontWeight("bold"); color(Color("#2E7D32")); fontSize(0.9.cssRem) } }) { Text("نیمه‌کاری:") }
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
-                            record.nimehkariResults.forEach { res ->
+                            pureNimehkari.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
                                     Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                                 }
+                            }
+                        }
+                    }
+                }
+                
+                // رندر تفکیک‌شده و زیبای باقیمانده‌ها در تاریخچه
+                if (remainders.isNotEmpty()) {
+                    Div(attrs = {
+                        style {
+                            backgroundColor(Color("#E8F5E9"))
+                            border(1.px, LineStyle.Solid, Color("#A5D6A7"))
+                            borderRadius(8.px)
+                            padding(12.px)
+                            marginTop(4.px)
+                            marginBottom(4.px)
+                            display(DisplayStyle.Flex)
+                            flexDirection(FlexDirection.Column)
+                            gap(8.px)
+                        }
+                    }) {
+                        remainders.forEach { rem ->
+                            Div(attrs = {
+                                style {
+                                    display(DisplayStyle.Flex)
+                                    justifyContent(JustifyContent.SpaceBetween)
+                                    alignItems(AlignItems.Center)
+                                    color(Color("#2E7D32"))
+                                    fontWeight("bold")
+                                    fontSize(0.95.cssRem)
+                                }
+                            }) {
+                                Text(rem.label)
+                                Text("${rem.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
                             }
                         }
                     }
@@ -304,7 +334,6 @@ fun HistoryScreen(
             position(Position.Relative)
         }
     }) {
-        // Header & Back button
         Div(attrs = {
             style {
                 display(DisplayStyle.Flex)
@@ -340,7 +369,6 @@ fun HistoryScreen(
             }
         }
 
-        // Sort & Search Bar Row
         Div(attrs = {
             style {
                 display(DisplayStyle.Flex)
@@ -350,7 +378,6 @@ fun HistoryScreen(
                 flexWrap(FlexWrap.Wrap)
             }
         }) {
-            // Search Bar
             Div(attrs = {
                 classes(AppStyleSheet.floatingContainer)
                 style { 
@@ -372,7 +399,6 @@ fun HistoryScreen(
                 }) { Text("جستجو (نام یا سال)...") }
             }
 
-            // Sort Dropdown
             Div(attrs = {
                 style {
                     display(DisplayStyle.Flex)
@@ -408,7 +434,6 @@ fun HistoryScreen(
             }
         }
 
-        // List
         if (filteredRecords.isEmpty()) {
             Div(attrs = {
                 style {
@@ -438,7 +463,6 @@ fun HistoryScreen(
         }
     }
 
-    // Modal Dialog for Safe Deletion
     if (recordToDelete != null) {
         Div(attrs = {
             style {

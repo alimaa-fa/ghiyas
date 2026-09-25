@@ -100,9 +100,27 @@ class ExpenseStageViewModel {
             nimehkariResultsList.add(ResultItem("کسر سهم نیمه‌کاری $partnerName", agriOutput.nimehkariTotal))
         }
 
-        // --- اصلاح بسیار مهم و کلیدی ---
-        // شرط برداشته شد تا این باقیمانده‌ی دقیق، تحت هر شرایطی برای لایه رابط کاربری ارسال شود
-        nimehkariResultsList.add(ResultItem("خالص باقی‌مانده برای تسهیم", agriOutput.remainingForStage4))
+        // --- بررسی فعال بودن انتقال سهم دادالله به عبدالرحیم ---
+        var isDadallahTransferActive = false
+        if (agricultureInput.isNimehkari) {
+            val p1State = distributionInput.partner1PoolState
+            if (p1State.defaultStrategyTitle.contains("عبدالرحیم") && p1State.targetGroup == "کل عبدالرحیمی‌ها" && p1State.transferDadallah) {
+                isDadallahTransferActive = true
+            }
+        } else {
+            val mainState = distributionInput.mainPoolState
+            if (mainState.defaultStrategyTitle.contains("عبدالرحیم") && mainState.targetGroup == "کل عبدالرحیمی‌ها" && mainState.transferDadallah) {
+                isDadallahTransferActive = true
+            }
+        }
+
+        // رندر داینامیک لیبل باقیمانده بر اساس وضعیت انتقال
+        if (isDadallahTransferActive) {
+            nimehkariResultsList.add(ResultItem("باقیمانده (جهت تسهیم سهم زیور)", agriOutput.remainingForStage4))
+            nimehkariResultsList.add(ResultItem("باقیمانده (بعد از انتقال سهم دادالله)", agriOutput.remainingForStage4 + agriOutput.nimehkariTotal))
+        } else {
+            nimehkariResultsList.add(ResultItem("باقیمانده نهایی (جهت تسهیم)", agriOutput.remainingForStage4))
+        }
 
         val finalSharesList = mutableListOf<ResultItem>()
         val poolAmount = agriOutput.remainingForStage4
@@ -142,11 +160,11 @@ class ExpenseStageViewModel {
                     shareholders = p1State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                     defaultStrategyTitle = p1State.defaultStrategyTitle, 
                     customProfileId = p1State.customProfileId,
-                    defaultLabel = "نیمه اول",
+                    defaultLabel = "سهم شریک ۱",
                     calculateZivar = p1State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah
                 )
-                val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " (نیمه ${agricultureInput.partner1Name})" else " (نیمه اول)"
+                val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " (${agricultureInput.partner1Name})" else ""
                 val p1Results = DistributionEngine.calculate(p1Input).map { ResultItem(it.label + p1NameSuffix, it.value) }
                 finalSharesList.addAll(p1Results)
 
@@ -160,11 +178,11 @@ class ExpenseStageViewModel {
                     shareholders = p2State.shareholders.map { Shareholder(it.name, it.ghiyasInput.toDoubleOrNull() ?: 0.0) },
                     defaultStrategyTitle = p2State.defaultStrategyTitle, 
                     customProfileId = p2State.customProfileId,
-                    defaultLabel = "نیمه دوم",
+                    defaultLabel = "سهم شریک ۲",
                     calculateZivar = p2State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p2State.targetGroup, transferDadallah = p2State.transferDadallah
                 )
-                val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " (نیمه ${agricultureInput.partner2Name})" else " (نیمه دوم)"
+                val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " (${agricultureInput.partner2Name})" else ""
                 val p2Results = DistributionEngine.calculate(p2Input).map { ResultItem(it.label + p2NameSuffix, it.value) }
                 finalSharesList.addAll(p2Results)
             }
