@@ -49,8 +49,10 @@ fun Double.toGhiyasFormat(decimals: Int): String {
 }
 
 // حفظ تابع قبلی برای سازگاری کامل با سایر بخش‌های پروژه (Overloading)
-fun Double.toGhiyasFormat(baseUnit: String): String {
+// افزودن itemLabel برای تشخیص هوشمند «هر قیاس»
+fun Double.toGhiyasFormat(baseUnit: String, itemLabel: String = ""): String {
     val decimals = when {
+        itemLabel.contains("هر قیاس") -> 3
         baseUnit.contains("کیلو") || baseUnit.contains("گرم") -> 3
         baseUnit.contains("متر") -> 2
         baseUnit.contains("دست") || baseUnit.contains("دانه") || baseUnit.contains("دان") -> 1

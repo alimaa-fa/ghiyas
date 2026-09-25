@@ -17,12 +17,11 @@ object TextExportFormatter {
         if (record.expensesResults.isNotEmpty()) {
             sb.appendLine("هزینه‌ها:")
             record.expensesResults.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit, it.label)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
 
-        // استخراج و تفکیک باقیمانده‌ها از سایر موارد جهت نمایش مجزا
         val remainders = record.agricultureResults.filter { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") } +
                          record.nimehkariResults.filter { it.label.contains("باقیمانده") || it.label.contains("باقی‌مانده") }
                          
@@ -32,7 +31,7 @@ object TextExportFormatter {
         if (pureAgri.isNotEmpty()) {
             sb.appendLine("کشاورزی:")
             pureAgri.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit, it.label)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
@@ -40,16 +39,15 @@ object TextExportFormatter {
         if (pureNimehkari.isNotEmpty()) {
             sb.appendLine("نیمه‌کاری:")
             pureNimehkari.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit, it.label)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
         
-        // نمایش باقیمانده‌ها به صورت برجسته و مستقل
         if (remainders.isNotEmpty()) {
             sb.appendLine("باقیمانده جهت تسهیم:")
             remainders.forEach { 
-                sb.appendLine("✅ ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                sb.appendLine("✅ ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit, it.label)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }
@@ -57,7 +55,7 @@ object TextExportFormatter {
         if (record.finalSharesResults.isNotEmpty()) {
             sb.appendLine("سهم‌های نهایی:")
             record.finalSharesResults.forEach { 
-                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                sb.appendLine("- ${it.label}: ${it.value.value.toGhiyasFormat(record.baseUnit, it.label)} ${record.baseUnit}")
             }
             sb.appendLine("-------------------")
         }

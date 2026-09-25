@@ -51,7 +51,8 @@ fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight
     val textColor = if (isHighlight) Color("#BF360C") else Color("#33691E")
     Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); padding(12.px, 0.px); property("border-bottom", "1px dashed #AED581"); fontSize(if (isHighlight) 1.15.cssRem else 1.1.cssRem); color(textColor) } }) {
         Span(attrs = { style { flex(1); if(isHighlight) fontWeight("bold") } }) { Text(label) }
-        Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { Span(attrs = { style { fontFamily("Vazirmatn", "system-ui", "sans-serif"); fontWeight("bold"); property("direction", "ltr"); display(DisplayStyle.InlineBlock) } }) { Text(rawValue.toGhiyasFormat(baseUnit)) }; Text(" $baseUnit") }
+        // ارسال label به toGhiyasFormat برای شناسایی «هر قیاس»
+        Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { Span(attrs = { style { fontFamily("Vazirmatn", "system-ui", "sans-serif"); fontWeight("bold"); property("direction", "ltr"); display(DisplayStyle.InlineBlock) } }) { Text(rawValue.toGhiyasFormat(baseUnit, label)) }; Text(" $baseUnit") }
     }
 }
 
@@ -168,7 +169,7 @@ fun App() {
                         Div(attrs = { 
                             style { 
                                 display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); width(100.percent)
-                                property("min-width", "0") // برای جلوگیری از بیرون‌زدگی
+                                property("min-width", "0") 
                             } 
                         }) {
                             Span(attrs = { style { fontSize(20.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("قیاس") }
@@ -214,7 +215,6 @@ fun App() {
             when (currentScreen) {
                 "main" -> {
                     HeroBanner()
-                    // اصلاحیه تب‌ها: اسکرول افقی نرم و عدم فشرده‌سازی
                     Div(attrs = { 
                         classes(AppStyleSheet.tabContainer); classes("hide-scrollbar")
                         style {

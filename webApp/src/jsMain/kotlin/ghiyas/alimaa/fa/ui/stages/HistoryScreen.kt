@@ -211,7 +211,7 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             record.expensesResults.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit, res.label)} ${record.baseUnit}")
                                 }
                             }
                         }
@@ -229,7 +229,7 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             pureAgri.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit, res.label)} ${record.baseUnit}")
                                 }
                             }
                         }
@@ -242,14 +242,13 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             pureNimehkari.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit, res.label)} ${record.baseUnit}")
                                 }
                             }
                         }
                     }
                 }
                 
-                // رندر تفکیک‌شده و زیبای باقیمانده‌ها در تاریخچه
                 if (remainders.isNotEmpty()) {
                     Div(attrs = {
                         style {
@@ -276,7 +275,7 @@ fun HistoryItemCard(
                                 }
                             }) {
                                 Text(rem.label)
-                                Text("${rem.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                                Text("${rem.value.value.toGhiyasFormat(record.baseUnit, rem.label)} ${record.baseUnit}")
                             }
                         }
                     }
@@ -288,7 +287,7 @@ fun HistoryItemCard(
                         Ul(attrs = { style { margin(4.px, 0.px); paddingLeft(0.px); paddingRight(20.px) } }) {
                             record.finalSharesResults.forEach { res ->
                                 Li(attrs = { style { fontSize(0.9.cssRem); color(Color("#616161")) } }) {
-                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit)} ${record.baseUnit}")
+                                    Text("${res.label}: ${res.value.value.toGhiyasFormat(record.baseUnit, res.label)} ${record.baseUnit}")
                                 }
                             }
                         }
