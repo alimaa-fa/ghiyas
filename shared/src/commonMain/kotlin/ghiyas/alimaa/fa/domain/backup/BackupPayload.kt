@@ -12,5 +12,6 @@ data class BackupPayload(
     val history: List<CalculationHistoryRecord> = emptyList(),
     val calendars: List<WorkCalendarProfile> = emptyList(),
     val distributionTemplates: List<SavedDistributionTemplate> = emptyList(),
-    val customProfiles: List<CustomProfile> = emptyList()
+    val customProfiles: List<CustomProfile> = emptyList(),
+    val calculatorHistory: List<String> = emptyList() // اضافه شدن فیلد ماشین‌حساب
 )

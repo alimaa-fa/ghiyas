@@ -12,7 +12,7 @@ data class CalculatorState(
     val isPostEquals: Boolean = false,
     val isVisible: Boolean = false,
     val isFullScreen: Boolean = false,
-    val isHistoryOpen: Boolean = false // پرچم جدید برای نمایش پنل تاریخچه
+    val isHistoryOpen: Boolean = false
 )
 
 class CalculatorViewModel {
@@ -23,9 +23,14 @@ class CalculatorViewModel {
     fun closeCalculator() { _state.update { it.copy(isVisible = false, isHistoryOpen = false) } }
     fun toggleFullScreen() { _state.update { it.copy(isFullScreen = !it.isFullScreen) } }
     
-    // کنترلرهای جدید تاریخچه
     fun toggleHistory() { _state.update { it.copy(isHistoryOpen = !it.isHistoryOpen) } }
     fun clearHistory() { _state.update { it.copy(history = emptyList(), isHistoryOpen = false) } }
+    
+    // متد جدید: برای تزریق تاریخچه ذخیره شده از دیتابیس در هنگام بالا آمدن اپلیکیشن
+    fun restoreHistory(loadedHistory: List<String>) {
+        _state.update { it.copy(history = loadedHistory) }
+    }
+    
     fun loadFromHistory(result: String) {
         _state.update { it.copy(expression = result, isPostEquals = false, isHistoryOpen = false) }
     }
@@ -75,7 +80,6 @@ class CalculatorViewModel {
             val result = CalculatorMathEngine.evaluate(balancedExpr)
             
             val newHistory = curr.history.toMutableList()
-            // افزایش ظرفیت تاریخچه به ۳۰ آیتم
             if (newHistory.size >= 30) newHistory.removeFirst()
             newHistory.add("$balancedExpr = $result")
 

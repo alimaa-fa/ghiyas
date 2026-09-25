@@ -8,21 +8,37 @@ import kotlin.js.json
 
 object LocalStorageRepository {
     private const val STORAGE_KEY = "ghiyas_history_records"
+    private const val CALC_HISTORY_KEY = "ghiyas_calc_history" // کلید جدید ماشین‌حساب
+
+    // ----- بخش ماشین‌حساب -----
+    fun getCalculatorHistory(): List<String> {
+        val jsonString = window.localStorage.getItem(CALC_HISTORY_KEY)
+        if (jsonString.isNullOrEmpty()) return emptyList()
+        return try {
+            val jsArray = js("JSON.parse(jsonString)") as Array<dynamic>
+            jsArray.map { it as String }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    fun saveCalculatorHistory(history: List<String>) {
+        val jsArray = history.toTypedArray()
+        window.localStorage.setItem(CALC_HISTORY_KEY, js("JSON.stringify(jsArray)") as String)
+    }
+    // -------------------------
 
     fun saveRecord(record: CalculationHistoryRecord) {
         val records = getAllRecords().toMutableList()
         val existingIndex = records.indexOfFirst { it.id == record.id }
         
         if (existingIndex >= 0) {
-            // آپدیت رکورد موجود
             records[existingIndex] = record
         } else {
-            // رکورد جدید است، پس منطق نامگذاری خودکار (Auto-increment) را اعمال می‌کنیم
             val baseName = record.calculationName
             var finalName = baseName
             var counter = 1
             
-            // تا زمانی که در همان سال رکوردی با این نام دقیق وجود دارد، عدد را بالا ببر
             while (records.any { it.calculationName == finalName && it.persianYear == record.persianYear }) {
                 finalName = "$baseName ($counter)"
                 counter++
@@ -40,7 +56,6 @@ object LocalStorageRepository {
         saveAll(records)
     }
 
-    // متد اختصاصی برای ویرایش نام رکورد به طور مستقیم
     fun updateRecordName(id: String, newName: String) {
         val records = getAllRecords().toMutableList()
         val existingIndex = records.indexOfFirst { it.id == id }

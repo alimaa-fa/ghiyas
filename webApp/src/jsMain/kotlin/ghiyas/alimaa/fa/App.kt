@@ -31,6 +31,7 @@ import kotlinx.browser.window
 import org.w3c.dom.events.Event
 import ghiyas.alimaa.fa.domain.models.WorkCalendarProfile
 import ghiyas.alimaa.fa.data.WorkCalendarRepository
+import ghiyas.alimaa.fa.data.LocalStorageRepository
 
 @Composable
 fun DeleteConfirmDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
@@ -51,7 +52,6 @@ fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight
     val textColor = if (isHighlight) Color("#BF360C") else Color("#33691E")
     Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); padding(12.px, 0.px); property("border-bottom", "1px dashed #AED581"); fontSize(if (isHighlight) 1.15.cssRem else 1.1.cssRem); color(textColor) } }) {
         Span(attrs = { style { flex(1); if(isHighlight) fontWeight("bold") } }) { Text(label) }
-        // ارسال label به toGhiyasFormat برای شناسایی «هر قیاس»
         Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { Span(attrs = { style { fontFamily("Vazirmatn", "system-ui", "sans-serif"); fontWeight("bold"); property("direction", "ltr"); display(DisplayStyle.InlineBlock) } }) { Text(rawValue.toGhiyasFormat(baseUnit, label)) }; Text(" $baseUnit") }
     }
 }
@@ -92,7 +92,14 @@ fun App() {
     val calendarFormState = remember { WorkCalendarFormState() }
     var showDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     
-    LaunchedEffect(Unit) { PwaManager.initialize() }
+    // ۱. تزریق تاریخچه ماشین‌حساب به هنگام بارگذاری برنامه
+    LaunchedEffect(Unit) { 
+        PwaManager.initialize() 
+        val savedCalcHistory = LocalStorageRepository.getCalculatorHistory()
+        if (savedCalcHistory.isNotEmpty()) {
+            calculatorViewModel.restoreHistory(savedCalcHistory)
+        }
+    }
 
     LaunchedEffect(Unit) {
         window.history.pushState(null, "", window.location.href)
@@ -144,6 +151,11 @@ fun App() {
     val calcState by calculatorViewModel.state.collectAsState()
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     val distributionState by distributionViewModel.state.collectAsState()
+
+    // ۲. سیستم ذخیره خودکار تاریخچه ماشین‌حساب هنگام ایجاد تغییر
+    LaunchedEffect(calcState.history) {
+        LocalStorageRepository.saveCalculatorHistory(calcState.history)
+    }
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"

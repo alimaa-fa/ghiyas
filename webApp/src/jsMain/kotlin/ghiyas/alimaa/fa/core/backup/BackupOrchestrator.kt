@@ -17,7 +17,8 @@ object BackupOrchestrator {
             history = LocalStorageRepository.getAllRecords(),
             calendars = WorkCalendarRepository.getAllProfiles(),
             distributionTemplates = DistributionTemplateRepository.getAllTemplates(),
-            customProfiles = CustomProfileRepository.getAllProfiles()
+            customProfiles = CustomProfileRepository.getAllProfiles(),
+            calculatorHistory = LocalStorageRepository.getCalculatorHistory() // استخراج تاریخچه ماشین‌حساب
         )
         val jsonString = BackupEngine.generateBackupJson(payload)
         val date = Date()
@@ -26,7 +27,6 @@ object BackupOrchestrator {
         return Pair(jsonString, fileName)
     }
 
-    // فراخوانی پل بومی اندروید
     fun exportBackupAndroidNative() {
         val (jsonString, fileName) = generatePayloadAndFilename()
         WebFileIO.exportViaAndroidNative(fileName, jsonString)
@@ -94,17 +94,21 @@ object BackupOrchestrator {
             val currentCalendars = WorkCalendarRepository.getAllProfiles()
             val currentTemplates = DistributionTemplateRepository.getAllTemplates()
             val currentProfiles = CustomProfileRepository.getAllProfiles()
+            val currentCalcHistory = LocalStorageRepository.getCalculatorHistory()
 
             val mergedHistory = BackupEngine.mergeHistory(currentHistory, payload.history)
             val mergedCalendars = BackupEngine.mergeCalendars(currentCalendars, payload.calendars)
             val mergedTemplates = BackupEngine.mergeTemplates(currentTemplates, payload.distributionTemplates)
             val mergedProfiles = BackupEngine.mergeCustomProfiles(currentProfiles, payload.customProfiles)
+            val mergedCalcHistory = BackupEngine.mergeCalculatorHistory(currentCalcHistory, payload.calculatorHistory)
 
             LocalStorageRepository.saveAll(mergedHistory)
             WorkCalendarRepository.saveAll(mergedCalendars)
             DistributionTemplateRepository.saveAll(mergedTemplates)
             CustomProfileRepository.saveAll(mergedProfiles)
+            LocalStorageRepository.saveCalculatorHistory(mergedCalcHistory)
 
+            // نکته: برای اعمال تغییرات ماشین‌حساب، بهتر است کاربر یک‌بار صفحه را رفرش کند.
             onComplete(true, "اطلاعات با موفقیت استخراج و به صورت هوشمند ادغام شد.")
         } catch (e: Exception) {
             console.error("خطا در بازیابی اطلاعات:", e)

@@ -9,10 +9,9 @@ import kotlinx.serialization.json.Json
 
 object BackupEngine {
     
-    // تنظیمات سریالایزر: نادیده گرفتن کلیدهای ناشناس در آینده (برای سازگاری نسخه‌ها)
     val jsonParser = Json { 
         ignoreUnknownKeys = true 
-        prettyPrint = false // برای کاهش حجم فایل بکاپ
+        prettyPrint = false 
     }
 
     fun generateBackupJson(payload: BackupPayload): String {
@@ -23,11 +22,10 @@ object BackupEngine {
         return try {
             jsonParser.decodeFromString<BackupPayload>(jsonString)
         } catch (e: Exception) {
-            null // در صورت خرابی فایل، نال برمی‌گرداند تا جلوی کرش برنامه گرفته شود
+            null 
         }
     }
 
-    // ادغام تاریخچه: فقط UUID چک می‌شود و مرتب‌سازی بر اساس زمان است
     fun mergeHistory(
         existing: List<CalculationHistoryRecord>, 
         imported: List<CalculationHistoryRecord>
@@ -41,7 +39,6 @@ object BackupEngine {
         return resultMap.values.sortedByDescending { it.timestamp }
     }
 
-    // ادغام الگوهای تسهیم: حل مشکل نام‌های تکراری با شماره‌گذاری
     fun mergeTemplates(
         existing: List<SavedDistributionTemplate>, 
         imported: List<SavedDistributionTemplate>
@@ -61,7 +58,6 @@ object BackupEngine {
         return result.sortedByDescending { it.createdAt }
     }
 
-    // ادغام پروفایل‌های محاسباتی اختصاصی
     fun mergeCustomProfiles(
         existing: List<CustomProfile>, 
         imported: List<CustomProfile>
@@ -81,7 +77,6 @@ object BackupEngine {
         return result.sortedByDescending { it.createdAt }
     }
 
-    // ادغام تقویم‌های کاری
     fun mergeCalendars(
         existing: List<WorkCalendarProfile>, 
         imported: List<WorkCalendarProfile>
@@ -95,11 +90,18 @@ object BackupEngine {
                     finalName = "${importedItem.name} ($counter)"
                     counter++
                 }
-                // اگر تقویم وارداتی حالت پیش‌فرض داشته باشد اما ما از قبل تقویم پیش‌فرض داریم، اولویت با تقویم فعلی است
                 val isSafeDefault = if (result.isEmpty()) importedItem.isDefault else false
                 result.add(importedItem.copy(name = finalName, isDefault = isSafeDefault))
             }
         }
         return result
+    }
+
+    // متد جدید: ادغام تاریخچه ماشین‌حساب (حذف تکراری‌ها و نگه داشتن نهایتا ۳۰ آیتم آخر)
+    fun mergeCalculatorHistory(
+        existing: List<String>,
+        imported: List<String>
+    ): List<String> {
+        return (existing + imported).distinct().takeLast(30)
     }
 }
