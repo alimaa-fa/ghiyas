@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ghiyas-core-v18';
+const CACHE_NAME = 'ghiyas-core-v19';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './styles.css?v=18',
+  './styles.css?v=19',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
