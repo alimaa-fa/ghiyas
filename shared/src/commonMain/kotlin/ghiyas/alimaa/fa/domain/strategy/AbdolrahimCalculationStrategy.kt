@@ -10,18 +10,24 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
     override fun calculate(input: DistributionInput): List<ResultItem> {
         val results = mutableListOf<ResultItem>()
 
-        // ۱. تعیین دقیق مجموع قیاس بر اساس تیک زیور و گروه هدف
-        val totalGhiyas = if (input.calculateZivar) {
+        // اعمال قواعد تجاری (ایزوله‌سازی): شروط زیور و دادالله مطلقاً فقط برای گروه هدف «کل عبدالرحیمی‌ها» معتبر است.
+        // اینگونه خطای کثیف ماندن State در لایه UI، در لایه Domain خنثی می‌شود (رعایت اصول Solid و SRP).
+        val isGlobalGroup = input.targetGroup == "کل عبدالرحیمی‌ها"
+        val effectiveCalculateZivar = if (isGlobalGroup) input.calculateZivar else false
+        val effectiveTransferDadallah = if (isGlobalGroup) input.transferDadallah else false
+
+        // ۱. تعیین دقیق مجموع قیاس بر اساس گروه هدف و شرط موثر زیور
+        val totalGhiyas = if (effectiveCalculateZivar) {
             102.0
         } else {
-            if (input.targetGroup == "نوری و صغری") 34.4 else 62.0
+            if (!isGlobalGroup) 34.4 else 62.0
         }
 
         // ۲. محاسبات پایه (ارزش قیاس از استخر کل)
         val valuePerGhiyas = input.poolAmount / totalGhiyas
         
-        // اصلاح نام نمایشی "هر قیاس" بر اساس وضعیت انتقال
-        val ghiyasLabel = if (input.isNimehkari && input.transferDadallah && input.targetGroup == "کل عبدالرحیمی‌ها") {
+        // اصلاح نام نمایشی "هر قیاس" بر اساس وضعیت انتقال موثر
+        val ghiyasLabel = if (input.isNimehkari && effectiveTransferDadallah && isGlobalGroup) {
             "هر قیاس (قبل از انتقال سهم دادالله)"
         } else {
             "هر قیاس"
@@ -29,7 +35,7 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
         results.add(ResultItem(ghiyasLabel, valuePerGhiyas))
 
         // ۳. محاسبه سهم زیور در صورت انتخاب شدن
-        if (input.calculateZivar) {
+        if (effectiveCalculateZivar) {
             val zivarShare = valuePerGhiyas * 40.0
             results.add(ResultItem("سهم زیور", zivarShare))
         }
@@ -37,7 +43,7 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
         // ۴. منطق انتقال سهم نیمه‌کاری دادالله به عبدالرحیم
         var abdolrahimFinal = valuePerGhiyas * 62.0
         if (input.isNimehkari) {
-            if (!input.transferDadallah) {
+            if (!effectiveTransferDadallah) {
                 // ارسال با نشانه 🌾 جهت رندر خودکار در کادر تفکیک‌شده کهربایی با فاصله واضح
                 results.add(ResultItem("🌾 سهم نیمه‌کاری دادالله", input.nimehkariPool))
             } else {
@@ -45,11 +51,11 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
             }
         }
 
-        if (input.targetGroup == "کل عبدالرحیمی‌ها") {
+        if (isGlobalGroup) {
             results.add(ResultItem("سهم عبدالرحیم", abdolrahimFinal))
             
             // اضافه شدن "هر قیاس" دوم (بعد از انتقال) فقط زمانی که انتقال انجام شده باشد
-            if (input.isNimehkari && input.transferDadallah) {
+            if (input.isNimehkari && effectiveTransferDadallah) {
                 val newValuePerGhiyas = abdolrahimFinal / 62.0
                 results.add(ResultItem("هر قیاس (بعد از انتقال سهم دادالله)", newValuePerGhiyas))
             }
@@ -60,7 +66,7 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
         val soghraShare: WalnutUnit
         val ezzatKobraShare: WalnutUnit
 
-        if (input.targetGroup == "نوری و صغری") {
+        if (!isGlobalGroup) {
             nouriShare = valuePerGhiyas * 20.6
             soghraShare = valuePerGhiyas * 13.8
             ezzatKobraShare = WalnutUnit.ZERO
@@ -77,7 +83,7 @@ object AbdolrahimCalculationStrategy : DefaultCalculationStrategy {
         // خروجی نهایی نتایج به ترتیب دقیق درخواستی
         results.add(ResultItem("سهم نوری", nouriShare))
         results.add(ResultItem("سهم صغری", soghraShare))
-        if (input.targetGroup == "کل عبدالرحیمی‌ها") {
+        if (isGlobalGroup) {
             results.add(ResultItem("سهم هر یک (عزت و کبری)", ezzatKobraShare))
         }
         results.add(ResultItem("سهم هر پسر صغری", soghraBoy))
