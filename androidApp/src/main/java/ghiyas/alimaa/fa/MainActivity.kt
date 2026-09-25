@@ -21,10 +21,13 @@ import androidx.webkit.WebViewAssetLoader
 class MainActivity : AppCompatActivity() {
 
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
-    private var pendingBackupJson: String? = null
-    private lateinit var webView: WebView
     
-    // متغیر برای مدیریت دوبار فشردن کلید بازگشت
+    // متغیرهای جدید برای مدیریت حافظه و جلوگیری از سرریز شدن Binder Buffer در اندرویدهای قدیمی
+    private var pendingFilename: String? = null
+    private val backupBuffer = java.lang.StringBuilder()
+    private var pendingBackupJson: String? = null
+    
+    private lateinit var webView: WebView
     private var doubleBackToExitPressedOnce = false
 
     private val fileChooserLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
@@ -48,7 +51,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        // پاکسازی حافظه پس از ذخیره
         pendingBackupJson = null
+        backupBuffer.setLength(0) 
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -70,24 +75,20 @@ class MainActivity : AppCompatActivity() {
                 return assetLoader.shouldInterceptRequest(request.url)
             }
 
-            // اضافه شدن متد مهم برای رهگیری لینک‌های خارجی (مثل ایتا) و جلوگیری از خطای Scheme
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
                 request: android.webkit.WebResourceRequest?
             ): Boolean {
                 val url = request?.url.toString()
                 
-                // اگر لینک مربوط به فایل‌های داخلی اپلیکیشن نیست، آن را بیرون از وب‌ویو باز کن
                 if (!url.startsWith("https://appassets.androidplatform.net/")) {
                     try {
                         val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                        // اگر لینک مربوط به سایت ایتا بود، پکیج اختصاصی ایتا را برای اجرای مستقیم تنظیم می‌کنیم
                         if (url.contains("eitaa.com")) {
                             intent.setPackage("ir.eitaa.messenger")
                         }
                         startActivity(intent)
                     } catch (e: Exception) {
-                        // در صورتی که اپلیکیشن ایتا نصب نباشد، لینک را به طور عادی در مرورگر باز می‌کنیم
                         try {
                             val fallbackIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                             startActivity(fallbackIntent)
@@ -95,7 +96,7 @@ class MainActivity : AppCompatActivity() {
                             ex.printStackTrace()
                         }
                     }
-                    return true // به وب‌ویو اعلام می‌کنیم که لینک توسط ما مدیریت شد و نیازی به لود کردن ندارد
+                    return true 
                 }
                 return false
             }
@@ -151,11 +152,26 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class AndroidBridge {
+        // مرحله اول: آماده‌سازی حافظه برای دریافت تکه‌تکه فایل
         @JavascriptInterface
-        fun saveBackup(jsonContent: String, filename: String) {
-            pendingBackupJson = jsonContent
+        fun initBackup(filename: String) {
+            pendingFilename = filename
+            backupBuffer.setLength(0)
+            pendingBackupJson = null
+        }
+
+        // مرحله دوم: دریافت امن بسته‌های ۲۵۶ کیلوبایتی (جلوگیری از خطای ۰ بایتی)
+        @JavascriptInterface
+        fun appendBackupChunk(chunk: String) {
+            backupBuffer.append(chunk)
+        }
+
+        // مرحله سوم: پایان ارسال و شروع فرآیند ذخیره‌سازی بومی
+        @JavascriptInterface
+        fun saveBackupFile() {
+            pendingBackupJson = backupBuffer.toString()
             runOnUiThread {
-                createDocumentLauncher.launch(filename)
+                createDocumentLauncher.launch(pendingFilename)
             }
         }
     }

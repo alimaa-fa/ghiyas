@@ -14,15 +14,26 @@ import kotlin.js.json
 
 object WebFileIO {
     
-    // متد تشخیص محیط: آیا در اپلیکیشن بومی اندروید هستیم؟
     fun isAndroidNativeApp(): Boolean {
         return js("typeof window.AndroidBridge !== 'undefined'").unsafeCast<Boolean>()
     }
 
-    // متد فراخوانی ذخیره‌ساز بومی اندروید
+    // آپدیت حیاتی: ارسال فایل به لایه کاتلین اندروید به صورت تکه‌تکه (Chunks)
     fun exportViaAndroidNative(filename: String, content: String) {
         if (isAndroidNativeApp()) {
-            js("window.AndroidBridge.saveBackup(content, filename)")
+            js("window.AndroidBridge.initBackup(filename)")
+            
+            // خرد کردن متن به بسته‌های 256 کیلوبایتی برای عبور امن از محدودیت IPC Binder اندروید
+            val chunkSize = 256 * 1024 
+            var startIndex = 0
+            while (startIndex < content.length) {
+                val endIndex = if (startIndex + chunkSize < content.length) startIndex + chunkSize else content.length
+                val chunk = content.substring(startIndex, endIndex)
+                js("window.AndroidBridge.appendBackupChunk(chunk)")
+                startIndex += chunkSize
+            }
+            
+            js("window.AndroidBridge.saveBackupFile()")
         }
     }
 
