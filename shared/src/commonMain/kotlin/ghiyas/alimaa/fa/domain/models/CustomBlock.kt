@@ -35,14 +35,20 @@ data class BuilderPersonNode(
     val isFemale: Boolean = false, val isSubDivided: Boolean = false,
     val subCountInput: String = "", val isDetailedFurther: Boolean = false,
     val isSubBoyGirlSplit: Boolean = false,
-    val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟", // اضافه شده
+    val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟",
+    // امکانات انتقال سهم (اضافه شده برای پشتیبانی از فرم‌های داینامیک)
+    val canBeTransferred: Boolean = false, 
+    val transferredToId: String = "",
     val subNodes: List<BuilderPersonNode> = emptyList()
 )
 
 @Serializable
 data class BuilderShareholder(
     val id: String, val name: String = "", val shareInput: String = "",
-    val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟" // اضافه شده
+    val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟",
+    // امکانات انتقال سهم
+    val canBeTransferred: Boolean = false,
+    val transferredToId: String = ""
 )
 
 @Serializable

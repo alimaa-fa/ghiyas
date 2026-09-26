@@ -47,6 +47,41 @@ private fun flattenTree(nodes: List<ShareholderNode>): List<Pair<String, String>
     return nodes.flatMap { listOf(it.id to it.name) + flattenTree(it.children) }
 }
 
+// متد استخراج تمام افراد برای لیست مقاصد انتقال در الگوهای داینامیک
+private fun extractAllDynamicNodes(blocks: List<CustomBlock>): List<Pair<String, String>> {
+    val result = mutableListOf<Pair<String, String>>()
+    fun extractPersons(nodes: List<BuilderPersonNode>) {
+        nodes.forEach {
+            result.add(it.id to it.name)
+            extractPersons(it.subNodes)
+        }
+    }
+    fun traverse(bList: List<CustomBlock>) {
+        bList.forEach { b ->
+            when (b) {
+                is MemberBlock -> {
+                    extractPersons(b.headcountNodes)
+                    b.ghiyasShareholders.forEach { result.add(it.id to it.name) }
+                    b.percentageShareholders.forEach { result.add(it.id to it.name) }
+                    traverse(b.childBlocks)
+                }
+                is PartnerBlock -> {
+                    extractPersons(b.headcountNodes)
+                    b.ghiyasShareholders.forEach { result.add(it.id to it.name) }
+                    b.percentageShareholders.forEach { result.add(it.id to it.name) }
+                    traverse(b.siblingBlocks)
+                }
+                is StageBlock -> traverse(b.childBlocks)
+                is ConditionGate -> traverse(b.childBlocks)
+                is BaseInputBlock -> traverse(b.childBlocks)
+                else -> {}
+            }
+        }
+    }
+    traverse(blocks)
+    return result
+}
+
 @Composable
 fun RecursiveComprehensiveNode(
     node: ShareholderNode, path: List<String>, currentMode: ComprehensiveMode, 
@@ -153,7 +188,7 @@ fun RecursiveComprehensiveNode(
 }
 
 @Composable
-fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistributionState, target: PoolTarget, viewModel: DistributionStageViewModel) {
+fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistributionState, target: PoolTarget, viewModel: DistributionStageViewModel, allAvailableNodes: List<Pair<String, String>>) {
     for (block in blocks) {
         when (block) {
             is MemberBlock, is PartnerBlock -> {
@@ -161,21 +196,36 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
                 val nodes = if (block is MemberBlock) block.headcountNodes else (block as PartnerBlock).headcountNodes
                 val shareholders = if (block is MemberBlock) block.ghiyasShareholders + block.percentageShareholders else (block as PartnerBlock).ghiyasShareholders + (block as PartnerBlock).percentageShareholders
 
-                fun hasAnyToggle(n: BuilderPersonNode): Boolean = if (n.hasToggle) true else n.subNodes.any { hasAnyToggle(it) }
-                val shouldShowCard = nodes.any { hasAnyToggle(it) } || shareholders.any { it.hasToggle }
+                fun hasAnyInteractive(n: BuilderPersonNode): Boolean = if (n.hasToggle || n.canBeTransferred) true else n.subNodes.any { hasAnyInteractive(it) }
+                val shouldShowCard = nodes.any { hasAnyInteractive(it) } || shareholders.any { it.hasToggle || it.canBeTransferred }
 
                 if (shouldShowCard) {
                     Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginTop(12.px) } }) {
-                        H5(attrs = { style { property("margin", "0 0 12px 0"); color(Color("#1B5E20")) } }) { Text("شرط‌های وابسته: $title") }
+                        H5(attrs = { style { property("margin", "0 0 12px 0"); color(Color("#1B5E20")) } }) { Text("تنظیمات وابسته: $title") }
 
                         @Composable
                         fun renderNodeToggles(n: BuilderPersonNode) {
-                            if (n.hasToggle) {
-                                val isChecked = state.dynamicBooleans[n.id] ?: true
-                                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); cursor("pointer"); marginBottom(8.px); fontSize(0.9.cssRem); color(Color("#33691E")) } }) {
-                                    Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, n.id, e.value) } })
-                                    // اضافه شدن نام شخص در پرانتز برای وضوح
-                                    Text("${n.toggleLabel.ifBlank { "لحاظ شود؟" }} (${n.name.ifBlank { "ناشناس" }})")
+                            if (n.hasToggle || n.canBeTransferred) {
+                                Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px) } }) {
+                                    val isChecked = state.dynamicBooleans[n.id] ?: true
+                                    if (n.hasToggle) {
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); cursor("pointer"); fontSize(0.9.cssRem); color(Color("#33691E")); fontWeight("bold"); marginBottom(if (n.canBeTransferred && isChecked) 12.px else 0.px) } }) {
+                                            Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, n.id, e.value) } })
+                                            Text("${n.toggleLabel.ifBlank { "لحاظ شود؟" }} (${n.name.ifBlank { "ناشناس" }})")
+                                        }
+                                    }
+
+                                    if (n.canBeTransferred && isChecked) {
+                                        Div(attrs = { style { padding(8.px); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); border(1.px, LineStyle.Dashed, Color("#FFEB3B")) } }) {
+                                            Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#F57F17")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتقال سهم ${n.name.ifBlank { "این شخص" }} به:") }
+                                            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> viewModel.updateDynamicTransfer(target, n.id, e.target.value) } }) {
+                                                Option(value = "", attrs = { if (state.dynamicTransfers[n.id].isNullOrEmpty()) attr("selected", "true") }) { Text("بدون انتقال (خودش دریافت کند)") }
+                                                allAvailableNodes.filter { it.first != n.id }.forEach { (id, name) ->
+                                                    key(id) { Option(value = id, attrs = { if (state.dynamicTransfers[n.id] == id) attr("selected", "true") }) { Text(name.ifEmpty { "ناشناس" }) } }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             n.subNodes.forEach { renderNodeToggles(it) }
@@ -184,12 +234,27 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
                         nodes.forEach { renderNodeToggles(it) }
                         
                         shareholders.forEach { sh ->
-                            if (sh.hasToggle) {
-                                val isChecked = state.dynamicBooleans[sh.id] ?: true
-                                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); cursor("pointer"); marginBottom(8.px); fontSize(0.9.cssRem); color(Color("#33691E")) } }) {
-                                    Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, sh.id, e.value) } })
-                                    // اضافه شدن نام شخص در پرانتز برای وضوح
-                                    Text("${sh.toggleLabel.ifBlank { "لحاظ شود؟" }} (${sh.name.ifBlank { "ناشناس" }})")
+                            if (sh.hasToggle || sh.canBeTransferred) {
+                                Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px) } }) {
+                                    val isChecked = state.dynamicBooleans[sh.id] ?: true
+                                    if (sh.hasToggle) {
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); cursor("pointer"); fontSize(0.9.cssRem); color(Color("#33691E")); fontWeight("bold"); marginBottom(if (sh.canBeTransferred && isChecked) 12.px else 0.px) } }) {
+                                            Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, sh.id, e.value) } })
+                                            Text("${sh.toggleLabel.ifBlank { "لحاظ شود؟" }} (${sh.name.ifBlank { "ناشناس" }})")
+                                        }
+                                    }
+
+                                    if (sh.canBeTransferred && isChecked) {
+                                        Div(attrs = { style { padding(8.px); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); border(1.px, LineStyle.Dashed, Color("#FFEB3B")) } }) {
+                                            Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#F57F17")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتقال سهم ${sh.name.ifBlank { "این شخص" }} به:") }
+                                            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> viewModel.updateDynamicTransfer(target, sh.id, e.target.value) } }) {
+                                                Option(value = "", attrs = { if (state.dynamicTransfers[sh.id].isNullOrEmpty()) attr("selected", "true") }) { Text("بدون انتقال (خودش دریافت کند)") }
+                                                allAvailableNodes.filter { it.first != sh.id }.forEach { (id, name) ->
+                                                    key(id) { Option(value = id, attrs = { if (state.dynamicTransfers[sh.id] == id) attr("selected", "true") }) { Text(name.ifEmpty { "ناشناس" }) } }
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -218,7 +283,7 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
         if (children.isNotEmpty()) {
             val shouldRender = if (block is ConditionGate) (state.dynamicBooleans[block.block_id] ?: false) else true
             if (shouldRender) {
-                RenderDependentProfileBlocks(children, state, target, viewModel)
+                RenderDependentProfileBlocks(children, state, target, viewModel, allAvailableNodes)
             }
         }
     }
@@ -522,8 +587,12 @@ fun PoolSettingsCard(title: String, target: PoolTarget, state: PoolDistributionS
                         }
                         
                         val activeDependentProfile = dependentProfiles.find { it.id == state.customProfileId }
+                        val allAvailableNodes = remember(activeDependentProfile) { 
+                            activeDependentProfile?.rootBlocks?.let { extractAllDynamicNodes(it) } ?: emptyList()
+                        }
+                        
                         if (activeDependentProfile != null) {
-                            RenderDependentProfileBlocks(activeDependentProfile.rootBlocks, state, target, viewModel)
+                            RenderDependentProfileBlocks(activeDependentProfile.rootBlocks, state, target, viewModel, allAvailableNodes)
                         }
                     }
                     Button(attrs = { style { width(100.percent); padding(12.px); backgroundColor(Color("#FF9800")); color(Color("white")); border(0.px); borderRadius(8.px); fontWeight("bold"); cursor("pointer"); fontSize(1.cssRem); marginTop(12.px) }; onClick { onNavigateToBuilder() } }) { Text("➕ افزودن محاسبه اختصاصی جدید") } 

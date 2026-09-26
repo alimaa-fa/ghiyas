@@ -33,6 +33,12 @@ fun RecursiveBuilderPersonNode(node: BuilderPersonNode, path: List<String>, bloc
             }
         }
 
+        // --- مجوز انتقال سهم ---
+        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); color(Color("#1976D2")) } }) {
+            Input(type = InputType.Checkbox, attrs = { checked(node.canBeTransferred); onChange { e -> viewModel.updateHeadcountNode(blockId, path) { it.copy(canBeTransferred = e.value) } }; style { marginRight(8.px) } })
+            Text("امکان انتقال سهم در زمان اجرا؟")
+        }
+
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px) } }) {
             Input(type = InputType.Checkbox, attrs = { checked(node.isSubDivided); onChange { e -> viewModel.updateHeadcountNode(blockId, path) { it.copy(isSubDivided = e.value) } }; style { marginRight(8.px) } })
             Text("آیا سهم این شخص در خودش خرد می‌شود؟")
@@ -86,8 +92,12 @@ fun BuilderScreen(viewModel: BuilderViewModel, onBack: () -> Unit) {
         // --- بنر هشدار نسخه آزمایشی ---
         Div(attrs = { style { backgroundColor(Color("#FFF3E0")); border(1.px, LineStyle.Solid, Color("#FFB74D")); property("border-right", "4px solid #F57C00"); padding(12.px); borderRadius(8.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px) } }) {
             Span(attrs = { style { fontSize(1.5.cssRem) } }) { Text("⚠️") }
-            P(attrs = { style { margin(0.px); color(Color("#E65100")); fontSize(0.9.cssRem); fontWeight("bold"); lineHeight("1.6") } }) {
-                Text("نسخه آزمایشی: بوم سازنده محاسبات اختصاصی در حال توسعه است. ممکن است برخی ویژگی‌ها نهایی نشده باشند. پس از تست، از تب‌های پیش‌فرض برای محاسبات نهایی استفاده کنید.")
+            P(attrs = { style { margin(0.px); color(Color("#E65100")); fontSize(0.9.cssRem); fontWeight("bold"); lineHeight("1.8") } }) {
+                Text("نسخه آزمایشی: بوم سازنده محاسبات اختصاصی(قسمت مستقل) در حال توسعه است. ممکن است برخی ویژگی‌ها نهایی نشده باشند.")
+                Br()
+                Text("فعلا در مرحله‌ی چهارم(موتور تسهیم قیاس) از تب وابسته(محاسبات اختصاصی) و یا محاسبه بر اساس نفر/سهام/درصد استفاده کنید.")
+                Br()
+                Text("و اگر مشکلی بود و یا در ساخت کمک خواستید با من در ایتا تماس بگیرید. @AlirezaMariki")
             }
         }
 
@@ -228,13 +238,17 @@ fun RenderBlockRecursively(block: CustomBlock, viewModel: BuilderViewModel, dept
                                         Input(type = InputType.Text, attrs = { style { inputStyle(this); flex(1); marginBottom(0.px) }; placeholder("قیاس"); value(sh.shareInput); onInput { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(shareInput = e.value); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } } })
                                         Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); cursor("pointer") }; onClick { viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list.removeAt(index); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } } }) { Text("-") }
                                     }
-                                    // --- افزودن منطق شرطی برای شریک ---
                                     Div(attrs = { style { marginTop(4.px) } }) {
                                         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem) } }) {
                                             Input(type = InputType.Checkbox, attrs = { checked(sh.hasToggle); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(hasToggle = e.value); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } }; style { marginRight(8.px) } })
                                             Text("اضافه کردن شرط (حساب شود/نشود)")
                                         }
                                         if (sh.hasToggle) { Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px) }; placeholder("برچسب شرط"); value(sh.toggleLabel); onInput { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(toggleLabel = e.value); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } } }) }
+                                        
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginTop(4.px); color(Color("#1976D2")) } }) {
+                                            Input(type = InputType.Checkbox, attrs = { checked(sh.canBeTransferred); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(canBeTransferred = e.value); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } }; style { marginRight(8.px) } })
+                                            Text("امکان انتقال سهم در زمان اجرا؟")
+                                        }
                                     }
                                 }
                             }
@@ -251,13 +265,17 @@ fun RenderBlockRecursively(block: CustomBlock, viewModel: BuilderViewModel, dept
                                         Input(type = InputType.Text, attrs = { style { inputStyle(this); flex(1); marginBottom(0.px) }; placeholder("درصد (٪)"); value(sh.shareInput); onInput { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(shareInput = e.value); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } } })
                                         Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); cursor("pointer") }; onClick { viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list.removeAt(index); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } } }) { Text("-") }
                                     }
-                                    // --- افزودن منطق شرطی برای شریک ---
                                     Div(attrs = { style { marginTop(4.px) } }) {
                                         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem) } }) {
                                             Input(type = InputType.Checkbox, attrs = { checked(sh.hasToggle); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(hasToggle = e.value); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } }; style { marginRight(8.px) } })
                                             Text("اضافه کردن شرط (حساب شود/نشود)")
                                         }
                                         if (sh.hasToggle) { Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px) }; placeholder("برچسب شرط"); value(sh.toggleLabel); onInput { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(toggleLabel = e.value); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } } }) }
+                                        
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginTop(4.px); color(Color("#1976D2")) } }) {
+                                            Input(type = InputType.Checkbox, attrs = { checked(sh.canBeTransferred); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(canBeTransferred = e.value); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } }; style { marginRight(8.px) } })
+                                            Text("امکان انتقال سهم در زمان اجرا؟")
+                                        }
                                     }
                                 }
                             }

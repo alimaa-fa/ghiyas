@@ -25,7 +25,8 @@ data class PoolDistributionState(
     val targetGroup: String = "کل عبدالرحیمی‌ها",
     val transferDadallah: Boolean = false,
     val isUnifiedComprehensiveCalculation: Boolean = false,
-    val dynamicBooleans: Map<String, Boolean> = emptyMap() // اضافه شدن پشتیبانی از شرط‌های الگو
+    val dynamicBooleans: Map<String, Boolean> = emptyMap(),
+    val dynamicTransfers: Map<String, String> = emptyMap() // مخزن ذخیره شناسه‌های انتقال سهم
 )
 
 data class DistributionStageState(
@@ -62,12 +63,20 @@ class DistributionStageViewModel {
     fun updateTransferDadallah(target: PoolTarget, isChecked: Boolean) { updatePoolState(target) { it.copy(transferDadallah = isChecked) } }
     fun updateUnifiedComprehensive(target: PoolTarget, isUnified: Boolean) { updatePoolState(target) { it.copy(isUnifiedComprehensiveCalculation = isUnified) } }
 
-    // متد جدید برای آپدیت تیک‌های شرطی الگوهای وابسته در مرحله ۴
     fun updateDynamicBoolean(target: PoolTarget, blockId: String, isChecked: Boolean) {
         updatePoolState(target) {
             val newMap = it.dynamicBooleans.toMutableMap()
             newMap[blockId] = isChecked
             it.copy(dynamicBooleans = newMap)
+        }
+    }
+
+    // متد جدید برای آپدیت تارگتِ انتقال سهم
+    fun updateDynamicTransfer(target: PoolTarget, sourceId: String, transferToId: String) {
+        updatePoolState(target) {
+            val newMap = it.dynamicTransfers.toMutableMap()
+            newMap[sourceId] = transferToId
+            it.copy(dynamicTransfers = newMap)
         }
     }
 

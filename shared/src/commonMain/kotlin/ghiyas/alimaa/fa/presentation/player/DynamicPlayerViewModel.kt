@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.update
 data class DynamicPlayerState(
     val activeProfile: CustomProfile? = null,
     val textInputs: Map<String, String> = emptyMap(),
-    val booleanInputs: Map<String, Boolean> = emptyMap()
+    val booleanInputs: Map<String, Boolean> = emptyMap(),
+    val transferInputs: Map<String, String> = emptyMap() // اضافه شده برای نگهداری مقاصد انتقال سهم
 )
 
 class DynamicPlayerViewModel {
@@ -26,7 +27,8 @@ class DynamicPlayerViewModel {
             it.copy(
                 activeProfile = profile,
                 textInputs = emptyMap(),
-                booleanInputs = emptyMap()
+                booleanInputs = emptyMap(),
+                transferInputs = emptyMap()
             ) 
         }
     }
@@ -47,14 +49,21 @@ class DynamicPlayerViewModel {
         }
     }
 
-    // Real Execution Engine Connection
+    // متد جدید برای آپدیت تارگتِ انتقال سهم
+    fun updateTransferInput(sourceId: String, transferToId: String) {
+        _state.update { currentState ->
+            val newMap = currentState.transferInputs.toMutableMap()
+            newMap[sourceId] = transferToId
+            currentState.copy(transferInputs = newMap)
+        }
+    }
+
     fun executeCalculation(currentYear: String, timestampLong: Long, baseUnit: String = "کیلوگرم"): CalculationHistoryRecord? {
         val profile = _state.value.activeProfile ?: return null
         
         var totalInput = 0.0
         var mainInputName = profile.name
 
-        // Extract values from the dynamic UI forms
         val baseBlock = profile.rootBlocks.filterIsInstance<BaseInputBlock>().firstOrNull()
         if (baseBlock != null) {
             totalInput = _state.value.textInputs[baseBlock.block_id + "_amount"]?.toDoubleOrNull() ?: 0.0
@@ -64,12 +73,12 @@ class DynamicPlayerViewModel {
             }
         }
 
-        // Send to Engine to calculate actual shares based on profile structure
         val distInput = DistributionInput(
             poolAmount = WalnutUnit(totalInput),
             mode = DistributionMode.MODE_CUSTOM_BUILDER,
             customProfileId = profile.id,
-            dynamicBooleans = _state.value.booleanInputs
+            dynamicBooleans = _state.value.booleanInputs,
+            dynamicTransfers = _state.value.transferInputs // متصل کردن نقشه انتقال
         )
         
         val sharesList = DistributionEngine.calculate(distInput)
@@ -79,12 +88,12 @@ class DynamicPlayerViewModel {
             timestamp = timestampLong,
             calculationName = mainInputName,
             persianYear = currentYear,
-            baseUnit = baseUnit, // Kept dynamic/customizable parameter
+            baseUnit = baseUnit,
             inputAmount = WalnutUnit(totalInput),
-            expensesResults = emptyList(), // Can add custom expenses logic later
+            expensesResults = emptyList(),
             agricultureResults = emptyList(),
             nimehkariResults = emptyList(),
-            finalSharesResults = sharesList, // Correctly calculated shares
+            finalSharesResults = sharesList,
             associated_profile_id = profile.id
         )
     }
