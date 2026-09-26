@@ -47,7 +47,6 @@ private fun flattenTree(nodes: List<ShareholderNode>): List<Pair<String, String>
     return nodes.flatMap { listOf(it.id to it.name) + flattenTree(it.children) }
 }
 
-// متد استخراج تمام افراد برای لیست مقاصد انتقال در الگوهای داینامیک
 private fun extractAllDynamicNodes(blocks: List<CustomBlock>): List<Pair<String, String>> {
     val result = mutableListOf<Pair<String, String>>()
     fun extractPersons(nodes: List<BuilderPersonNode>) {
@@ -80,6 +79,79 @@ private fun extractAllDynamicNodes(blocks: List<CustomBlock>): List<Pair<String,
     }
     traverse(blocks)
     return result
+}
+
+@Composable
+fun AdvancedTransferPanel(
+    sourceId: String,
+    sourceName: String,
+    action: RuntimeTransferAction,
+    allAvailableNodes: List<Pair<String, String>>,
+    onUpdateType: (TransferAmountType) -> Unit,
+    onUpdateValue: (String) -> Unit,
+    onUpdateRule: (TransferDistributionRule) -> Unit,
+    onAddTarget: (String, Boolean) -> Unit,
+    onRemoveTarget: (String) -> Unit
+) {
+    Div(attrs = { style { padding(12.px); backgroundColor(Color("#FFFDE7")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#FBC02D")); marginTop(8.px) } }) {
+        H5(attrs = { style { margin(0.px, 0.px, 12.px, 0.px); color(Color("#F57F17")) } }) { Text("انتقال پیشرفته سهم: $sourceName") }
+
+        Div(attrs = { style { marginBottom(12.px) } }) {
+            Label(attrs = { style { fontSize(0.9.cssRem); fontWeight("bold"); display(DisplayStyle.Block); marginBottom(4.px); color(Color("#424242")) } }) { Text("مقدار کسر از مبدأ:") }
+            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> onUpdateType(TransferAmountType.valueOf(e.target.value)) } }) {
+                Option(value = "FULL", attrs = { if(action.sourceAmountType == TransferAmountType.FULL) attr("selected","true") }) { Text("کل سهم (کامل)") }
+                Option(value = "PERCENTAGE", attrs = { if(action.sourceAmountType == TransferAmountType.PERCENTAGE) attr("selected","true") }) { Text("درصدی از سهم") }
+                Option(value = "FIXED", attrs = { if(action.sourceAmountType == TransferAmountType.FIXED) attr("selected","true") }) { Text("مقدار ثابت (مثلا ۲.۵)") }
+                Option(value = "FORMULA", attrs = { if(action.sourceAmountType == TransferAmountType.FORMULA) attr("selected","true") }) { Text("فرمول (مثلا [باقیمانده]/2)") }
+            }
+        }
+
+        if (action.sourceAmountType != TransferAmountType.FULL) {
+            Div(attrs = { style { marginBottom(12.px) } }) {
+                Input(type = InputType.Text, attrs = { style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")); property("box-sizing", "border-box") }; placeholder(if(action.sourceAmountType == TransferAmountType.FORMULA) "فرمول ریاضی" else "مقدار را وارد کنید"); value(action.sourceAmountValue); onInput { e -> onUpdateValue(e.value) } })
+            }
+        }
+
+        Div(attrs = { style { marginBottom(12.px) } }) {
+            Label(attrs = { style { fontSize(0.9.cssRem); fontWeight("bold"); display(DisplayStyle.Block); marginBottom(4.px); color(Color("#424242")) } }) { Text("نحوه تقسیم بین گیرندگان:") }
+            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> onUpdateRule(TransferDistributionRule.valueOf(e.target.value)) } }) {
+                Option(value = "EQUAL", attrs = { if(action.distributionRule == TransferDistributionRule.EQUAL) attr("selected","true") }) { Text("مساوی بین همه") }
+                Option(value = "BOY_GIRL", attrs = { if(action.distributionRule == TransferDistributionRule.BOY_GIRL) attr("selected","true") }) { Text("پسر و دختری (نسبت ۲ به ۱)") }
+            }
+        }
+
+        if (action.targets.isNotEmpty()) {
+            Div(attrs = { style { padding(8.px); backgroundColor(Color("white")); borderRadius(6.px); marginBottom(12.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")) } }) {
+                Label(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold"); color(Color("#1B5E20")); display(DisplayStyle.Block); marginBottom(8.px) } }) { Text("لیست گیرندگان:") }
+                action.targets.forEach { t ->
+                    val targetName = allAvailableNodes.find { it.first == t.targetId }?.second ?: "ناشناس"
+                    Div(attrs = { style { display(DisplayStyle.Flex); justifyContent(JustifyContent.SpaceBetween); alignItems(AlignItems.Center); padding(6.px); property("border-bottom", "1px dashed #E0E0E0") } }) {
+                        Span(attrs = { style { fontSize(0.9.cssRem); color(Color("#424242")) } }) { Text("- $targetName" + if(t.isFemale && action.distributionRule == TransferDistributionRule.BOY_GIRL) " (دختر/نیم‌سهم)" else "") }
+                        Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(4.px, 8.px); cursor("pointer"); fontSize(0.8.cssRem) }; onClick { onRemoveTarget(t.targetId) } }) { Text("حذف") }
+                    }
+                }
+            }
+        }
+
+        var tempTargetId by remember(sourceId) { mutableStateOf("") }
+        var tempIsFemale by remember(sourceId) { mutableStateOf(false) }
+
+        Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px); padding(12.px); backgroundColor(Color("#FFF8E1")); borderRadius(6.px); border(1.px, LineStyle.Dashed, Color("#FFB300")) } }) {
+            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> tempTargetId = e.target.value } }) {
+                Option(value = "", attrs = { if(tempTargetId.isEmpty()) attr("selected","true") }) { Text("انتخاب گیرنده جدید...") }
+                allAvailableNodes.filter { it.first != sourceId && action.targets.none { t -> t.targetId == it.first } }.forEach { (id, name) ->
+                    key(id) { Option(value = id, attrs = { if(tempTargetId == id) attr("selected","true") }) { Text(name.ifEmpty { "ناشناس" }) } }
+                }
+            }
+            if (action.distributionRule == TransferDistributionRule.BOY_GIRL) {
+                Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); fontSize(0.9.cssRem); cursor("pointer") } }) {
+                    Input(type = InputType.Checkbox, attrs = { checked(tempIsFemale); onChange { e -> tempIsFemale = e.value }; style { marginRight(8.px); width(16.px); height(16.px) } })
+                    Text("این گیرنده سهم دخترانه (نصف) بگیرد؟")
+                }
+            }
+            Button(attrs = { style { width(100.percent); padding(10.px); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(6.px); cursor("pointer"); fontWeight("bold") }; onClick { if (tempTargetId.isNotBlank()) { onAddTarget(tempTargetId, tempIsFemale); tempTargetId = ""; tempIsFemale = false } } }) { Text("+ افزودن به لیست گیرندگان") }
+        }
+    }
 }
 
 @Composable
@@ -196,8 +268,8 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
                 val nodes = if (block is MemberBlock) block.headcountNodes else (block as PartnerBlock).headcountNodes
                 val shareholders = if (block is MemberBlock) block.ghiyasShareholders + block.percentageShareholders else (block as PartnerBlock).ghiyasShareholders + (block as PartnerBlock).percentageShareholders
 
-                fun hasAnyInteractive(n: BuilderPersonNode): Boolean = if (n.hasToggle || n.canBeTransferred) true else n.subNodes.any { hasAnyInteractive(it) }
-                val shouldShowCard = nodes.any { hasAnyInteractive(it) } || shareholders.any { it.hasToggle || it.canBeTransferred }
+                fun hasAnyInteractive(n: BuilderPersonNode): Boolean = if (n.hasToggle || n.isAdvancedTransferAllowed) true else n.subNodes.any { hasAnyInteractive(it) }
+                val shouldShowCard = nodes.any { hasAnyInteractive(it) } || shareholders.any { it.hasToggle || it.isAdvancedTransferAllowed }
 
                 if (shouldShowCard) {
                     Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginTop(12.px) } }) {
@@ -205,26 +277,26 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
 
                         @Composable
                         fun renderNodeToggles(n: BuilderPersonNode) {
-                            if (n.hasToggle || n.canBeTransferred) {
+                            if (n.hasToggle || n.isAdvancedTransferAllowed) {
                                 Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px) } }) {
                                     val isChecked = state.dynamicBooleans[n.id] ?: true
                                     if (n.hasToggle) {
-                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); cursor("pointer"); fontSize(0.9.cssRem); color(Color("#33691E")); fontWeight("bold"); marginBottom(if (n.canBeTransferred && isChecked) 12.px else 0.px) } }) {
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); cursor("pointer"); fontSize(0.9.cssRem); color(Color("#33691E")); fontWeight("bold"); marginBottom(if (n.isAdvancedTransferAllowed && isChecked) 12.px else 0.px) } }) {
                                             Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, n.id, e.value) } })
                                             Text("${n.toggleLabel.ifBlank { "لحاظ شود؟" }} (${n.name.ifBlank { "ناشناس" }})")
                                         }
                                     }
 
-                                    if (n.canBeTransferred && isChecked) {
-                                        Div(attrs = { style { padding(8.px); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); border(1.px, LineStyle.Dashed, Color("#FFEB3B")) } }) {
-                                            Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#F57F17")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتقال سهم ${n.name.ifBlank { "این شخص" }} به:") }
-                                            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> viewModel.updateDynamicTransfer(target, n.id, e.target.value) } }) {
-                                                Option(value = "", attrs = { if (state.dynamicTransfers[n.id].isNullOrEmpty()) attr("selected", "true") }) { Text("بدون انتقال (خودش دریافت کند)") }
-                                                allAvailableNodes.filter { it.first != n.id }.forEach { (id, name) ->
-                                                    key(id) { Option(value = id, attrs = { if (state.dynamicTransfers[n.id] == id) attr("selected", "true") }) { Text(name.ifEmpty { "ناشناس" }) } }
-                                                }
-                                            }
-                                        }
+                                    if (n.isAdvancedTransferAllowed && isChecked) {
+                                        val action = state.dynamicAdvancedTransfers[n.id] ?: RuntimeTransferAction()
+                                        AdvancedTransferPanel(
+                                            sourceId = n.id, sourceName = n.name.ifBlank { "ناشناس" }, action = action, allAvailableNodes = allAvailableNodes,
+                                            onUpdateType = { t -> viewModel.updateTransferAmountType(target, n.id, t) },
+                                            onUpdateValue = { v -> viewModel.updateTransferAmountValue(target, n.id, v) },
+                                            onUpdateRule = { r -> viewModel.updateTransferRule(target, n.id, r) },
+                                            onAddTarget = { tId, isF -> viewModel.addTransferTarget(target, n.id, tId, isF) },
+                                            onRemoveTarget = { tId -> viewModel.removeTransferTarget(target, n.id, tId) }
+                                        )
                                     }
                                 }
                             }
@@ -234,26 +306,26 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
                         nodes.forEach { renderNodeToggles(it) }
                         
                         shareholders.forEach { sh ->
-                            if (sh.hasToggle || sh.canBeTransferred) {
+                            if (sh.hasToggle || sh.isAdvancedTransferAllowed) {
                                 Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px) } }) {
                                     val isChecked = state.dynamicBooleans[sh.id] ?: true
                                     if (sh.hasToggle) {
-                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); cursor("pointer"); fontSize(0.9.cssRem); color(Color("#33691E")); fontWeight("bold"); marginBottom(if (sh.canBeTransferred && isChecked) 12.px else 0.px) } }) {
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); cursor("pointer"); fontSize(0.9.cssRem); color(Color("#33691E")); fontWeight("bold"); marginBottom(if (sh.isAdvancedTransferAllowed && isChecked) 12.px else 0.px) } }) {
                                             Input(type = InputType.Checkbox, attrs = { checked(isChecked); onChange { e -> viewModel.updateDynamicBoolean(target, sh.id, e.value) } })
                                             Text("${sh.toggleLabel.ifBlank { "لحاظ شود؟" }} (${sh.name.ifBlank { "ناشناس" }})")
                                         }
                                     }
 
-                                    if (sh.canBeTransferred && isChecked) {
-                                        Div(attrs = { style { padding(8.px); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); border(1.px, LineStyle.Dashed, Color("#FFEB3B")) } }) {
-                                            Label(attrs = { style { fontSize(0.85.cssRem); color(Color("#F57F17")); display(DisplayStyle.Block); marginBottom(4.px) } }) { Text("انتقال سهم ${sh.name.ifBlank { "این شخص" }} به:") }
-                                            Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#BDBDBD")) }; onChange { e -> viewModel.updateDynamicTransfer(target, sh.id, e.target.value) } }) {
-                                                Option(value = "", attrs = { if (state.dynamicTransfers[sh.id].isNullOrEmpty()) attr("selected", "true") }) { Text("بدون انتقال (خودش دریافت کند)") }
-                                                allAvailableNodes.filter { it.first != sh.id }.forEach { (id, name) ->
-                                                    key(id) { Option(value = id, attrs = { if (state.dynamicTransfers[sh.id] == id) attr("selected", "true") }) { Text(name.ifEmpty { "ناشناس" }) } }
-                                                }
-                                            }
-                                        }
+                                    if (sh.isAdvancedTransferAllowed && isChecked) {
+                                        val action = state.dynamicAdvancedTransfers[sh.id] ?: RuntimeTransferAction()
+                                        AdvancedTransferPanel(
+                                            sourceId = sh.id, sourceName = sh.name.ifBlank { "ناشناس" }, action = action, allAvailableNodes = allAvailableNodes,
+                                            onUpdateType = { t -> viewModel.updateTransferAmountType(target, sh.id, t) },
+                                            onUpdateValue = { v -> viewModel.updateTransferAmountValue(target, sh.id, v) },
+                                            onUpdateRule = { r -> viewModel.updateTransferRule(target, sh.id, r) },
+                                            onAddTarget = { tId, isF -> viewModel.addTransferTarget(target, sh.id, tId, isF) },
+                                            onRemoveTarget = { tId -> viewModel.removeTransferTarget(target, sh.id, tId) }
+                                        )
                                     }
                                 }
                             }

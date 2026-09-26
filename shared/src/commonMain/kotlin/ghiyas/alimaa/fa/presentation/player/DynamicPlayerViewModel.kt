@@ -14,7 +14,7 @@ data class DynamicPlayerState(
     val activeProfile: CustomProfile? = null,
     val textInputs: Map<String, String> = emptyMap(),
     val booleanInputs: Map<String, Boolean> = emptyMap(),
-    val transferInputs: Map<String, String> = emptyMap() // اضافه شده برای نگهداری مقاصد انتقال سهم
+    val advancedTransfers: Map<String, RuntimeTransferAction> = emptyMap() // مخزن جدید انتقال پیشرفته
 )
 
 class DynamicPlayerViewModel {
@@ -28,7 +28,7 @@ class DynamicPlayerViewModel {
                 activeProfile = profile,
                 textInputs = emptyMap(),
                 booleanInputs = emptyMap(),
-                transferInputs = emptyMap()
+                advancedTransfers = emptyMap()
             ) 
         }
     }
@@ -49,14 +49,73 @@ class DynamicPlayerViewModel {
         }
     }
 
-    // متد جدید برای آپدیت تارگتِ انتقال سهم
-    fun updateTransferInput(sourceId: String, transferToId: String) {
-        _state.update { currentState ->
-            val newMap = currentState.transferInputs.toMutableMap()
-            newMap[sourceId] = transferToId
-            currentState.copy(transferInputs = newMap)
+    // --- متدهای مدیریت انتقال پیشرفته در زمان اجرا ---
+    fun initAdvancedTransfer(sourceId: String) {
+        _state.update { st ->
+            val newMap = st.advancedTransfers.toMutableMap()
+            if (!newMap.containsKey(sourceId)) {
+                newMap[sourceId] = RuntimeTransferAction()
+            }
+            st.copy(advancedTransfers = newMap)
         }
     }
+
+    fun removeAdvancedTransfer(sourceId: String) {
+        _state.update { st ->
+            val newMap = st.advancedTransfers.toMutableMap()
+            newMap.remove(sourceId)
+            st.copy(advancedTransfers = newMap)
+        }
+    }
+
+    fun updateTransferAmountType(sourceId: String, type: TransferAmountType) {
+        _state.update { st ->
+            val newMap = st.advancedTransfers.toMutableMap()
+            val current = newMap[sourceId] ?: RuntimeTransferAction()
+            newMap[sourceId] = current.copy(sourceAmountType = type)
+            st.copy(advancedTransfers = newMap)
+        }
+    }
+
+    fun updateTransferAmountValue(sourceId: String, value: String) {
+        _state.update { st ->
+            val newMap = st.advancedTransfers.toMutableMap()
+            val current = newMap[sourceId] ?: RuntimeTransferAction()
+            newMap[sourceId] = current.copy(sourceAmountValue = value)
+            st.copy(advancedTransfers = newMap)
+        }
+    }
+
+    fun updateTransferRule(sourceId: String, rule: TransferDistributionRule) {
+        _state.update { st ->
+            val newMap = st.advancedTransfers.toMutableMap()
+            val current = newMap[sourceId] ?: RuntimeTransferAction()
+            newMap[sourceId] = current.copy(distributionRule = rule)
+            st.copy(advancedTransfers = newMap)
+        }
+    }
+
+    fun addTransferTarget(sourceId: String, targetId: String, isFemale: Boolean = false) {
+        if (targetId.isBlank()) return
+        _state.update { st ->
+            val newMap = st.advancedTransfers.toMutableMap()
+            val current = newMap[sourceId] ?: RuntimeTransferAction()
+            if (current.targets.none { it.targetId == targetId }) {
+                newMap[sourceId] = current.copy(targets = current.targets + AdvancedTransferTarget(targetId, isFemale))
+            }
+            st.copy(advancedTransfers = newMap)
+        }
+    }
+
+    fun removeTransferTarget(sourceId: String, targetId: String) {
+        _state.update { st ->
+            val newMap = st.advancedTransfers.toMutableMap()
+            val current = newMap[sourceId] ?: return@update st
+            newMap[sourceId] = current.copy(targets = current.targets.filter { it.targetId != targetId })
+            st.copy(advancedTransfers = newMap)
+        }
+    }
+    // --------------------------------------------------
 
     fun executeCalculation(currentYear: String, timestampLong: Long, baseUnit: String = "کیلوگرم"): CalculationHistoryRecord? {
         val profile = _state.value.activeProfile ?: return null
@@ -68,9 +127,7 @@ class DynamicPlayerViewModel {
         if (baseBlock != null) {
             totalInput = _state.value.textInputs[baseBlock.block_id + "_amount"]?.toDoubleOrNull() ?: 0.0
             val potentialName = _state.value.textInputs[baseBlock.block_id + "_name"]
-            if (!potentialName.isNullOrBlank()) {
-                mainInputName = potentialName
-            }
+            if (!potentialName.isNullOrBlank()) { mainInputName = potentialName }
         }
 
         val distInput = DistributionInput(
@@ -78,7 +135,7 @@ class DynamicPlayerViewModel {
             mode = DistributionMode.MODE_CUSTOM_BUILDER,
             customProfileId = profile.id,
             dynamicBooleans = _state.value.booleanInputs,
-            dynamicTransfers = _state.value.transferInputs // متصل کردن نقشه انتقال
+            dynamicAdvancedTransfers = _state.value.advancedTransfers // پاس دادن اطلاعات پیشرفته به موتور
         )
         
         val sharesList = DistributionEngine.calculate(distInput)
@@ -98,7 +155,5 @@ class DynamicPlayerViewModel {
         )
     }
 
-    fun clearState() {
-        _state.update { DynamicPlayerState() }
-    }
+    fun clearState() { _state.update { DynamicPlayerState() } }
 }

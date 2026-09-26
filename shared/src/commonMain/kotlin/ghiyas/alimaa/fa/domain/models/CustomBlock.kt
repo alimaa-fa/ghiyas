@@ -29,6 +29,22 @@ data class ConditionGate(override val block_id: String, override val system_alia
 enum class DistributionType { HEADCOUNT_BASED, GHIYAS_BASED, PERCENTAGE, CUSTOM_UNIT }
 enum class UIElementType { TEXT_FIELD, NUMBER_FIELD, HEADER_TITLE, SEPARATOR_LINE, ACCORDION_GUIDE, TEXT_WARNING }
 
+// ----- کلاس‌ها و Enum های مربوط به سیستم انتقال پیشرفته زمان اجرا -----
+enum class TransferAmountType { FULL, PERCENTAGE, FIXED, FORMULA }
+enum class TransferDistributionRule { EQUAL, BOY_GIRL }
+
+@Serializable
+data class AdvancedTransferTarget(val targetId: String, val isFemale: Boolean = false)
+
+@Serializable
+data class RuntimeTransferAction(
+    val sourceAmountType: TransferAmountType = TransferAmountType.FULL,
+    val sourceAmountValue: String = "", // می‌تواند خالی (برای FULL)، عدد (برای FIXED/PERCENTAGE) یا متن (برای FORMULA) باشد
+    val targets: List<AdvancedTransferTarget> = emptyList(),
+    val distributionRule: TransferDistributionRule = TransferDistributionRule.EQUAL
+)
+// ---------------------------------------------------------------------
+
 @Serializable
 data class BuilderPersonNode(
     val id: String, val name: String = "", val weightInput: String = "1",
@@ -36,9 +52,10 @@ data class BuilderPersonNode(
     val subCountInput: String = "", val isDetailedFurther: Boolean = false,
     val isSubBoyGirlSplit: Boolean = false,
     val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟",
-    // امکانات انتقال سهم (اضافه شده برای پشتیبانی از فرم‌های داینامیک)
-    val canBeTransferred: Boolean = false, 
-    val transferredToId: String = "",
+    
+    // پرچم (Flag) فعال‌سازی پنل انتقال پیشرفته در زمان اجرا
+    val isAdvancedTransferAllowed: Boolean = false, 
+    
     val subNodes: List<BuilderPersonNode> = emptyList()
 )
 
@@ -46,9 +63,9 @@ data class BuilderPersonNode(
 data class BuilderShareholder(
     val id: String, val name: String = "", val shareInput: String = "",
     val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟",
-    // امکانات انتقال سهم
-    val canBeTransferred: Boolean = false,
-    val transferredToId: String = ""
+    
+    // پرچم فعال‌سازی پنل انتقال پیشرفته
+    val isAdvancedTransferAllowed: Boolean = false
 )
 
 @Serializable

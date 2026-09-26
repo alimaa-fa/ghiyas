@@ -141,7 +141,7 @@ class ExpenseStageViewModel {
                     defaultLabel = "سهم یکجا کل", calculateZivar = p1State.calculateZivar, isNimehkari = true, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah,
                     dynamicBooleans = p1State.dynamicBooleans,
-                    dynamicTransfers = p1State.dynamicTransfers // متصل کردن نقشه انتقال
+                    dynamicAdvancedTransfers = p1State.dynamicAdvancedTransfers // اصلاح شده به نام صحیح
                 )
                 finalSharesList.addAll(DistributionEngine.calculate(p1Input))
             } else {
@@ -156,7 +156,7 @@ class ExpenseStageViewModel {
                     defaultLabel = "سهم شریک ۱", calculateZivar = p1State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p1State.targetGroup, transferDadallah = p1State.transferDadallah,
                     dynamicBooleans = p1State.dynamicBooleans,
-                    dynamicTransfers = p1State.dynamicTransfers // متصل کردن نقشه انتقال
+                    dynamicAdvancedTransfers = p1State.dynamicAdvancedTransfers // اصلاح شده به نام صحیح
                 )
                 val p1NameSuffix = if (agricultureInput.partner1Name.isNotBlank()) " (${agricultureInput.partner1Name})" else ""
                 finalSharesList.addAll(DistributionEngine.calculate(p1Input).map { ResultItem(it.label + p1NameSuffix, it.value) })
@@ -170,7 +170,7 @@ class ExpenseStageViewModel {
                     defaultLabel = "سهم شریک ۲", calculateZivar = p2State.calculateZivar, isNimehkari = agricultureInput.isNimehkari, nimehkariPool = agriOutput.nimehkariTotal,
                     targetGroup = p2State.targetGroup, transferDadallah = p2State.transferDadallah,
                     dynamicBooleans = p2State.dynamicBooleans,
-                    dynamicTransfers = p2State.dynamicTransfers // متصل کردن نقشه انتقال
+                    dynamicAdvancedTransfers = p2State.dynamicAdvancedTransfers // اصلاح شده به نام صحیح
                 )
                 val p2NameSuffix = if (agricultureInput.partner2Name.isNotBlank()) " (${agricultureInput.partner2Name})" else ""
                 finalSharesList.addAll(DistributionEngine.calculate(p2Input).map { ResultItem(it.label + p2NameSuffix, it.value) })
@@ -185,7 +185,7 @@ class ExpenseStageViewModel {
                 defaultLabel = "سهم کل یکجا", calculateZivar = mainState.calculateZivar, isNimehkari = false, nimehkariPool = WalnutUnit.ZERO,
                 targetGroup = mainState.targetGroup, transferDadallah = mainState.transferDadallah,
                 dynamicBooleans = mainState.dynamicBooleans,
-                dynamicTransfers = mainState.dynamicTransfers // متصل کردن نقشه انتقال
+                dynamicAdvancedTransfers = mainState.dynamicAdvancedTransfers // اصلاح شده به نام صحیح
             )
             finalSharesList.addAll(DistributionEngine.calculate(distInput))
         }

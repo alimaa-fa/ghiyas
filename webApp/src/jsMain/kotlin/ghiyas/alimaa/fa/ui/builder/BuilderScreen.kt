@@ -33,10 +33,10 @@ fun RecursiveBuilderPersonNode(node: BuilderPersonNode, path: List<String>, bloc
             }
         }
 
-        // --- مجوز انتقال سهم ---
-        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); color(Color("#1976D2")) } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.canBeTransferred); onChange { e -> viewModel.updateHeadcountNode(blockId, path) { it.copy(canBeTransferred = e.value) } }; style { marginRight(8.px) } })
-            Text("امکان انتقال سهم در زمان اجرا؟")
+        // --- مجوز انتقال سهم پیشرفته ---
+        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); color(Color("#1976D2")); fontWeight("bold") } }) {
+            Input(type = InputType.Checkbox, attrs = { checked(node.isAdvancedTransferAllowed); onChange { e -> viewModel.updateHeadcountNode(blockId, path) { it.copy(isAdvancedTransferAllowed = e.value) } }; style { marginRight(8.px) } })
+            Text("امکان انتقال پیشرفته (چندگانه/نسبی) در زمان اجرا؟")
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px) } }) {
@@ -245,9 +245,10 @@ fun RenderBlockRecursively(block: CustomBlock, viewModel: BuilderViewModel, dept
                                         }
                                         if (sh.hasToggle) { Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px) }; placeholder("برچسب شرط"); value(sh.toggleLabel); onInput { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(toggleLabel = e.value); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } } }) }
                                         
-                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginTop(4.px); color(Color("#1976D2")) } }) {
-                                            Input(type = InputType.Checkbox, attrs = { checked(sh.canBeTransferred); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(canBeTransferred = e.value); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } }; style { marginRight(8.px) } })
-                                            Text("امکان انتقال سهم در زمان اجرا؟")
+                                        // --- مجوز انتقال سهم پیشرفته ---
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginTop(4.px); color(Color("#1976D2")); fontWeight("bold") } }) {
+                                            Input(type = InputType.Checkbox, attrs = { checked(sh.isAdvancedTransferAllowed); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(isAdvancedTransferAllowed = e.value); if(it is MemberBlock) it.copy(ghiyasShareholders = list) else (it as PartnerBlock).copy(ghiyasShareholders = list) } }; style { marginRight(8.px) } })
+                                            Text("امکان انتقال پیشرفته (چندگانه/نسبی) در زمان اجرا؟")
                                         }
                                     }
                                 }
@@ -272,9 +273,10 @@ fun RenderBlockRecursively(block: CustomBlock, viewModel: BuilderViewModel, dept
                                         }
                                         if (sh.hasToggle) { Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px) }; placeholder("برچسب شرط"); value(sh.toggleLabel); onInput { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(toggleLabel = e.value); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } } }) }
                                         
-                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginTop(4.px); color(Color("#1976D2")) } }) {
-                                            Input(type = InputType.Checkbox, attrs = { checked(sh.canBeTransferred); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(canBeTransferred = e.value); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } }; style { marginRight(8.px) } })
-                                            Text("امکان انتقال سهم در زمان اجرا؟")
+                                        // --- مجوز انتقال سهم پیشرفته ---
+                                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginTop(4.px); color(Color("#1976D2")); fontWeight("bold") } }) {
+                                            Input(type = InputType.Checkbox, attrs = { checked(sh.isAdvancedTransferAllowed); onChange { e -> viewModel.updateBlock(block.block_id) { val list = shares.toMutableList(); list[index] = sh.copy(isAdvancedTransferAllowed = e.value); if(it is MemberBlock) it.copy(percentageShareholders = list) else (it as PartnerBlock).copy(percentageShareholders = list) } }; style { marginRight(8.px) } })
+                                            Text("امکان انتقال پیشرفته (چندگانه/نسبی) در زمان اجرا؟")
                                         }
                                     }
                                 }

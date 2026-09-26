@@ -46,7 +46,7 @@ data class DistributionInput(
     val targetGroup: String = "کل عبدالرحیمی‌ها",
     val transferDadallah: Boolean = false,
     val dynamicBooleans: Map<String, Boolean> = emptyMap(),
-    val dynamicTransfers: Map<String, String> = emptyMap() // اضافه شده برای مکانیزم انتقال در الگوهای داینامیک
+    val dynamicAdvancedTransfers: Map<String, RuntimeTransferAction> = emptyMap() // ورودی جدید انتقال پیشرفته
 )
 
 object DistributionEngine {
@@ -66,6 +66,51 @@ object DistributionEngine {
             BigDecimal.parseString(clean)
         } catch (e: Exception) {
             BigDecimal.parseString(default)
+        }
+    }
+
+    // یک مینی پارسر بسیار سبک و امن برای محاسبات فرمول‌های رشته‌ای
+    private fun evaluateSimpleFormula(formula: String, totalPool: BigDecimal, currentShare: BigDecimal): BigDecimal {
+        try {
+            val expr = formula.toEnglishDecimals()
+                .replace("[کل]", totalPool.toPlainString())
+                .replace("[باقیمانده]", currentShare.toPlainString())
+                .replace(" ", "")
+
+            // پشتیبانی اولیه از یک عملگر اصلی (مناسب برای عبارات ساده مثل A*B/C که به ترتیب اجرا میشوند)
+            // در برنامه‌های آفلاین و بدون کتابخانه سنگین AST، رشته را با اولویت چپ به راست می‌خوانیم
+            var currentTotal = BigDecimal.ZERO
+            var currentOp = '+'
+            var buffer = ""
+            
+            fun flushBuffer() {
+                if (buffer.isNotEmpty()) {
+                    val num = safeParseBigDecimal(buffer)
+                    currentTotal = when (currentOp) {
+                        '+' -> currentTotal.add(num)
+                        '-' -> currentTotal.subtract(num)
+                        '*' -> currentTotal.multiply(num)
+                        '/' -> if (num.compareTo(BigDecimal.ZERO) != 0) currentTotal.divide(num, decimalMode) else currentTotal
+                        else -> currentTotal
+                    }
+                    buffer = ""
+                }
+            }
+
+            for (char in expr) {
+                if (char == '+' || char == '-' || char == '*' || char == '/') {
+                    if (buffer.isEmpty() && char == '-') { buffer += "-"; continue }
+                    flushBuffer()
+                    currentOp = char
+                } else if (char != '(' && char != ')') {
+                    buffer += char
+                }
+            }
+            flushBuffer()
+            return currentTotal
+
+        } catch (e: Exception) {
+            return BigDecimal.ZERO
         }
     }
 
@@ -159,7 +204,7 @@ object DistributionEngine {
 
     class TrackedShare(val id: String, val name: String, val weight: BigDecimal)
 
-    private fun processCustomProfile(pool: BigDecimal, profile: CustomProfile, dynamicBooleans: Map<String, Boolean>, dynamicTransfers: Map<String, String>): List<ResultItem> {
+    private fun processCustomProfile(pool: BigDecimal, profile: CustomProfile, dynamicBooleans: Map<String, Boolean>, dynamicAdvancedTransfers: Map<String, RuntimeTransferAction>): List<ResultItem> {
         val rawShares = mutableListOf<TrackedShare>()
 
         fun parsePersonNodes(nodes: List<BuilderPersonNode>, parentMultiplier: BigDecimal) {
@@ -249,17 +294,56 @@ object DistributionEngine {
             return listOf(ResultItem("سهم ${profile.name} (مجموع وزن صفر)", WalnutUnit(pool.doubleValue(false))))
         }
 
-        // اعمال منطق انتقال سهم در الگوهای اختصاصی
+        // --- اِعمال منطق انتقال سهم پیشرفته (چندگانه، فرمولی، نسبی) ---
         val transferNotes = mutableMapOf<String, String>()
+        
         for (item in rawShares) {
-            val targetId = dynamicTransfers[item.id] ?: ""
-            if (targetId.isNotEmpty() && targetId != item.id && sharesMap.containsKey(targetId)) {
-                val amount = sharesMap[item.id] ?: BigDecimal.ZERO
-                if (amount.compareTo(BigDecimal.ZERO) > 0) {
-                    sharesMap[item.id] = BigDecimal.ZERO 
-                    sharesMap[targetId] = (sharesMap[targetId] ?: BigDecimal.ZERO).add(amount) 
-                    transferNotes[item.id] = " (سهم منتقل شد)"
-                    transferNotes[targetId] = (transferNotes[targetId] ?: "") + " [انتقالی]"
+            val action = dynamicAdvancedTransfers[item.id]
+            if (action != null && action.targets.isNotEmpty()) {
+                val currentBalance = sharesMap[item.id] ?: BigDecimal.ZERO
+                if (currentBalance.compareTo(BigDecimal.ZERO) > 0) {
+                    
+                    // 1. محاسبه مقدار کسر شده
+                    var transferAmount = BigDecimal.ZERO
+                    when (action.sourceAmountType) {
+                        TransferAmountType.FULL -> transferAmount = currentBalance
+                        TransferAmountType.FIXED -> {
+                            val parsed = safeParseBigDecimal(action.sourceAmountValue)
+                            transferAmount = if (parsed > currentBalance) currentBalance else parsed
+                        }
+                        TransferAmountType.PERCENTAGE -> {
+                            val pct = safeParseBigDecimal(action.sourceAmountValue).divide(safeParseBigDecimal("100"), decimalMode)
+                            transferAmount = currentBalance.multiply(pct)
+                        }
+                        TransferAmountType.FORMULA -> {
+                            val calculated = evaluateSimpleFormula(action.sourceAmountValue, pool, currentBalance)
+                            transferAmount = if (calculated > currentBalance) currentBalance else if (calculated < BigDecimal.ZERO) BigDecimal.ZERO else calculated
+                        }
+                    }
+
+                    // 2. کسر از مبدأ و توزیع بین مقاصد
+                    if (transferAmount.compareTo(BigDecimal.ZERO) > 0) {
+                        sharesMap[item.id] = currentBalance.subtract(transferAmount)
+                        
+                        var targetsTotalWeight = BigDecimal.ZERO
+                        action.targets.forEach { t ->
+                            val tWeight = if (action.distributionRule == TransferDistributionRule.BOY_GIRL && t.isFemale) safeParseBigDecimal("0.5") else BigDecimal.ONE
+                            targetsTotalWeight = targetsTotalWeight.add(tWeight)
+                        }
+
+                        if (targetsTotalWeight.compareTo(BigDecimal.ZERO) > 0) {
+                            val unitShare = transferAmount.divide(targetsTotalWeight, decimalMode)
+                            action.targets.forEach { t ->
+                                val tWeight = if (action.distributionRule == TransferDistributionRule.BOY_GIRL && t.isFemale) safeParseBigDecimal("0.5") else BigDecimal.ONE
+                                val tAmount = unitShare.multiply(tWeight)
+                                sharesMap[t.targetId] = (sharesMap[t.targetId] ?: BigDecimal.ZERO).add(tAmount)
+                                
+                                val amountTypeStr = when(action.sourceAmountType) { TransferAmountType.FULL -> "کامل"; TransferAmountType.PERCENTAGE -> "درصدی"; TransferAmountType.FIXED -> "ثابت"; TransferAmountType.FORMULA -> "فرمولی" }
+                                transferNotes[t.targetId] = (transferNotes[t.targetId] ?: "") + " [+انتقالی $amountTypeStr از ${item.name}]"
+                            }
+                            transferNotes[item.id] = (transferNotes[item.id] ?: "") + " [-انتقال داده شده]"
+                        }
+                    }
                 }
             }
         }
@@ -291,7 +375,7 @@ object DistributionEngine {
                 } catch (e: Exception) { null }
                 
                 if (customProfile != null) {
-                    processCustomProfile(BigDecimal.fromDouble(input.poolAmount.value), customProfile, input.dynamicBooleans, input.dynamicTransfers)
+                    processCustomProfile(BigDecimal.fromDouble(input.poolAmount.value), customProfile, input.dynamicBooleans, input.dynamicAdvancedTransfers)
                 } else {
                     listOf(ResultItem("سهم الگو (پیدا نشد)", input.poolAmount))
                 }
