@@ -34,6 +34,15 @@ import ghiyas.alimaa.fa.domain.models.WorkCalendarProfile
 import ghiyas.alimaa.fa.data.WorkCalendarRepository
 import ghiyas.alimaa.fa.data.LocalStorageRepository
 
+// مبدل اعداد لاتین به فارسی برای متن‌های توکار
+private fun String.toPersianDigits(): String {
+    var result = this
+    val english = arrayOf("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", ".")
+    val persian = arrayOf("۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹", "٫")
+    for (i in english.indices) { result = result.replace(english[i], persian[i]) }
+    return result
+}
+
 @Composable
 fun DeleteConfirmDialog(title: String, message: String, onConfirm: () -> Unit, onCancel: () -> Unit) {
     Div(attrs = { style { position(Position.Fixed); top(0.px); left(0.px); width(100.percent); height(100.vh); backgroundColor(Color("rgba(0,0,0,0.5)")); display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); property("z-index", "9999") } }) {
@@ -51,33 +60,59 @@ fun DeleteConfirmDialog(title: String, message: String, onConfirm: () -> Unit, o
 @Composable
 fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight: Boolean = false) {
     val textColor = if (isHighlight) Color("#BF360C") else Color("#33691E")
-    Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); padding(12.px, 0.px); property("border-bottom", "1px dashed #AED581"); fontSize(if (isHighlight) 1.15.cssRem else 1.1.cssRem); color(textColor) } }) {
-        Span(attrs = { style { flex(1); if(isHighlight) fontWeight("bold") } }) { Text(label) }
-        Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { Span(attrs = { style { fontFamily("Vazirmatn", "system-ui", "sans-serif"); fontWeight("bold"); property("direction", "ltr"); display(DisplayStyle.InlineBlock) } }) { Text(rawValue.toGhiyasFormat(baseUnit, label)) }; Text(" $baseUnit") }
+    
+    val parts = label.split("\n")
+    val mainLabel = parts[0]
+    val subLabels = if (parts.size > 1) parts.drop(1) else emptyList()
+
+    Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); padding(12.px, 0.px); property("border-bottom", "1px dashed #AED581"); color(textColor) } }) {
+        
+        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); fontSize(if (isHighlight) 1.15.cssRem else 1.1.cssRem); width(100.percent) } }) {
+            Span(attrs = { style { flex(1); if(isHighlight) fontWeight("bold") } }) { Text(mainLabel) }
+            Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { 
+                Span(attrs = { style { fontFamily("Vazirmatn", "system-ui", "sans-serif"); fontWeight("bold"); property("direction", "ltr"); display(DisplayStyle.InlineBlock) } }) { 
+                    Text(rawValue.toGhiyasFormat(baseUnit, mainLabel)) 
+                }; 
+                Text(" $baseUnit") 
+            }
+        }
+
+        if (subLabels.isNotEmpty()) {
+            Div(attrs = { style { marginTop(12.px); padding(10.px); backgroundColor(Color("#F1F8E9")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#C5E1A5")); fontSize(0.95.cssRem); color(Color("#558B2F")) } }) {
+                subLabels.forEach { subLine ->
+                    // تبدیل اعداد لاتین به فارسی در این بخش
+                    val safeLine = subLine.replace("• ", "").toPersianDigits()
+                    Div(attrs = { style { marginBottom(6.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center) } }) { 
+                        Text("🔹 $safeLine $baseUnit") 
+                    }
+                }
+            }
+        }
     }
 }
 
-// ساختار درختی هوشمند برای UI
-data class ShareNode(
-    val item: ResultItem,
-    val depth: Int,
-    val cleanLabel: String,
-    val children: MutableList<ShareNode> = mutableListOf()
-)
+data class ShareNode(val item: ResultItem, val depth: Int, val cleanLabel: String, val children: MutableList<ShareNode> = mutableListOf())
 
 fun buildShareTree(items: List<ResultItem>): List<ShareNode> {
     val rootNodes = mutableListOf<ShareNode>()
     val stack = mutableListOf<ShareNode>()
 
     for (item in items) {
-        val depth = item.label.split("(از ").size - 1
-        val azIndex = item.label.indexOf(" (از ")
-        var cleanLabel = if (azIndex != -1) item.label.substring(0, azIndex).trim() else item.label
+        val parts = item.label.split("\n")
+        val firstLine = parts[0]
         
-        if (azIndex != -1) {
-            if (item.label.contains("(محاسبه نمایشی)")) cleanLabel += " (محاسبه نمایشی)"
-            val bracketTags = Regex("\\[.*?\\]").findAll(item.label).joinToString(" ") { it.value }
-            if (bracketTags.isNotEmpty()) cleanLabel += " $bracketTags"
+        val depth = firstLine.split("(از ").size - 1
+        val azIndex = firstLine.indexOf(" (از ")
+        
+        var mainPart = if (azIndex != -1) firstLine.substring(0, azIndex).trim() else firstLine
+        if (firstLine.contains("(محاسبه نمایشی)")) mainPart += " (محاسبه نمایشی)"
+        val bracketTags = Regex("\\[.*?\\]").findAll(firstLine).joinToString(" ") { it.value }
+        if (bracketTags.isNotEmpty()) mainPart += " $bracketTags"
+        
+        val cleanLabel = if (parts.size > 1) {
+            mainPart + "\n" + parts.drop(1).joinToString("\n")
+        } else {
+            mainPart
         }
 
         val node = ShareNode(item, depth, cleanLabel)
@@ -110,7 +145,13 @@ fun RecursiveResultNode(node: ShareNode, baseUnit: String) {
             }
         }
     }) {
-        ResultRowItem(node.cleanLabel, node.item.value.value, baseUnit, isHighlight = isRoot || hasChildren)
+        if (isRoot && hasChildren) {
+            val titleName = node.cleanLabel.split("\n")[0].replace("سهم کل ", "")
+            H5(attrs = { style { margin(0.px, 0.px, 12.px, 0.px); color(Color("#6A1B9A")); fontSize(1.1.cssRem); property("border-bottom", "2px dashed #E1BEE7"); paddingBottom(8.px) } }) { Text("زیرمجموعه: $titleName") }
+            ResultRowItem(node.cleanLabel, node.item.value.value, baseUnit, isHighlight = true)
+        } else {
+            ResultRowItem(node.cleanLabel, node.item.value.value, baseUnit, isHighlight = isRoot)
+        }
         
         if (hasChildren) {
             Div(attrs = { style { marginTop(8.px); paddingRight(12.px); property("border-right", "3px solid #AB47BC") } }) {
@@ -406,7 +447,6 @@ fun App() {
                                     Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) {
                                         H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") }
 
-                                        // استفاده از الگوریتم درختی هوشمند
                                         val treeNodes = buildShareTree(snapshot!!.finalSharesResults)
                                         treeNodes.forEach { node ->
                                             RecursiveResultNode(node, snapshot!!.baseUnit)
