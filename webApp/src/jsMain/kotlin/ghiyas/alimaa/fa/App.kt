@@ -153,9 +153,7 @@ fun App() {
     val agricultureInputState by agricultureViewModel.inputState.collectAsState()
     val distributionState by distributionViewModel.state.collectAsState()
 
-    LaunchedEffect(calcState.history) {
-        LocalStorageRepository.saveCalculatorHistory(calcState.history)
-    }
+    LaunchedEffect(calcState.history) { LocalStorageRepository.saveCalculatorHistory(calcState.history) }
 
     LaunchedEffect(inputState.totalAmount) {
         val amount = if (inputState.totalAmount.isNotBlank()) inputState.totalAmount else "0"
@@ -178,34 +176,10 @@ fun App() {
                     if (calendarFormState.isVisible) {
                         Span(attrs = { style { fontSize(18.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("مدیریت تقویم") }
                     } else if (workCalendars.isNotEmpty()) {
-                        Div(attrs = { 
-                            style { 
-                                display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); width(100.percent)
-                                property("min-width", "0") 
-                            } 
-                        }) {
+                        Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); width(100.percent); property("min-width", "0") } }) {
                             Span(attrs = { style { fontSize(20.px); fontWeight("bold"); property("white-space", "nowrap") } }) { Text("قیاس") }
-                            Select(attrs = {
-                                style { 
-                                    flex(1)
-                                    property("min-width", "0") 
-                                    padding(6.px, 12.px)
-                                    borderRadius(6.px)
-                                    border(0.px)
-                                    backgroundColor(Color("#81C784"))
-                                    color(Color("white"))
-                                    fontSize(0.95.cssRem)
-                                    fontFamily("Vazirmatn")
-                                    fontWeight("bold")
-                                    outline("none")
-                                }
-                                onChange { e -> activeCalendarId = e.value }
-                            }) {
-                                workCalendars.forEach { cal ->
-                                    Option(value = cal.id, attrs = { if (activeCalendarId == cal.id) selected() }) { 
-                                        Text(cal.name + if (cal.isDefault) " (پیش‌فرض)" else "") 
-                                    }
-                                }
+                            Select(attrs = { style { flex(1); property("min-width", "0"); padding(6.px, 12.px); borderRadius(6.px); border(0.px); backgroundColor(Color("#81C784")); color(Color("white")); fontSize(0.95.cssRem); fontFamily("Vazirmatn"); fontWeight("bold"); outline("none") }; onChange { e -> activeCalendarId = e.value } }) {
+                                workCalendars.forEach { cal -> Option(value = cal.id, attrs = { if (activeCalendarId == cal.id) selected() }) { Text(cal.name + if (cal.isDefault) " (پیش‌فرض)" else "") } }
                             }
                         }
                     } else {
@@ -227,31 +201,10 @@ fun App() {
             when (currentScreen) {
                 "main" -> {
                     HeroBanner()
-                    Div(attrs = { 
-                        classes(AppStyleSheet.tabContainer); classes("hide-scrollbar")
-                        style {
-                            display(DisplayStyle.Flex)
-                            property("overflow-x", "auto")
-                            property("-webkit-overflow-scrolling", "touch")
-                        } 
-                    }) {
-                        Div(attrs = { 
-                            classes(AppStyleSheet.tabItem, if (currentMainTab == "default_pipeline") AppStyleSheet.tabActive else AppStyleSheet.tabInactive)
-                            style { flexShrink(0) }
-                            onClick { currentMainTab = "default_pipeline" } 
-                        }) { Text("محاسبات پیش‌فرض") }
-                        
-                        Div(attrs = { 
-                            classes(AppStyleSheet.tabItem, if (currentMainTab == "standalone_runner") AppStyleSheet.tabActive else AppStyleSheet.tabInactive)
-                            style { flexShrink(0) }
-                            onClick { currentMainTab = "standalone_runner" } 
-                        }) { Text("مدیریت الگوها") }
-                        
-                        Div(attrs = { 
-                            classes(AppStyleSheet.tabItem, if (currentMainTab == "work_calendar") AppStyleSheet.tabActive else AppStyleSheet.tabInactive)
-                            style { flexShrink(0) }
-                            onClick { currentMainTab = "work_calendar" } 
-                        }) { Text("تقویم کاری") }
+                    Div(attrs = { classes(AppStyleSheet.tabContainer); classes("hide-scrollbar"); style { display(DisplayStyle.Flex); property("overflow-x", "auto"); property("-webkit-overflow-scrolling", "touch") } }) {
+                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "default_pipeline") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); style { flexShrink(0) }; onClick { currentMainTab = "default_pipeline" } }) { Text("محاسبات پیش‌فرض") }
+                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "standalone_runner") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); style { flexShrink(0) }; onClick { currentMainTab = "standalone_runner" } }) { Text("مدیریت الگوها") }
+                        Div(attrs = { classes(AppStyleSheet.tabItem, if (currentMainTab == "work_calendar") AppStyleSheet.tabActive else AppStyleSheet.tabInactive); style { flexShrink(0) }; onClick { currentMainTab = "work_calendar" } }) { Text("تقویم کاری") }
                     }
 
                     when (currentMainTab) {
@@ -287,9 +240,7 @@ fun App() {
                                 } else {
                                     customProfiles.forEach { prof ->
                                         Div(attrs = { style { backgroundColor(Color("white")); padding(16.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(12.px); display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(12.px) } }) {
-                                            Span(attrs = { style { fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) { 
-                                                Text(prof.name + if(prof.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4) " (وابسته)" else " (مستقل)") 
-                                            }
+                                            Span(attrs = { style { fontWeight("bold"); color(Color("#2E7D32")); fontSize(1.1.cssRem) } }) { Text(prof.name + if(prof.integrationType == ProfileIntegrationType.DEPENDENT_STEP_4) " (وابسته)" else " (مستقل)") }
                                             Div(attrs = { style { display(DisplayStyle.Flex); gap(8.px) } }) {
                                                 if(prof.integrationType == ProfileIntegrationType.STANDALONE_MAIN_TAB) {
                                                     Button(attrs = { style { flex(1); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(6.px); padding(8.px); cursor("pointer") }; onClick { dynamicPlayerViewModel.loadProfile(prof.id); navigateTo("dynamic_player") } }) { Text("▶ اجرا") }
@@ -304,26 +255,15 @@ fun App() {
                             }
                         }
                         "work_calendar" -> { 
+                            // کدهای مربوط به تقویم... (بدون تغییر)
                             if (calendarFormState.isVisible) {
-                                CalendarManagerForm(
-                                    state = calendarFormState,
-                                    onProfileSaved = {
-                                        calendarFormState.isVisible = false
-                                        calendarFormState.reset()
-                                        workCalendars = WorkCalendarRepository.getAllProfiles()
-                                        activeCalendarId = workCalendars.lastOrNull()?.id
-                                    },
-                                    onCancel = { calendarFormState.isVisible = false }
-                                )
+                                CalendarManagerForm(state = calendarFormState, onProfileSaved = { calendarFormState.isVisible = false; calendarFormState.reset(); workCalendars = WorkCalendarRepository.getAllProfiles(); activeCalendarId = workCalendars.lastOrNull()?.id }, onCancel = { calendarFormState.isVisible = false })
                             } else if (workCalendars.isEmpty()) {
                                 Div(attrs = { style { padding(32.px); textAlign("center"); marginTop(40.px) } }) {
                                     Div(attrs = { style { fontSize(4.cssRem); marginBottom(16.px) } }) { Text("📅") }
                                     H3(attrs = { style { color(Color("#2E7D32")); marginBottom(8.px) } }) { Text("تقویم کاری وجود ندارد") }
                                     P(attrs = { style { color(Color("#757575")); marginBottom(24.px) } }) { Text("برای زمان‌بندی آبیاری یا شیفت‌های کاری، اولین تقویم خود را ایجاد کنید.") }
-                                    Button(attrs = { 
-                                        style { padding(12.px, 24.px); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer") }
-                                        onClick { calendarFormState.reset(); calendarFormState.isVisible = true }
-                                    }) { Text("➕ ایجاد تقویم جدید") }
+                                    Button(attrs = { style { padding(12.px, 24.px); backgroundColor(Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); cursor("pointer") }; onClick { calendarFormState.reset(); calendarFormState.isVisible = true } }) { Text("➕ ایجاد تقویم جدید") }
                                 }
                             } else {
                                 val activeProfile = workCalendars.find { it.id == activeCalendarId }
@@ -358,11 +298,9 @@ fun App() {
                         }
                     }
 
-                    // رندر کارت نتایج هوشمند: هر نتیجه فقط در تب مربوط به خودش نمایش داده می‌شود
                     if (snapshot != null && currentMainTab != "work_calendar") {
                         val isCustomProfileSnapshot = snapshot!!.associated_profile_id != null
-                        val shouldShowInCurrentTab = (currentMainTab == "default_pipeline" && !isCustomProfileSnapshot) ||
-                                                     (currentMainTab == "standalone_runner" && isCustomProfileSnapshot)
+                        val shouldShowInCurrentTab = (currentMainTab == "default_pipeline" && !isCustomProfileSnapshot) || (currentMainTab == "standalone_runner" && isCustomProfileSnapshot)
                         
                         if (shouldShowInCurrentTab) {
                             Div(attrs = { style { property("margin", "16px"); padding(24.px); backgroundColor(Color("#F1F8E9")); borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")) } }) {
@@ -379,9 +317,7 @@ fun App() {
                                 }
                                 
                                 if (snapshot!!.expensesResults.isNotEmpty()) { 
-                                    snapshot!!.expensesResults.forEach { item -> 
-                                        key("exp_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
-                                    }
+                                    snapshot!!.expensesResults.forEach { item -> key("exp_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) } }
                                 }
                                 
                                 val actualNimResults = snapshot!!.nimehkariResults.filter { it.label != "خالص باقی‌مانده برای تسهیم" }
@@ -389,13 +325,8 @@ fun App() {
                                 
                                 if (snapshot!!.agricultureResults.isNotEmpty() || actualNimResults.isNotEmpty()) {
                                     Div(attrs = { style { marginTop(16.px); paddingTop(16.px); property("border-top", "3px solid #AED581") } }) { H4(attrs = { style { color(Color("#2E7D32")); property("margin", "0px 0px 12px 0px") } }) { Text("کسورات کشاورزی و نیمه‌کاری") } }
-                                    snapshot!!.agricultureResults.forEach { item -> 
-                                        key("agr_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
-                                    }
-                                    
-                                    actualNimResults.forEach { item -> 
-                                        key("nim_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) }
-                                    }
+                                    snapshot!!.agricultureResults.forEach { item -> key("agr_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) } }
+                                    actualNimResults.forEach { item -> key("nim_${item.label}") { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit) } }
                                 }
                                 
                                 if (remainingItem != null) {
@@ -407,13 +338,42 @@ fun App() {
                                 }
                                 
                                 if (snapshot!!.finalSharesResults.isNotEmpty()) {
-                                    Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) { H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") } }
-                                    snapshot!!.finalSharesResults.forEach { item -> 
-                                        key("fin_${item.label}") {
-                                            val isNimehkariRow = item.label.startsWith("🌾")
-                                            Div(attrs = { style { backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")); property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7"); borderRadius(8.px); padding(12.px); property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)") } }) { ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true) }
+                                    // --- الگوریتم هوشمند رندر درختی نتایج با Regex ---
+                                    val finalSharesList = snapshot!!.finalSharesResults
+                                    val groupedShares = finalSharesList.groupBy { item ->
+                                        val regex = Regex("\\(از (.*)\\)")
+                                        val match = regex.find(item.label)
+                                        match?.groupValues?.get(1)
+                                    }
+
+                                    val mainShares = groupedShares[null] ?: emptyList()
+                                    
+                                    if (mainShares.isNotEmpty()) {
+                                        Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) {
+                                            H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") }
+                                            mainShares.forEach { item ->
+                                                val isNimehkariRow = item.label.startsWith("🌾")
+                                                Div(attrs = { style { backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")); property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7"); borderRadius(8.px); padding(12.px); property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)") } }) { 
+                                                    ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true) 
+                                                }
+                                            }
                                         }
                                     }
+
+                                    groupedShares.forEach { (parentName, items) ->
+                                        if (parentName != null) {
+                                            Div(attrs = { style { marginTop(12.px); backgroundColor(Color("#F3E5F5")); border(1.px, LineStyle.Solid, Color("#CE93D8")); borderRadius(8.px); padding(12.px) } }) {
+                                                H5(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(Color("#6A1B9A")) } }) { Text("زیرمجموعه: $parentName") }
+                                                items.forEach { item ->
+                                                    val cleanLabel = item.label.replace(" (از $parentName)", "")
+                                                    Div(attrs = { style { padding(8.px, 0.px); property("border-bottom", "1px dashed #E1BEE7") } }) {
+                                                        ResultRowItem(cleanLabel, item.value.value, snapshot!!.baseUnit, isHighlight = false)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    // ---------------------------------------------------
                                 }
                                 
                                 Button(attrs = { style { width(100.percent); padding(12.px); property("margin-top", "24px"); backgroundColor(Color("white")); color(Color("#2E7D32")); property("border", "2px solid #2E7D32"); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { ghiyas.alimaa.fa.export.WebExportEngine.shareText(snapshot!!) } }) { Text("کپی نتایج به صورت متنی") }
