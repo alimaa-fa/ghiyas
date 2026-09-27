@@ -25,7 +25,7 @@ data class PoolDistributionState(
     val transferDadallah: Boolean = false,
     val isUnifiedComprehensiveCalculation: Boolean = false,
     val dynamicBooleans: Map<String, Boolean> = emptyMap(),
-    val dynamicAdvancedTransfers: Map<String, RuntimeTransferAction> = emptyMap() // مخزن پیشرفته
+    val dynamicAdvancedTransfers: Map<String, RuntimeTransferAction> = emptyMap()
 )
 
 data class DistributionStageState(
@@ -70,71 +70,14 @@ class DistributionStageViewModel {
         }
     }
 
-    // --- متدهای مدیریت انتقال پیشرفته در تب وابسته ---
-    fun initAdvancedTransfer(target: PoolTarget, sourceId: String) {
+    // متد یکپارچه و تمیز برای ثبت تغییرات انتقال پیشرفته
+    fun updateDynamicAdvancedTransfer(target: PoolTarget, sourceId: String, action: RuntimeTransferAction) {
         updatePoolState(target) { st ->
             val newMap = st.dynamicAdvancedTransfers.toMutableMap()
-            if (!newMap.containsKey(sourceId)) newMap[sourceId] = RuntimeTransferAction()
+            newMap[sourceId] = action
             st.copy(dynamicAdvancedTransfers = newMap)
         }
     }
-
-    fun removeAdvancedTransfer(target: PoolTarget, sourceId: String) {
-        updatePoolState(target) { st ->
-            val newMap = st.dynamicAdvancedTransfers.toMutableMap()
-            newMap.remove(sourceId)
-            st.copy(dynamicAdvancedTransfers = newMap)
-        }
-    }
-
-    fun updateTransferAmountType(target: PoolTarget, sourceId: String, type: TransferAmountType) {
-        updatePoolState(target) { st ->
-            val newMap = st.dynamicAdvancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            newMap[sourceId] = current.copy(sourceAmountType = type)
-            st.copy(dynamicAdvancedTransfers = newMap)
-        }
-    }
-
-    fun updateTransferAmountValue(target: PoolTarget, sourceId: String, value: String) {
-        updatePoolState(target) { st ->
-            val newMap = st.dynamicAdvancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            newMap[sourceId] = current.copy(sourceAmountValue = value)
-            st.copy(dynamicAdvancedTransfers = newMap)
-        }
-    }
-
-    fun updateTransferRule(target: PoolTarget, sourceId: String, rule: TransferDistributionRule) {
-        updatePoolState(target) { st ->
-            val newMap = st.dynamicAdvancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            newMap[sourceId] = current.copy(distributionRule = rule)
-            st.copy(dynamicAdvancedTransfers = newMap)
-        }
-    }
-
-    fun addTransferTarget(target: PoolTarget, sourceId: String, targetId: String, isFemale: Boolean = false) {
-        if (targetId.isBlank()) return
-        updatePoolState(target) { st ->
-            val newMap = st.dynamicAdvancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            if (current.targets.none { it.targetId == targetId }) {
-                newMap[sourceId] = current.copy(targets = current.targets + AdvancedTransferTarget(targetId, isFemale))
-            }
-            st.copy(dynamicAdvancedTransfers = newMap)
-        }
-    }
-
-    fun removeTransferTarget(target: PoolTarget, sourceId: String, targetId: String) {
-        updatePoolState(target) { st ->
-            val newMap = st.dynamicAdvancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: return@updatePoolState st
-            newMap[sourceId] = current.copy(targets = current.targets.filter { it.targetId != targetId })
-            st.copy(dynamicAdvancedTransfers = newMap)
-        }
-    }
-    // --------------------------------------------------
 
     fun updateComprehensiveState(target: PoolTarget, update: (ComprehensiveState) -> ComprehensiveState) {
         updatePoolState(target) { it.copy(comprehensiveState = update(it.comprehensiveState)) }

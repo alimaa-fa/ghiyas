@@ -10,10 +10,8 @@ class BuilderViewModel {
     private val _state = MutableStateFlow(BuilderState())
     val state: StateFlow<BuilderState> = _state.asStateFlow()
 
-    // پاکسازی بوم برای ساخت الگوی جدید
     fun clearForNewProfile() { _state.update { BuilderState() } }
     
-    // بارگذاری الگو برای ویرایش
     fun loadProfileForEdit(profile: CustomProfile) {
         _state.update {
             BuilderState(
@@ -122,54 +120,102 @@ class BuilderViewModel {
         return updatedList
     }
 
-    private fun List<BuilderPersonNode>.updatePersonNode(path: List<String>, transform: (BuilderPersonNode) -> BuilderPersonNode): List<BuilderPersonNode> {
-        if (path.isEmpty()) return this
-        val targetId = path.first()
-        return this.map { node -> if (node.id == targetId) { if (path.size == 1) transform(node) else node.copy(subNodes = node.subNodes.updatePersonNode(path.drop(1), transform)) } else node }
-    }
-
-    fun updateHeadcountNode(blockId: String, path: List<String>, transform: (BuilderPersonNode) -> BuilderPersonNode) {
+    // =========================================================================
+    // توابع جادویی و بازگشتی برای پیدا کردن و تغییر نُدها بر اساس ID (بدون Path)
+    // =========================================================================
+    
+    private fun updateBlockLists(blockId: String, personTransformer: (List<BuilderPersonNode>) -> List<BuilderPersonNode>, shareholderTransformer: (List<BuilderShareholder>) -> List<BuilderShareholder>) {
         updateBlock(blockId) { block ->
             when (block) {
-                is MemberBlock -> block.copy(headcountNodes = block.headcountNodes.updatePersonNode(path, transform))
-                is PartnerBlock -> block.copy(headcountNodes = block.headcountNodes.updatePersonNode(path, transform))
+                is MemberBlock -> block.copy(headcountNodes = personTransformer(block.headcountNodes), ghiyasShareholders = shareholderTransformer(block.ghiyasShareholders), percentageShareholders = shareholderTransformer(block.percentageShareholders))
+                is PartnerBlock -> block.copy(headcountNodes = personTransformer(block.headcountNodes), ghiyasShareholders = shareholderTransformer(block.ghiyasShareholders), percentageShareholders = shareholderTransformer(block.percentageShareholders))
                 else -> block
             }
         }
     }
 
-    fun addHeadcountNode(blockId: String, path: List<String>) {
+    // 1. منطق بازگشتی آپدیت Person
+    private fun List<BuilderPersonNode>.replacePerson(nodeId: String, updater: (BuilderPersonNode) -> BuilderPersonNode): List<BuilderPersonNode> = map { node ->
+        if (node.id == nodeId) updater(node) else node.copy(subNodes = node.subNodes.replacePerson(nodeId, updater), subShareholders = node.subShareholders.replaceShareholderForPersonUpdate(nodeId, updater))
+    }
+    private fun List<BuilderShareholder>.replaceShareholderForPersonUpdate(nodeId: String, updater: (BuilderPersonNode) -> BuilderPersonNode): List<BuilderShareholder> = map { sh ->
+        sh.copy(subHeadcounts = sh.subHeadcounts.replacePerson(nodeId, updater), subNodes = sh.subNodes.replaceShareholderForPersonUpdate(nodeId, updater))
+    }
+
+    // 2. منطق بازگشتی آپدیت Shareholder
+    private fun List<BuilderShareholder>.replaceShareholder(nodeId: String, updater: (BuilderShareholder) -> BuilderShareholder): List<BuilderShareholder> = map { sh ->
+        if (sh.id == nodeId) updater(sh) else sh.copy(subHeadcounts = sh.subHeadcounts.replacePersonForShareholderUpdate(nodeId, updater), subNodes = sh.subNodes.replaceShareholder(nodeId, updater))
+    }
+    private fun List<BuilderPersonNode>.replacePersonForShareholderUpdate(nodeId: String, updater: (BuilderShareholder) -> BuilderShareholder): List<BuilderPersonNode> = map { node ->
+        node.copy(subNodes = node.subNodes.replacePersonForShareholderUpdate(nodeId, updater), subShareholders = node.subShareholders.replaceShareholder(nodeId, updater))
+    }
+
+    // 3. منطق بازگشتی حذف کلی (Delete)
+    private fun List<BuilderPersonNode>.removeNodeFromPersonList(nodeId: String): List<BuilderPersonNode> = filter { it.id != nodeId }.map { node ->
+        node.copy(subNodes = node.subNodes.removeNodeFromPersonList(nodeId), subShareholders = node.subShareholders.removeNodeFromShareholderList(nodeId))
+    }
+    private fun List<BuilderShareholder>.removeNodeFromShareholderList(nodeId: String): List<BuilderShareholder> = filter { it.id != nodeId }.map { sh ->
+        sh.copy(subHeadcounts = sh.subHeadcounts.removeNodeFromPersonList(nodeId), subNodes = sh.subNodes.removeNodeFromShareholderList(nodeId))
+    }
+
+    // 4. منطق بازگشتی افزودن به والد (Add to Parent)
+    private fun List<BuilderPersonNode>.addNodeToPersonParent(parentId: String, newNode: Any): List<BuilderPersonNode> = map { node ->
+        if (node.id == parentId) {
+            when (newNode) {
+                is BuilderPersonNode -> node.copy(subNodes = node.subNodes + newNode)
+                is BuilderShareholder -> node.copy(subShareholders = node.subShareholders + newNode)
+                else -> node
+            }
+        } else node.copy(subNodes = node.subNodes.addNodeToPersonParent(parentId, newNode), subShareholders = node.subShareholders.addNodeToShareholderParent(parentId, newNode))
+    }
+    private fun List<BuilderShareholder>.addNodeToShareholderParent(parentId: String, newNode: Any): List<BuilderShareholder> = map { sh ->
+        if (sh.id == parentId) {
+            when (newNode) {
+                is BuilderPersonNode -> sh.copy(subHeadcounts = sh.subHeadcounts + newNode)
+                is BuilderShareholder -> sh.copy(subNodes = sh.subNodes + newNode)
+                else -> sh
+            }
+        } else sh.copy(subHeadcounts = sh.subHeadcounts.addNodeToPersonParent(parentId, newNode), subNodes = sh.subNodes.addNodeToShareholderParent(parentId, newNode))
+    }
+
+    // --- توابع عمومی (Public) برای استفاده در رابط کاربری ---
+
+    fun updatePersonNode(blockId: String, nodeId: String, updater: (BuilderPersonNode) -> BuilderPersonNode) {
+        updateBlockLists(blockId, { it.replacePerson(nodeId, updater) }, { it.replaceShareholderForPersonUpdate(nodeId, updater) })
+    }
+
+    fun updateShareholderNode(blockId: String, nodeId: String, updater: (BuilderShareholder) -> BuilderShareholder) {
+        updateBlockLists(blockId, { it.replacePersonForShareholderUpdate(nodeId, updater) }, { it.replaceShareholder(nodeId, updater) })
+    }
+
+    fun removeNode(blockId: String, nodeId: String) {
+        updateBlockLists(blockId, { it.removeNodeFromPersonList(nodeId) }, { it.removeNodeFromShareholderList(nodeId) })
+    }
+
+    fun addPersonNode(blockId: String, parentId: String?) {
         val newNode = BuilderPersonNode(id = generateId())
-        updateBlock(blockId) { block ->
-            when (block) {
-                is MemberBlock -> {
-                    if (path.isEmpty()) block.copy(headcountNodes = block.headcountNodes + newNode)
-                    else block.copy(headcountNodes = block.headcountNodes.updatePersonNode(path) { it.copy(subNodes = it.subNodes + newNode) })
-                }
-                is PartnerBlock -> {
-                    if (path.isEmpty()) block.copy(headcountNodes = block.headcountNodes + newNode)
-                    else block.copy(headcountNodes = block.headcountNodes.updatePersonNode(path) { it.copy(subNodes = it.subNodes + newNode) })
-                }
-                else -> block
-            }
+        if (parentId == null) {
+            updateBlockLists(blockId, { it + newNode }, { it }) // اضافه به ریشه نفرات بلوک
+        } else {
+            updateBlockLists(blockId, { it.addNodeToPersonParent(parentId, newNode) }, { it.addNodeToShareholderParent(parentId, newNode) })
         }
     }
 
-    fun removeHeadcountNode(blockId: String, path: List<String>, idToRemove: String) {
-        updateBlock(blockId) { block ->
-            when (block) {
-                is MemberBlock -> {
-                    if (path.isEmpty()) block.copy(headcountNodes = block.headcountNodes.filter { it.id != idToRemove })
-                    else block.copy(headcountNodes = block.headcountNodes.updatePersonNode(path) { it.copy(subNodes = it.subNodes.filter { c -> c.id != idToRemove }) })
+    fun addShareholderNode(blockId: String, parentId: String?, isPercentageRoot: Boolean = false) {
+        val newNode = BuilderShareholder(id = generateId())
+        if (parentId == null) {
+            updateBlock(blockId) { block ->
+                when (block) {
+                    is MemberBlock -> if (isPercentageRoot) block.copy(percentageShareholders = block.percentageShareholders + newNode) else block.copy(ghiyasShareholders = block.ghiyasShareholders + newNode)
+                    is PartnerBlock -> if (isPercentageRoot) block.copy(percentageShareholders = block.percentageShareholders + newNode) else block.copy(ghiyasShareholders = block.ghiyasShareholders + newNode)
+                    else -> block
                 }
-                is PartnerBlock -> {
-                    if (path.isEmpty()) block.copy(headcountNodes = block.headcountNodes.filter { it.id != idToRemove })
-                    else block.copy(headcountNodes = block.headcountNodes.updatePersonNode(path) { it.copy(subNodes = it.subNodes.filter { c -> c.id != idToRemove }) })
-                }
-                else -> block
             }
+        } else {
+            updateBlockLists(blockId, { it.addNodeToPersonParent(parentId, newNode) }, { it.addNodeToShareholderParent(parentId, newNode) })
         }
     }
+    // =========================================================================
 
     fun saveProfile(onSuccess: () -> Unit, onError: (String) -> Unit) {
         val currentState = _state.value
@@ -182,7 +228,6 @@ class BuilderViewModel {
             return
         }
 
-        // اگر در حال ویرایش هستیم همان آیدی قبلی حفظ شود، در غیر این صورت جدید ساخته شود
         val profileId = currentState.editingProfileId ?: "prof_${kotlin.random.Random.nextLong(100000, 999999)}"
 
         val customProfile = CustomProfile(

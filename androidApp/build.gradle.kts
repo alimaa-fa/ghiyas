@@ -13,8 +13,8 @@ android {
         minSdk = 21
         // تغییر به نسخه پایدار ۳۴
         targetSdk = 34
-        versionCode = 8
-        versionName = "1.1.1"
+        versionCode = 38
+        versionName = "1.1.11"
     }
 
     buildTypes {

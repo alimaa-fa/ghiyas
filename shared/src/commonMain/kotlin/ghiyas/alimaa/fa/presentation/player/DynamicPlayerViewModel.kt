@@ -14,7 +14,7 @@ data class DynamicPlayerState(
     val activeProfile: CustomProfile? = null,
     val textInputs: Map<String, String> = emptyMap(),
     val booleanInputs: Map<String, Boolean> = emptyMap(),
-    val advancedTransfers: Map<String, RuntimeTransferAction> = emptyMap() // مخزن جدید انتقال پیشرفته
+    val advancedTransfers: Map<String, RuntimeTransferAction> = emptyMap()
 )
 
 class DynamicPlayerViewModel {
@@ -49,73 +49,14 @@ class DynamicPlayerViewModel {
         }
     }
 
-    // --- متدهای مدیریت انتقال پیشرفته در زمان اجرا ---
-    fun initAdvancedTransfer(sourceId: String) {
+    // جایگزین یکپارچه و تمیز برای مدیریت استیت انتقال پیشرفته
+    fun updateAdvancedTransfer(sourceId: String, action: RuntimeTransferAction) {
         _state.update { st ->
             val newMap = st.advancedTransfers.toMutableMap()
-            if (!newMap.containsKey(sourceId)) {
-                newMap[sourceId] = RuntimeTransferAction()
-            }
+            newMap[sourceId] = action
             st.copy(advancedTransfers = newMap)
         }
     }
-
-    fun removeAdvancedTransfer(sourceId: String) {
-        _state.update { st ->
-            val newMap = st.advancedTransfers.toMutableMap()
-            newMap.remove(sourceId)
-            st.copy(advancedTransfers = newMap)
-        }
-    }
-
-    fun updateTransferAmountType(sourceId: String, type: TransferAmountType) {
-        _state.update { st ->
-            val newMap = st.advancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            newMap[sourceId] = current.copy(sourceAmountType = type)
-            st.copy(advancedTransfers = newMap)
-        }
-    }
-
-    fun updateTransferAmountValue(sourceId: String, value: String) {
-        _state.update { st ->
-            val newMap = st.advancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            newMap[sourceId] = current.copy(sourceAmountValue = value)
-            st.copy(advancedTransfers = newMap)
-        }
-    }
-
-    fun updateTransferRule(sourceId: String, rule: TransferDistributionRule) {
-        _state.update { st ->
-            val newMap = st.advancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            newMap[sourceId] = current.copy(distributionRule = rule)
-            st.copy(advancedTransfers = newMap)
-        }
-    }
-
-    fun addTransferTarget(sourceId: String, targetId: String, isFemale: Boolean = false) {
-        if (targetId.isBlank()) return
-        _state.update { st ->
-            val newMap = st.advancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: RuntimeTransferAction()
-            if (current.targets.none { it.targetId == targetId }) {
-                newMap[sourceId] = current.copy(targets = current.targets + AdvancedTransferTarget(targetId, isFemale))
-            }
-            st.copy(advancedTransfers = newMap)
-        }
-    }
-
-    fun removeTransferTarget(sourceId: String, targetId: String) {
-        _state.update { st ->
-            val newMap = st.advancedTransfers.toMutableMap()
-            val current = newMap[sourceId] ?: return@update st
-            newMap[sourceId] = current.copy(targets = current.targets.filter { it.targetId != targetId })
-            st.copy(advancedTransfers = newMap)
-        }
-    }
-    // --------------------------------------------------
 
     fun executeCalculation(currentYear: String, timestampLong: Long, baseUnit: String = "کیلوگرم"): CalculationHistoryRecord? {
         val profile = _state.value.activeProfile ?: return null
@@ -135,7 +76,7 @@ class DynamicPlayerViewModel {
             mode = DistributionMode.MODE_CUSTOM_BUILDER,
             customProfileId = profile.id,
             dynamicBooleans = _state.value.booleanInputs,
-            dynamicAdvancedTransfers = _state.value.advancedTransfers // پاس دادن اطلاعات پیشرفته به موتور
+            dynamicAdvancedTransfers = _state.value.advancedTransfers
         )
         
         val sharesList = DistributionEngine.calculate(distInput)

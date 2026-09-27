@@ -29,21 +29,19 @@ data class ConditionGate(override val block_id: String, override val system_alia
 enum class DistributionType { HEADCOUNT_BASED, GHIYAS_BASED, PERCENTAGE, CUSTOM_UNIT }
 enum class UIElementType { TEXT_FIELD, NUMBER_FIELD, HEADER_TITLE, SEPARATOR_LINE, ACCORDION_GUIDE, TEXT_WARNING }
 
-// ----- کلاس‌ها و Enum های مربوط به سیستم انتقال پیشرفته زمان اجرا -----
 enum class TransferAmountType { FULL, PERCENTAGE, FIXED, FORMULA }
-enum class TransferDistributionRule { EQUAL, BOY_GIRL }
+enum class TransferDistributionRule { EQUAL, BOY_GIRL, BY_ORIGINAL_SHARE, CUSTOM_PERCENTAGE }
 
 @Serializable
-data class AdvancedTransferTarget(val targetId: String, val isFemale: Boolean = false)
+data class AdvancedTransferTarget(val targetId: String, val isFemale: Boolean = false, val customPercentage: String = "")
 
 @Serializable
 data class RuntimeTransferAction(
     val sourceAmountType: TransferAmountType = TransferAmountType.FULL,
-    val sourceAmountValue: String = "", // می‌تواند خالی (برای FULL)، عدد (برای FIXED/PERCENTAGE) یا متن (برای FORMULA) باشد
+    val sourceAmountValue: String = "",
     val targets: List<AdvancedTransferTarget> = emptyList(),
     val distributionRule: TransferDistributionRule = TransferDistributionRule.EQUAL
 )
-// ---------------------------------------------------------------------
 
 @Serializable
 data class BuilderPersonNode(
@@ -52,20 +50,32 @@ data class BuilderPersonNode(
     val subCountInput: String = "", val isDetailedFurther: Boolean = false,
     val isSubBoyGirlSplit: Boolean = false,
     val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟",
-    
-    // پرچم (Flag) فعال‌سازی پنل انتقال پیشرفته در زمان اجرا
     val isAdvancedTransferAllowed: Boolean = false, 
+    val isDisplayOnly: Boolean = false,
+    val predefinedTransfer: RuntimeTransferAction? = null,
     
-    val subNodes: List<BuilderPersonNode> = emptyList()
+    // فیلدهای جدید برای پشتیبانی از ترکیب انواع زیرمجموعه (سهم، درصد، نفر)
+    val subDistributionType: DistributionType? = null, 
+    val subNodes: List<BuilderPersonNode> = emptyList(), // برای زیرمجموعه‌های بر اساس نفر
+    val subShareholders: List<BuilderShareholder> = emptyList() // برای زیرمجموعه‌های بر اساس سهم/درصد
 )
 
 @Serializable
 data class BuilderShareholder(
     val id: String, val name: String = "", val shareInput: String = "",
     val hasToggle: Boolean = false, val toggleLabel: String = "لحاظ شود؟",
+    val isAdvancedTransferAllowed: Boolean = false,
+    val isDisplayOnly: Boolean = false,
+    val predefinedTransfer: RuntimeTransferAction? = null,
+    val isSubDivided: Boolean = false,
+    val subCountInput: String = "",
+    val isDetailedFurther: Boolean = false,
+    val isSubBoyGirlSplit: Boolean = false,
     
-    // پرچم فعال‌سازی پنل انتقال پیشرفته
-    val isAdvancedTransferAllowed: Boolean = false
+    // فیلدهای جدید برای ترکیب انواع زیرمجموعه
+    val subDistributionType: DistributionType? = null,
+    val subNodes: List<BuilderShareholder> = emptyList(), // برای زیرمجموعه‌های سهم/درصد
+    val subHeadcounts: List<BuilderPersonNode> = emptyList() // برای زیرمجموعه‌های بر اساس نفر
 )
 
 @Serializable
