@@ -23,6 +23,7 @@ import ghiyas.alimaa.fa.presentation.calculator.CalculatorViewModel
 import ghiyas.alimaa.fa.ui.calculator.FloatingCalculatorWidget
 import ghiyas.alimaa.fa.ui.theme.AppStyleSheet
 import ghiyas.alimaa.fa.domain.models.WalnutUnit
+import ghiyas.alimaa.fa.domain.models.ResultItem
 import ghiyas.alimaa.fa.domain.models.ProfileIntegrationType
 import ghiyas.alimaa.fa.core.utils.toGhiyasFormat
 import ghiyas.alimaa.fa.core.pwa.PwaManager
@@ -53,6 +54,71 @@ fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight
     Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); padding(12.px, 0.px); property("border-bottom", "1px dashed #AED581"); fontSize(if (isHighlight) 1.15.cssRem else 1.1.cssRem); color(textColor) } }) {
         Span(attrs = { style { flex(1); if(isHighlight) fontWeight("bold") } }) { Text(label) }
         Span(attrs = { style { fontWeight("bold"); flex(1); textAlign("left") } }) { Span(attrs = { style { fontFamily("Vazirmatn", "system-ui", "sans-serif"); fontWeight("bold"); property("direction", "ltr"); display(DisplayStyle.InlineBlock) } }) { Text(rawValue.toGhiyasFormat(baseUnit, label)) }; Text(" $baseUnit") }
+    }
+}
+
+// ساختار درختی هوشمند برای UI
+data class ShareNode(
+    val item: ResultItem,
+    val depth: Int,
+    val cleanLabel: String,
+    val children: MutableList<ShareNode> = mutableListOf()
+)
+
+fun buildShareTree(items: List<ResultItem>): List<ShareNode> {
+    val rootNodes = mutableListOf<ShareNode>()
+    val stack = mutableListOf<ShareNode>()
+
+    for (item in items) {
+        val depth = item.label.split("(از ").size - 1
+        val azIndex = item.label.indexOf(" (از ")
+        var cleanLabel = if (azIndex != -1) item.label.substring(0, azIndex).trim() else item.label
+        
+        if (azIndex != -1) {
+            if (item.label.contains("(محاسبه نمایشی)")) cleanLabel += " (محاسبه نمایشی)"
+            val bracketTags = Regex("\\[.*?\\]").findAll(item.label).joinToString(" ") { it.value }
+            if (bracketTags.isNotEmpty()) cleanLabel += " $bracketTags"
+        }
+
+        val node = ShareNode(item, depth, cleanLabel)
+
+        while (stack.isNotEmpty() && stack.last().depth >= depth) {
+            stack.removeLast()
+        }
+
+        if (stack.isEmpty()) {
+            rootNodes.add(node)
+        } else {
+            stack.last().children.add(node)
+        }
+        stack.add(node)
+    }
+    return rootNodes
+}
+
+@Composable
+fun RecursiveResultNode(node: ShareNode, baseUnit: String) {
+    val hasChildren = node.children.isNotEmpty()
+    val isRoot = node.depth == 0
+
+    Div(attrs = {
+        style {
+            if (isRoot) {
+                marginTop(12.px); padding(12.px); backgroundColor(Color("white")); border(1.px, LineStyle.Solid, Color("#AED581")); borderRadius(8.px); property("box-shadow", "0 2px 4px rgba(0,0,0,0.05)")
+            } else {
+                marginTop(8.px); padding(12.px); backgroundColor(Color("#F3E5F5")); border(1.px, LineStyle.Dashed, Color("#CE93D8")); borderRadius(6.px)
+            }
+        }
+    }) {
+        ResultRowItem(node.cleanLabel, node.item.value.value, baseUnit, isHighlight = isRoot || hasChildren)
+        
+        if (hasChildren) {
+            Div(attrs = { style { marginTop(8.px); paddingRight(12.px); property("border-right", "3px solid #AB47BC") } }) {
+                node.children.forEach { child ->
+                    RecursiveResultNode(child, baseUnit)
+                }
+            }
+        }
     }
 }
 
@@ -255,7 +321,6 @@ fun App() {
                             }
                         }
                         "work_calendar" -> { 
-                            // کدهای مربوط به تقویم... (بدون تغییر)
                             if (calendarFormState.isVisible) {
                                 CalendarManagerForm(state = calendarFormState, onProfileSaved = { calendarFormState.isVisible = false; calendarFormState.reset(); workCalendars = WorkCalendarRepository.getAllProfiles(); activeCalendarId = workCalendars.lastOrNull()?.id }, onCancel = { calendarFormState.isVisible = false })
                             } else if (workCalendars.isEmpty()) {
@@ -338,42 +403,15 @@ fun App() {
                                 }
                                 
                                 if (snapshot!!.finalSharesResults.isNotEmpty()) {
-                                    // --- الگوریتم هوشمند رندر درختی نتایج با Regex ---
-                                    val finalSharesList = snapshot!!.finalSharesResults
-                                    val groupedShares = finalSharesList.groupBy { item ->
-                                        val regex = Regex("\\(از (.*)\\)")
-                                        val match = regex.find(item.label)
-                                        match?.groupValues?.get(1)
-                                    }
+                                    Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) {
+                                        H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") }
 
-                                    val mainShares = groupedShares[null] ?: emptyList()
-                                    
-                                    if (mainShares.isNotEmpty()) {
-                                        Div(attrs = { style { marginTop(24.px); paddingTop(16.px); property("border-top", "4px double #4CAF50") } }) {
-                                            H4(attrs = { style { color(Color("#1B5E20")); fontWeight("bold"); property("margin", "0px 0px 16px 0px") } }) { Text("سهم‌های نهایی (تسهیم)") }
-                                            mainShares.forEach { item ->
-                                                val isNimehkariRow = item.label.startsWith("🌾")
-                                                Div(attrs = { style { backgroundColor(if (isNimehkariRow) Color("#FFF8E1") else Color("white")); property("border", if (isNimehkariRow) "1px dashed #FFB300" else "1px dashed #A5D6A7"); borderRadius(8.px); padding(12.px); property("margin", if (isNimehkariRow) "16px 0px 4px 0px" else "8px 0px"); property("box-shadow", "0 2px 4px rgba(0,0,0,0.02)") } }) { 
-                                                    ResultRowItem(item.label, item.value.value, snapshot!!.baseUnit, isHighlight = true) 
-                                                }
-                                            }
+                                        // استفاده از الگوریتم درختی هوشمند
+                                        val treeNodes = buildShareTree(snapshot!!.finalSharesResults)
+                                        treeNodes.forEach { node ->
+                                            RecursiveResultNode(node, snapshot!!.baseUnit)
                                         }
                                     }
-
-                                    groupedShares.forEach { (parentName, items) ->
-                                        if (parentName != null) {
-                                            Div(attrs = { style { marginTop(12.px); backgroundColor(Color("#F3E5F5")); border(1.px, LineStyle.Solid, Color("#CE93D8")); borderRadius(8.px); padding(12.px) } }) {
-                                                H5(attrs = { style { margin(0.px, 0.px, 8.px, 0.px); color(Color("#6A1B9A")) } }) { Text("زیرمجموعه: $parentName") }
-                                                items.forEach { item ->
-                                                    val cleanLabel = item.label.replace(" (از $parentName)", "")
-                                                    Div(attrs = { style { padding(8.px, 0.px); property("border-bottom", "1px dashed #E1BEE7") } }) {
-                                                        ResultRowItem(cleanLabel, item.value.value, snapshot!!.baseUnit, isHighlight = false)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    // ---------------------------------------------------
                                 }
                                 
                                 Button(attrs = { style { width(100.percent); padding(12.px); property("margin-top", "24px"); backgroundColor(Color("white")); color(Color("#2E7D32")); property("border", "2px solid #2E7D32"); borderRadius(8.px); fontSize(1.1.cssRem); fontWeight("bold"); property("cursor", "pointer") }; onClick { ghiyas.alimaa.fa.export.WebExportEngine.shareText(snapshot!!) } }) { Text("کپی نتایج به صورت متنی") }

@@ -136,7 +136,7 @@ fun RuntimeAdvancedTransferPanel(
         }
 
         Label(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold"); display(DisplayStyle.Block); marginBottom(8.px) } }) { Text("لیست گیرندگان (با تیک زدن انتخاب کنید):") }
-        Div(attrs = { style { backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); maxHeight(200.px); overflowY("auto") } }) {
+        Div(attrs = { style { backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); maxHeight(200.px); property("overflow-y", "auto") } }) {
             allAvailableNodes.filter { it.first != sourceId }.forEach { (id, name) ->
                 val isChecked = action.targets.any { it.targetId == id }
                 val targetObj = action.targets.find { it.targetId == id }
@@ -144,7 +144,7 @@ fun RuntimeAdvancedTransferPanel(
                 Div(attrs = { style { padding(6.px); property("border-bottom", "1px dashed #EEEEEE") } }) {
                     Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); cursor("pointer"); fontSize(0.9.cssRem); color(if(isChecked) Color("#1B5E20") else Color("#424242")); fontWeight(if(isChecked) "bold" else "normal") } }) {
                         Input(type = InputType.Checkbox, attrs = { 
-                            style { marginRight(8.px); width(16.px); height(16.px) }
+                            style { property("margin-left", "8px"); width(16.px); height(16.px) }
                             checked(isChecked)
                             onChange { e -> 
                                 if (e.value) onActionUpdate(action.copy(targets = action.targets + AdvancedTransferTarget(id)))
@@ -155,13 +155,13 @@ fun RuntimeAdvancedTransferPanel(
                     }
                     
                     if (isChecked && action.distributionRule == TransferDistributionRule.BOY_GIRL) {
-                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); marginTop(4.px); marginLeft(24.px); fontSize(0.8.cssRem); color(Color("#E65100")) } }) {
+                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); marginTop(4.px); property("margin-right", "24px"); fontSize(0.8.cssRem); color(Color("#E65100")) } }) {
                             Input(type = InputType.Checkbox, attrs = { checked(targetObj?.isFemale ?: false); onChange { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(isFemale = e.value) else it })) } })
                             Text("سهم دخترانه بگیرد؟")
                         }
                     }
                     if (isChecked && action.distributionRule == TransferDistributionRule.CUSTOM_PERCENTAGE) {
-                        Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px); marginLeft(24.px); width(80.percent); padding(4.px) }; placeholder("درصد این شخص (مثلا 20)"); value(targetObj?.customPercentage ?: ""); onInput { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(customPercentage = e.value) else it })) } })
+                        Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px); property("margin-right", "24px"); width(80.percent); padding(4.px) }; placeholder("درصد این شخص (مثلا 20)"); value(targetObj?.customPercentage ?: ""); onInput { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(customPercentage = e.value) else it })) } })
                     }
                 }
             }
@@ -173,9 +173,9 @@ fun RuntimeAdvancedTransferPanel(
 fun RenderDependentPersonNode(node: BuilderPersonNode, target: PoolTarget, viewModel: DistributionStageViewModel, state: PoolDistributionState, allAvailableNodes: List<Pair<String, String>>, depth: Int) {
     if (!hasAnyInteractivePersonStage(node)) return
     
-    val marginLeftValue = (depth * 16).px
+    val marginRightValue = (depth * 16).px
     if (node.hasToggle || node.isAdvancedTransferAllowed) {
-        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px); marginLeft(marginLeftValue) } }) {
+        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px); property("margin-right", "${marginRightValue.value}px"); minWidth(280.px) } }) {
             val isChecked = state.dynamicBooleans[node.id] ?: true
             if (node.hasToggle) {
                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px); cursor("pointer"); fontWeight("bold"); color(Color("#33691E")); marginBottom(if (node.isAdvancedTransferAllowed && isChecked) 12.px else 0.px) } }) {
@@ -202,9 +202,9 @@ fun RenderDependentPersonNode(node: BuilderPersonNode, target: PoolTarget, viewM
 fun RenderDependentShareholderNode(node: BuilderShareholder, target: PoolTarget, viewModel: DistributionStageViewModel, state: PoolDistributionState, allAvailableNodes: List<Pair<String, String>>, depth: Int) {
     if (!hasAnyInteractiveShareholderStage(node)) return
     
-    val marginLeftValue = (depth * 16).px
+    val marginRightValue = (depth * 16).px
     if (node.hasToggle || node.isAdvancedTransferAllowed) {
-        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFE082")); marginBottom(8.px); marginLeft(marginLeftValue) } }) {
+        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFE082")); marginBottom(8.px); property("margin-right", "${marginRightValue.value}px"); minWidth(280.px) } }) {
             val isChecked = state.dynamicBooleans[node.id] ?: true
             if (node.hasToggle) {
                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px); cursor("pointer"); fontWeight("bold"); color(Color("#F57F17")); marginBottom(if (node.isAdvancedTransferAllowed && isChecked) 12.px else 0.px) } }) {
@@ -240,7 +240,7 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
                 val shouldShowCard = nodes.any { hasAnyInteractivePersonStage(it) } || ghiyasShareholders.any { hasAnyInteractiveShareholderStage(it) } || percentageShareholders.any { hasAnyInteractiveShareholderStage(it) }
 
                 if (shouldShowCard) {
-                    Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginTop(12.px) } }) {
+                    Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginTop(12.px); property("overflow-x", "auto") } }) {
                         H5(attrs = { style { property("margin", "0 0 12px 0"); color(Color("#1B5E20")) } }) { Text("تنظیمات وابسته: $title") }
 
                         nodes.forEach { RenderDependentPersonNode(it, target, viewModel, state, allAvailableNodes, 0) }
@@ -272,7 +272,7 @@ fun RenderDependentProfileBlocks(blocks: List<CustomBlock>, state: PoolDistribut
     }
 }
 
-// توابع Comprehensive درختی پیش‌فرض بدون تغییر (پنهان شده برای مدیریت طول پیام)
+// توابع Comprehensive درختی پیش‌فرض
 @Composable
 fun RecursiveComprehensiveNode(
     node: ShareholderNode, path: List<String>, currentMode: ComprehensiveMode, 
@@ -284,7 +284,7 @@ fun RecursiveComprehensiveNode(
     val bgColor = if (isVisuallyExcluded) "#F5F5F5" else "#F8FBF8"
     val opacityValue = if (isVisuallyExcluded) 0.6 else 1.0
 
-    Div(attrs = { style { padding(10.px); marginTop(10.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(6.px); opacity(opacityValue) } }) {
+    Div(attrs = { style { padding(10.px); marginTop(10.px); property("border-right", "4px solid $borderColor"); backgroundColor(Color(bgColor)); borderRadius(6.px); opacity(opacityValue); minWidth(280.px) } }) {
         Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(8.px); marginBottom(12.px) } }) {
             DistTextInput("نام شریک", node.name, false, isReadonly = isExecutionMode) { v -> viewModel.updateNode(target, path) { it.copy(name = v) } } 
             Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px) } }) {
@@ -318,7 +318,7 @@ fun RecursiveComprehensiveNode(
                 Text("تقسیم جزئی (وارث جدید)؟")
             }
             if (node.hasSubDistribution) {
-                Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
+                Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")); property("overflow-x", "auto") } }) {
                     Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(4.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(8.px) }; onChange { e -> ComprehensiveMode.entries.find { m -> m.name == e.value }?.let { m -> viewModel.updateNode(target, path) { it.copy(subDistributionMode = m) } } } }) {
                         ComprehensiveMode.entries.forEach { mode -> key(mode.name) { Option(value = mode.name, attrs = { if (node.subDistributionMode == mode) attr("selected", "true") }) { Text("زیرمجموعه " + mode.displayName) } } }
                     }
@@ -345,7 +345,7 @@ fun RecursiveComprehensiveNode(
                 }
                 if (node.hasSubDistribution) {
                     P(attrs = { style { fontSize(0.9.cssRem); color(Color("#2E7D32")); fontWeight("bold") } }) { Text("🔻 زیرمجموعه وارثین:") }
-                    Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
+                    Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")); property("overflow-x", "auto") } }) {
                         node.children.forEach { child -> key(child.id) { RecursiveComprehensiveNode(child, path + child.id, node.subDistributionMode, target, viewModel, allAvailableNodes, isExecutionMode) } }
                     }
                 }

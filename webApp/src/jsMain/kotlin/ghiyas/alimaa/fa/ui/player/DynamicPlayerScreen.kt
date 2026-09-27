@@ -99,7 +99,7 @@ fun RuntimeAdvancedTransferPanel(
         }
 
         Label(attrs = { style { fontSize(0.85.cssRem); fontWeight("bold"); display(DisplayStyle.Block); marginBottom(8.px) } }) { Text("لیست گیرندگان (با تیک زدن انتخاب کنید):") }
-        Div(attrs = { style { backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); maxHeight(200.px); overflowY("auto") } }) {
+        Div(attrs = { style { backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); maxHeight(200.px); property("overflow-y", "auto") } }) {
             allAvailableNodes.filter { it.first != sourceId }.forEach { (id, name) ->
                 val isChecked = action.targets.any { it.targetId == id }
                 val targetObj = action.targets.find { it.targetId == id }
@@ -107,7 +107,7 @@ fun RuntimeAdvancedTransferPanel(
                 Div(attrs = { style { padding(6.px); property("border-bottom", "1px dashed #EEEEEE") } }) {
                     Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); cursor("pointer"); fontSize(0.9.cssRem); color(if(isChecked) Color("#1B5E20") else Color("#424242")); fontWeight(if(isChecked) "bold" else "normal") } }) {
                         Input(type = InputType.Checkbox, attrs = { 
-                            style { marginRight(8.px); width(16.px); height(16.px) }
+                            style { property("margin-left", "8px"); width(16.px); height(16.px) }
                             checked(isChecked)
                             onChange { e -> 
                                 if (e.value) onActionUpdate(action.copy(targets = action.targets + AdvancedTransferTarget(id)))
@@ -118,13 +118,13 @@ fun RuntimeAdvancedTransferPanel(
                     }
                     
                     if (isChecked && action.distributionRule == TransferDistributionRule.BOY_GIRL) {
-                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); marginTop(4.px); marginLeft(24.px); fontSize(0.8.cssRem); color(Color("#E65100")) } }) {
+                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); marginTop(4.px); property("margin-right", "24px"); fontSize(0.8.cssRem); color(Color("#E65100")) } }) {
                             Input(type = InputType.Checkbox, attrs = { checked(targetObj?.isFemale ?: false); onChange { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(isFemale = e.value) else it })) } })
                             Text("سهم دخترانه بگیرد؟")
                         }
                     }
                     if (isChecked && action.distributionRule == TransferDistributionRule.CUSTOM_PERCENTAGE) {
-                        Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px); marginLeft(24.px); width(80.percent); padding(4.px) }; placeholder("درصد این شخص (مثلا 20)"); value(targetObj?.customPercentage ?: ""); onInput { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(customPercentage = e.value) else it })) } })
+                        Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px); property("margin-right", "24px"); width(80.percent); padding(4.px) }; placeholder("درصد این شخص (مثلا 20)"); value(targetObj?.customPercentage ?: ""); onInput { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(customPercentage = e.value) else it })) } })
                     }
                 }
             }
@@ -136,9 +136,9 @@ fun RuntimeAdvancedTransferPanel(
 fun RenderPlayerPersonNode(node: BuilderPersonNode, viewModel: DynamicPlayerViewModel, state: DynamicPlayerState, allAvailableNodes: List<Pair<String, String>>, depth: Int) {
     if (!hasAnyInteractivePerson(node)) return
     
-    val marginLeftValue = (depth * 16).px
+    val marginRightValue = (depth * 16).px
     if (node.hasToggle || node.isAdvancedTransferAllowed) {
-        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px); marginLeft(marginLeftValue) } }) {
+        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#C5E1A5")); marginBottom(8.px); property("margin-right", "${marginRightValue.value}px"); minWidth(280.px) } }) {
             val isChecked = state.booleanInputs[node.id] ?: true
             if (node.hasToggle) {
                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px); cursor("pointer"); fontWeight("bold"); color(Color("#33691E")); marginBottom(if (node.isAdvancedTransferAllowed && isChecked) 12.px else 0.px) } }) {
@@ -165,9 +165,9 @@ fun RenderPlayerPersonNode(node: BuilderPersonNode, viewModel: DynamicPlayerView
 fun RenderPlayerShareholderNode(node: BuilderShareholder, viewModel: DynamicPlayerViewModel, state: DynamicPlayerState, allAvailableNodes: List<Pair<String, String>>, depth: Int) {
     if (!hasAnyInteractiveShareholder(node)) return
     
-    val marginLeftValue = (depth * 16).px
+    val marginRightValue = (depth * 16).px
     if (node.hasToggle || node.isAdvancedTransferAllowed) {
-        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFE082")); marginBottom(8.px); marginLeft(marginLeftValue) } }) {
+        Div(attrs = { style { backgroundColor(Color("white")); padding(12.px); borderRadius(8.px); border(1.px, LineStyle.Solid, Color("#FFE082")); marginBottom(8.px); property("margin-right", "${marginRightValue.value}px"); minWidth(280.px) } }) {
             val isChecked = state.booleanInputs[node.id] ?: true
             if (node.hasToggle) {
                 Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(12.px); cursor("pointer"); fontWeight("bold"); color(Color("#F57F17")); marginBottom(if (node.isAdvancedTransferAllowed && isChecked) 12.px else 0.px) } }) {
@@ -303,7 +303,7 @@ fun RenderPlayerBlock(block: CustomBlock, viewModel: DynamicPlayerViewModel, sta
                         }
                     }
                     UIElementType.TEXT_WARNING -> {
-                        Div(attrs = { style { backgroundColor(Color("#FFF3E0")); border(1.px, LineStyle.Solid, Color("#FFB74D")); property("border-left", "4px solid #F57C00"); padding(16.px); borderRadius(8.px) } }) {
+                        Div(attrs = { style { backgroundColor(Color("#FFF3E0")); border(1.px, LineStyle.Solid, Color("#FFB74D")); property("border-right", "4px solid #F57C00"); padding(16.px); borderRadius(8.px) } }) {
                             Div(attrs = { style { fontWeight("bold"); color(Color("#E65100")); marginBottom(8.px) } }) { Text("⚠️ " + block.elementTitle) }
                             P(attrs = { style { property("margin", "0px"); fontSize(0.9.cssRem); color(Color("#424242")) } }) { Text(block.elementContent) }
                         }
@@ -327,7 +327,8 @@ fun RenderPlayerBlock(block: CustomBlock, viewModel: DynamicPlayerViewModel, sta
             val shouldShowCard = nodes.any { hasAnyInteractivePerson(it) } || ghiyasShareholders.any { hasAnyInteractiveShareholder(it) } || percentageShareholders.any { hasAnyInteractiveShareholder(it) }
             
             if (shouldShowCard) {
-                Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(16.px); borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginBottom(12.px) } }) {
+                // اعمال اسکرول افقی روی والد اصلی
+                Div(attrs = { style { backgroundColor(Color("#FAFAFA")); padding(16.px); borderRadius(12.px); border(1.px, LineStyle.Solid, Color("#E0E0E0")); marginBottom(12.px); property("overflow-x", "auto") } }) {
                     H4(attrs = { style { property("margin", "0 0 12px 0"); color(Color("#1B5E20")) } }) { Text("تنظیمات زمان اجرا: $title") }
                     
                     nodes.forEach { RenderPlayerPersonNode(it, viewModel, state, allAvailableNodes, 0) }
@@ -340,12 +341,7 @@ fun RenderPlayerBlock(block: CustomBlock, viewModel: DynamicPlayerViewModel, sta
     }
 
     val children = when (block) {
-        is BaseInputBlock -> block.childBlocks
-        is StageBlock -> block.childBlocks
-        is ConditionGate -> block.childBlocks
-        is MemberBlock -> block.childBlocks
-        is PartnerBlock -> block.siblingBlocks
-        else -> emptyList()
+        is BaseInputBlock -> block.childBlocks; is StageBlock -> block.childBlocks; is ConditionGate -> block.childBlocks; is MemberBlock -> block.childBlocks; is PartnerBlock -> block.siblingBlocks; else -> emptyList()
     }
 
     val shouldRenderChildren = if (block is ConditionGate) {
@@ -354,7 +350,7 @@ fun RenderPlayerBlock(block: CustomBlock, viewModel: DynamicPlayerViewModel, sta
     } else true
 
     if (shouldRenderChildren && children.isNotEmpty()) {
-        Div(attrs = { style { paddingRight(16.px); marginTop(8.px) } }) {
+        Div(attrs = { style { paddingLeft(16.px); marginTop(8.px) } }) { // تغییر به padding-left
             children.forEach { childBlock -> RenderPlayerBlock(childBlock, viewModel, state, allAvailableNodes) }
         }
     }

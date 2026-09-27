@@ -9,18 +9,17 @@ import ghiyas.alimaa.fa.presentation.builder.BuilderViewModel
 
 private fun String.toEnglishDecimals(): String = this.replace('۰', '0').replace('۱', '1').replace('۲', '2').replace('۳', '3').replace('۴', '4').replace('۵', '5').replace('۶', '6').replace('۷', '7').replace('۸', '8').replace('۹', '9').replace('٫', '.').replace(',', '.')
 
-// استخراج تمام اشخاص با استفاده از یک تابع هوشمند بدون تداخل بازگشتی
 fun extractAllBuilderNodes(blocks: List<CustomBlock>): List<Pair<String, String>> {
     val result = mutableListOf<Pair<String, String>>()
     
     fun extractAny(nodes: List<Any>) {
         nodes.forEach { node ->
             if (node is BuilderPersonNode) {
-                result.add(node.id to node.name)
+                if (node.name.isNotBlank()) result.add(node.id to node.name)
                 extractAny(node.subNodes)
                 extractAny(node.subShareholders)
             } else if (node is BuilderShareholder) {
-                result.add(node.id to node.name)
+                if (node.name.isNotBlank()) result.add(node.id to node.name)
                 extractAny(node.subNodes)
                 extractAny(node.subHeadcounts)
             }
@@ -89,17 +88,17 @@ fun BuilderAdvancedTransferPanel(sourceId: String, action: RuntimeTransferAction
                                 else onActionUpdate(action.copy(targets = action.targets.filter { it.targetId != id }))
                             }
                         })
-                        Text(name.ifEmpty { "ناشناس" })
+                        Text(name)
                     }
                     
                     if (isChecked && action.distributionRule == TransferDistributionRule.BOY_GIRL) {
-                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); marginTop(4.px); marginLeft(24.px); fontSize(0.8.cssRem); color(Color("#E65100")) } }) {
+                        Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); marginTop(4.px); marginRight(24.px); fontSize(0.8.cssRem); color(Color("#E65100")) } }) {
                             Input(type = InputType.Checkbox, attrs = { checked(targetObj?.isFemale ?: false); onChange { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(isFemale = e.value) else it })) } })
                             Text("سهم دخترانه بگیرد؟")
                         }
                     }
                     if (isChecked && action.distributionRule == TransferDistributionRule.CUSTOM_PERCENTAGE) {
-                        Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px); marginLeft(24.px); width(80.percent); padding(4.px) }; placeholder("درصد این شخص (مثلا 20)"); value(targetObj?.customPercentage ?: ""); onInput { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(customPercentage = e.value) else it })) } })
+                        Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(4.px); marginRight(24.px); width(80.percent); padding(4.px) }; placeholder("درصد این شخص (مثلا 20)"); value(targetObj?.customPercentage ?: ""); onInput { e -> onActionUpdate(action.copy(targets = action.targets.map { if(it.targetId == id) it.copy(customPercentage = e.value) else it })) } })
                     }
                 }
             }
@@ -110,38 +109,40 @@ fun BuilderAdvancedTransferPanel(sourceId: String, action: RuntimeTransferAction
 @Composable
 fun RecursiveBuilderPersonNode(node: BuilderPersonNode, blockId: String, viewModel: BuilderViewModel, allAvailableNodes: List<Pair<String, String>>) {
     val inputStyle = { css: StyleScope -> css.width(100.percent); css.padding(8.px); css.borderRadius(4.px); css.border(1.px, LineStyle.Solid, Color("#BDBDBD")); css.fontFamily("inherit"); css.property("box-sizing", "border-box") }
-    Div(attrs = { style { padding(12.px); marginTop(8.px); property("border-left", "4px solid #81C784"); backgroundColor(Color("#F8FBF8")); borderRadius(4.px) } }) {
+    
+    // اصلاح RTL و افزودن minWidth برای جلوگیری از مچاله شدن فرم
+    Div(attrs = { style { padding(12.px); marginTop(8.px); property("border-right", "4px solid #81C784"); backgroundColor(Color("#F8FBF8")); borderRadius(4.px); minWidth(280.px) } }) {
         Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(8.px) } }) {
             Div(attrs = { style { flex(2) } }) { Input(type = InputType.Text, attrs = { style { inputStyle(this) }; placeholder("نام شخص"); value(node.name); onInput { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(name = e.value) } } }) }
             Label(attrs = { style { flex(1); display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem) } }) {
-                Input(type = InputType.Checkbox, attrs = { checked(node.isFemale); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isFemale = e.value) } }; style { marginRight(4.px) } })
+                Input(type = InputType.Checkbox, attrs = { checked(node.isFemale); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isFemale = e.value) } }; style { marginLeft(4.px) } })
                 Text("دختر (۰.۵)")
             }
             Button(attrs = { style { backgroundColor(Color("#EF5350")); color(Color("white")); border(0.px); borderRadius(4.px); padding(8.px, 12.px); fontWeight("bold"); property("cursor", "pointer") }; onClick { viewModel.removeNode(blockId, node.id) } }) { Text("-") }
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginBottom(8.px); color(Color("#E65100")); fontWeight("bold") } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.isDisplayOnly); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isDisplayOnly = e.value) } }; style { marginRight(8.px) } })
+            Input(type = InputType.Checkbox, attrs = { checked(node.isDisplayOnly); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isDisplayOnly = e.value) } }; style { marginLeft(8.px) } })
             Text("فقط برای نمایش (در جمع کل سهام محاسبه نشود)")
         }
 
         Div(attrs = { style { backgroundColor(Color("#FFFDE7")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Dashed, Color("#FBC02D")); marginBottom(8.px) } }) {
             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem) } }) {
-                Input(type = InputType.Checkbox, attrs = { checked(node.hasToggle); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(hasToggle = e.value) } }; style { marginRight(8.px) } })
+                Input(type = InputType.Checkbox, attrs = { checked(node.hasToggle); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(hasToggle = e.value) } }; style { marginLeft(8.px) } })
                 Text("آیا این شخص دارای چک‌باکس شرطی باشد؟")
             }
             if (node.hasToggle) { Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(8.px) }; placeholder("برچسب شرط"); value(node.toggleLabel); onInput { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(toggleLabel = e.value) } } }) }
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); color(Color("#1976D2")); fontWeight("bold") } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.isAdvancedTransferAllowed); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isAdvancedTransferAllowed = e.value) } }; style { marginRight(8.px) } })
+            Input(type = InputType.Checkbox, attrs = { checked(node.isAdvancedTransferAllowed); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isAdvancedTransferAllowed = e.value) } }; style { marginLeft(8.px) } })
             Text("امکان انتقال سهم در زمان اجرا؟")
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); color(Color("#2E7D32")); fontWeight("bold") } }) {
             Input(type = InputType.Checkbox, attrs = { 
                 checked(node.predefinedTransfer != null); 
-                onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(predefinedTransfer = if (e.value) RuntimeTransferAction() else null) } }; style { marginRight(8.px) } 
+                onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(predefinedTransfer = if (e.value) RuntimeTransferAction() else null) } }; style { marginLeft(8.px) } 
             })
             Text("انتقال قطعی در همینجا تعیین شود؟")
         }
@@ -153,12 +154,13 @@ fun RecursiveBuilderPersonNode(node: BuilderPersonNode, blockId: String, viewMod
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); marginTop(8.px) } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.isSubDivided); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isSubDivided = e.value) } }; style { marginRight(8.px) } })
+            Input(type = InputType.Checkbox, attrs = { checked(node.isSubDivided); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isSubDivided = e.value) } }; style { marginLeft(8.px) } })
             Text("آیا سهم این شخص در خودش خرد می‌شود؟")
         }
 
         if (node.isSubDivided) {
-            Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
+            // اعمال اسکرول افقی (overflow-x: auto) برای تو در تو شدن‌های عمیق
+            Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#B2DFDB")); borderRadius(8.px); backgroundColor(Color("white")); property("overflow-x", "auto") } }) {
                 
                 Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#81C784")); marginBottom(8.px) }; onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(subDistributionType = DistributionType.valueOf(e.target.value)) } } }) {
                     Option(value = "HEADCOUNT_BASED", attrs = { if (node.subDistributionType == DistributionType.HEADCOUNT_BASED || node.subDistributionType == null) attr("selected", "true") }) { Text("بر اساس نفر") }
@@ -174,17 +176,18 @@ fun RecursiveBuilderPersonNode(node: BuilderPersonNode, blockId: String, viewMod
                     val currentSum = node.subNodes.sumOf { if(it.isFemale) 0.5 else 1.0 }
                     
                     Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
-                        Input(type = InputType.Checkbox, attrs = { checked(node.isDetailedFurther); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isDetailedFurther = e.value) } }; style { marginRight(8.px) } })
+                        Input(type = InputType.Checkbox, attrs = { checked(node.isDetailedFurther); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isDetailedFurther = e.value) } }; style { marginLeft(8.px) } })
                         Text("تقسیم جزئی‌تر؟ (درختی)")
                     }
 
                     if (!node.isDetailedFurther) {
                         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
-                            Input(type = InputType.Checkbox, attrs = { checked(node.isSubBoyGirlSplit); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isSubBoyGirlSplit = e.value) } }; style { marginRight(8.px) } })
+                            Input(type = InputType.Checkbox, attrs = { checked(node.isSubBoyGirlSplit); onChange { e -> viewModel.updatePersonNode(blockId, node.id) { it.copy(isSubBoyGirlSplit = e.value) } }; style { marginLeft(8.px) } })
                             Text("تسهیم پسر و دختری؟")
                         }
                     } else {
                         if (currentSum >= maxLimit && maxLimit > 0) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(6.px); borderRadius(4.px); fontSize(0.85.cssRem); fontWeight("bold"); margin(8.px, 0.px) } }) { Text("خطا: ظرفیت نفرات پر شده است!") } }
+                        
                         node.subNodes.forEach { child -> RecursiveBuilderPersonNode(child, blockId, viewModel, allAvailableNodes) }
                         
                         if (maxLimit == 0.0 || currentSum < maxLimit) {
@@ -193,7 +196,7 @@ fun RecursiveBuilderPersonNode(node: BuilderPersonNode, blockId: String, viewMod
                     }
                 } else if (distType == DistributionType.PERCENTAGE) {
                     val currentSum = node.subShareholders.sumOf { it.shareInput.toEnglishDecimals().toDoubleOrNull() ?: 0.0 }
-                    if (currentSum > 100.0) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(6.px); borderRadius(4.px); fontSize(0.85.cssRem); fontWeight("bold"); margin(8.px, 0.px) } }) { Text("خطا: مجموع درصدها نمی‌تواند بیشتر از ۱۰۰ باشد!") } }
+                    if (currentSum >= 100.0) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(6.px); borderRadius(4.px); fontSize(0.85.cssRem); fontWeight("bold"); margin(8.px, 0.px) } }) { Text("خطا: مجموع درصدها پر شده است!") } }
                     
                     node.subShareholders.forEach { child -> RecursiveBuilderShareholderNode(child, blockId, true, viewModel, allAvailableNodes) }
                     if (currentSum < 100.0) {
@@ -211,7 +214,9 @@ fun RecursiveBuilderPersonNode(node: BuilderPersonNode, blockId: String, viewMod
 @Composable
 fun RecursiveBuilderShareholderNode(node: BuilderShareholder, blockId: String, isPercentage: Boolean, viewModel: BuilderViewModel, allAvailableNodes: List<Pair<String, String>>) {
     val inputStyle = { css: StyleScope -> css.width(100.percent); css.padding(8.px); css.borderRadius(4.px); css.border(1.px, LineStyle.Solid, Color("#BDBDBD")); css.fontFamily("inherit"); css.property("box-sizing", "border-box") }
-    Div(attrs = { style { padding(12.px); marginTop(8.px); property("border-left", "4px solid #FFCA28"); backgroundColor(Color("#FFFDE7")); borderRadius(4.px) } }) {
+    
+    // اصلاح RTL و افزودن minWidth
+    Div(attrs = { style { padding(12.px); marginTop(8.px); property("border-right", "4px solid #FFCA28"); backgroundColor(Color("#FFFDE7")); borderRadius(4.px); minWidth(280.px) } }) {
         Div(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); marginBottom(8.px) } }) {
             Div(attrs = { style { flex(2) } }) { Input(type = InputType.Text, attrs = { style { inputStyle(this) }; placeholder("نام شریک"); value(node.name); onInput { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(name = e.value) } } }) }
             Div(attrs = { style { flex(1) } }) { Input(type = InputType.Text, attrs = { style { inputStyle(this) }; placeholder(if(isPercentage) "درصد" else "قیاس"); value(node.shareInput); onInput { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(shareInput = e.value) } } }) }
@@ -219,27 +224,27 @@ fun RecursiveBuilderShareholderNode(node: BuilderShareholder, blockId: String, i
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.85.cssRem); marginBottom(8.px); color(Color("#E65100")); fontWeight("bold") } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.isDisplayOnly); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isDisplayOnly = e.value) } }; style { marginRight(8.px) } })
+            Input(type = InputType.Checkbox, attrs = { checked(node.isDisplayOnly); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isDisplayOnly = e.value) } }; style { marginLeft(8.px) } })
             Text("فقط برای نمایش (در جمع کل سهام محاسبه نشود)")
         }
 
         Div(attrs = { style { backgroundColor(Color("white")); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Dashed, Color("#BDBDBD")); marginBottom(8.px) } }) {
             Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem) } }) {
-                Input(type = InputType.Checkbox, attrs = { checked(node.hasToggle); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(hasToggle = e.value) } }; style { marginRight(8.px) } })
+                Input(type = InputType.Checkbox, attrs = { checked(node.hasToggle); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(hasToggle = e.value) } }; style { marginLeft(8.px) } })
                 Text("آیا این شخص دارای چک‌باکس شرطی باشد؟")
             }
             if (node.hasToggle) { Input(type = InputType.Text, attrs = { style { inputStyle(this); marginTop(8.px) }; placeholder("برچسب شرط"); value(node.toggleLabel); onInput { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(toggleLabel = e.value) } } }) }
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); color(Color("#1976D2")); fontWeight("bold") } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.isAdvancedTransferAllowed); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isAdvancedTransferAllowed = e.value) } }; style { marginRight(8.px) } })
+            Input(type = InputType.Checkbox, attrs = { checked(node.isAdvancedTransferAllowed); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isAdvancedTransferAllowed = e.value) } }; style { marginLeft(8.px) } })
             Text("امکان انتقال سهم در زمان اجرا؟")
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); color(Color("#2E7D32")); fontWeight("bold") } }) {
             Input(type = InputType.Checkbox, attrs = { 
                 checked(node.predefinedTransfer != null); 
-                onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(predefinedTransfer = if (e.value) RuntimeTransferAction() else null) } }; style { marginRight(8.px) } 
+                onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(predefinedTransfer = if (e.value) RuntimeTransferAction() else null) } }; style { marginLeft(8.px) } 
             })
             Text("انتقال قطعی در همینجا تعیین شود؟")
         }
@@ -251,12 +256,13 @@ fun RecursiveBuilderShareholderNode(node: BuilderShareholder, blockId: String, i
         }
 
         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); fontSize(0.9.cssRem); marginBottom(8.px); marginTop(8.px) } }) {
-            Input(type = InputType.Checkbox, attrs = { checked(node.isSubDivided); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isSubDivided = e.value) } }; style { marginRight(8.px) } })
+            Input(type = InputType.Checkbox, attrs = { checked(node.isSubDivided); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isSubDivided = e.value) } }; style { marginLeft(8.px) } })
             Text("آیا سهم این شخص خرد شود (ساختار درختی)؟")
         }
 
         if (node.isSubDivided) {
-            Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#FFE082")); borderRadius(8.px); backgroundColor(Color("white")) } }) {
+            // اعمال اسکرول افقی
+            Div(attrs = { style { padding(8.px); border(1.px, LineStyle.Dashed, Color("#FFE082")); borderRadius(8.px); backgroundColor(Color("white")); property("overflow-x", "auto") } }) {
                 Select(attrs = { style { width(100.percent); padding(8.px); borderRadius(6.px); border(1.px, LineStyle.Solid, Color("#FBC02D")); marginBottom(8.px) }; onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(subDistributionType = DistributionType.valueOf(e.target.value)) } } }) {
                     Option(value = "HEADCOUNT_BASED", attrs = { if (node.subDistributionType == DistributionType.HEADCOUNT_BASED || node.subDistributionType == null) attr("selected", "true") }) { Text("بر اساس نفر") }
                     Option(value = "GHIYAS_BASED", attrs = { if (node.subDistributionType == DistributionType.GHIYAS_BASED) attr("selected", "true") }) { Text("بر اساس قیاس") }
@@ -271,13 +277,13 @@ fun RecursiveBuilderShareholderNode(node: BuilderShareholder, blockId: String, i
                     val currentSum = node.subHeadcounts.sumOf { if(it.isFemale) 0.5 else 1.0 }
                     
                     Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
-                        Input(type = InputType.Checkbox, attrs = { checked(node.isDetailedFurther); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isDetailedFurther = e.value) } }; style { marginRight(8.px) } })
+                        Input(type = InputType.Checkbox, attrs = { checked(node.isDetailedFurther); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isDetailedFurther = e.value) } }; style { marginLeft(8.px) } })
                         Text("تقسیم جزئی‌تر؟ (درختی)")
                     }
 
                     if (!node.isDetailedFurther) {
                         Label(attrs = { style { display(DisplayStyle.Flex); alignItems(AlignItems.Center); property("cursor", "pointer"); marginTop(8.px); fontSize(0.9.cssRem) } }) {
-                            Input(type = InputType.Checkbox, attrs = { checked(node.isSubBoyGirlSplit); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isSubBoyGirlSplit = e.value) } }; style { marginRight(8.px) } })
+                            Input(type = InputType.Checkbox, attrs = { checked(node.isSubBoyGirlSplit); onChange { e -> viewModel.updateShareholderNode(blockId, node.id) { it.copy(isSubBoyGirlSplit = e.value) } }; style { marginLeft(8.px) } })
                             Text("تسهیم پسر و دختری؟")
                         }
                     } else {
@@ -291,7 +297,7 @@ fun RecursiveBuilderShareholderNode(node: BuilderShareholder, blockId: String, i
                     }
                 } else if (distType == DistributionType.PERCENTAGE) {
                     val currentSum = node.subNodes.sumOf { it.shareInput.toEnglishDecimals().toDoubleOrNull() ?: 0.0 }
-                    if (currentSum > 100.0) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(6.px); borderRadius(4.px); fontSize(0.85.cssRem); fontWeight("bold"); margin(8.px, 0.px) } }) { Text("خطا: مجموع درصدها نمی‌تواند بیشتر از ۱۰۰ باشد!") } }
+                    if (currentSum >= 100.0) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(6.px); borderRadius(4.px); fontSize(0.85.cssRem); fontWeight("bold"); margin(8.px, 0.px) } }) { Text("خطا: مجموع درصدها پر شده است!") } }
                     
                     node.subNodes.forEach { child -> RecursiveBuilderShareholderNode(child, blockId, true, viewModel, allAvailableNodes) }
                     if (currentSum < 100.0) {
@@ -422,7 +428,7 @@ fun RenderBlockRecursively(block: CustomBlock, viewModel: BuilderViewModel, dept
                     Option(value = "CUSTOM_UNIT", attrs = { if (distType == DistributionType.CUSTOM_UNIT) attr("selected", "true") }) { Text("واحد سفارشی") }
                 }
 
-                Div(attrs = { style { padding(12.px); backgroundColor(Color("white")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#BDBDBD")) } }) {
+                Div(attrs = { style { padding(12.px); backgroundColor(Color("white")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#BDBDBD")); property("overflow-x", "auto") } }) {
                     when (distType) {
                         DistributionType.HEADCOUNT_BASED -> {
                             val countInput = if(block is MemberBlock) block.totalHeadcountInput else (block as PartnerBlock).totalHeadcountInput
@@ -454,7 +460,7 @@ fun RenderBlockRecursively(block: CustomBlock, viewModel: BuilderViewModel, dept
                         DistributionType.PERCENTAGE -> {
                             val shares = if(block is MemberBlock) block.percentageShareholders else (block as PartnerBlock).percentageShareholders
                             val currentSum = shares.sumOf { it.shareInput.toEnglishDecimals().toDoubleOrNull() ?: 0.0 }
-                            if (currentSum > 100.0) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(6.px); borderRadius(4.px); fontSize(0.85.cssRem); fontWeight("bold"); margin(8.px, 0.px) } }) { Text("خطا: مجموع درصدها نمی‌تواند بیشتر از ۱۰۰ باشد!") } }
+                            if (currentSum >= 100.0) { P(attrs = { style { color(Color("white")); backgroundColor(Color("#D32F2F")); padding(6.px); borderRadius(4.px); fontSize(0.85.cssRem); fontWeight("bold"); margin(8.px, 0.px) } }) { Text("خطا: مجموع درصدها پر شده است!") } }
                             
                             shares.forEach { sh -> RecursiveBuilderShareholderNode(sh, block.block_id, true, viewModel, allAvailableNodes) }
                             if (currentSum < 100.0) {

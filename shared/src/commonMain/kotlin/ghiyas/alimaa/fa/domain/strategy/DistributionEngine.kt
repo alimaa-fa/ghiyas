@@ -65,6 +65,7 @@ object DistributionEngine {
         } catch (e: Exception) { return BigDecimal.ZERO }
     }
 
+    // (توابع ModeB و Comprehensive بدون تغییر در اینجا می‌مانند)
     private fun processModeBTree(pool: WalnutUnit, parentName: String, countInput: String, isBoyGirlSplit: Boolean, isDetailed: Boolean, children: List<PersonNode>): List<ResultItem> {
         val count = countInput.toEnglishDecimals().toDoubleOrNull() ?: 1.0
         val validCount = if (count > 0) count else 1.0
@@ -129,17 +130,26 @@ object DistributionEngine {
         return results
     }
 
-    class TrackedShare(val id: String, val name: String, val weight: BigDecimal, val isDisplayOnly: Boolean, val predefinedTransfer: RuntimeTransferAction?)
+    class TrackedShare(
+        val id: String, val name: String, val fullName: String, val weight: BigDecimal, 
+        val isDisplayOnly: Boolean, val predefinedTransfer: RuntimeTransferAction?, 
+        val splitCount: Double? = null, val isBoyGirlSplit: Boolean = false, val isParentNode: Boolean = false
+    )
 
     private fun processCustomProfile(pool: BigDecimal, profile: CustomProfile, dynamicBooleans: Map<String, Boolean>, dynamicAdvancedTransfers: Map<String, RuntimeTransferAction>): List<ResultItem> {
-        val rawShares = mutableListOf<TrackedShare>()
+        val orderedShares = mutableListOf<TrackedShare>() // این لیست ترتیب دقیق DFS را حفظ می‌کند
 
         fun processNodeChildren(
-            nodeId: String, nodeName: String, nodeTotalWeight: BigDecimal, isDisplayOnly: Boolean, predefinedTransfer: RuntimeTransferAction?,
+            nodeId: String, nodeName: String, parentFullName: String, nodeTotalWeight: BigDecimal, isDisplayOnly: Boolean, predefinedTransfer: RuntimeTransferAction?,
             isSubDivided: Boolean, subDistributionType: DistributionType?, subCountInput: String, isSubBoyGirlSplit: Boolean,
             subHeadcounts: List<BuilderPersonNode>, subShareholders: List<BuilderShareholder>
         ) {
+            val fullName = if (parentFullName.isEmpty()) nodeName else "$nodeName (از $parentFullName)"
+
             if (isSubDivided) {
+                // ثبت پدر به عنوان یک گره نمایشی (برای رندر شدن سهم کلی او در UI)
+                orderedShares.add(TrackedShare(nodeId + "_parent", nodeName, "سهم کل $fullName", nodeTotalWeight, isDisplayOnly, predefinedTransfer, isParentNode = true))
+
                 val type = subDistributionType ?: DistributionType.HEADCOUNT_BASED
                 var childrenSum = BigDecimal.ZERO
                 val childrenWeights = mutableListOf<BigDecimal>()
@@ -150,15 +160,11 @@ object DistributionEngine {
                         val countStr = subCountInput.toEnglishDecimals()
                         val count = safeParseBigDecimal(countStr, "1").doubleValue(false)
                         val validCount = if (count > 0) count else 1.0
-                        val baseShareWeight = nodeTotalWeight.divide(BigDecimal.fromDouble(validCount), decimalMode)
                         
-                        if (isSubBoyGirlSplit || validCount % 1.0 != 0.0) {
-                            val boyWeight = baseShareWeight
-                            val girlWeight = boyWeight.multiply(safeParseBigDecimal("0.5"))
-                            rawShares.add(TrackedShare(nodeId + "_boy", "سهم هر پسر (از $nodeName)", boyWeight, isDisplayOnly, predefinedTransfer))
-                            rawShares.add(TrackedShare(nodeId + "_girl", "سهم هر دختر (از $nodeName)", girlWeight, isDisplayOnly, predefinedTransfer))
+                        if (isSubBoyGirlSplit || count % 1.0 != 0.0 || count > 1.0) {
+                            orderedShares.add(TrackedShare(nodeId + "_leaf", "زیرمجموعه خرد", "سهم هر پسر (از $fullName)", nodeTotalWeight, isDisplayOnly, predefinedTransfer, splitCount = validCount, isBoyGirlSplit = isSubBoyGirlSplit || count % 1.0 != 0.0))
                         } else {
-                            rawShares.add(TrackedShare(nodeId + "_person", "سهم هر فرد (از $nodeName)", baseShareWeight, isDisplayOnly, predefinedTransfer))
+                            orderedShares.add(TrackedShare(nodeId + "_leaf", "زیرمجموعه خرد", "سهم هر فرد (از $fullName)", nodeTotalWeight, isDisplayOnly, predefinedTransfer, splitCount = validCount, isBoyGirlSplit = false))
                         }
                         return
                     }
@@ -174,19 +180,18 @@ object DistributionEngine {
                             val childFraction = childrenWeights[index].divide(childrenSum, decimalMode)
                             val childAssignedWeight = nodeTotalWeight.multiply(childFraction)
                             val childName = if (child.name.isNotBlank()) child.name else "ناشناس"
-                            val fullName = "$childName (از $nodeName)"
                             processNodeChildren(
-                                child.id, fullName, childAssignedWeight, child.isDisplayOnly, child.predefinedTransfer,
+                                child.id, childName, fullName, childAssignedWeight, child.isDisplayOnly, child.predefinedTransfer,
                                 child.isSubDivided, child.subDistributionType, child.subCountInput, child.isSubBoyGirlSplit, child.subNodes, child.subShareholders
                             )
                         }
                     } else {
-                        rawShares.add(TrackedShare(nodeId, nodeName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
+                        orderedShares.add(TrackedShare(nodeId, nodeName, fullName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
                     }
                 } else {
                     val activeChildren = subShareholders.filter { !it.hasToggle || dynamicBooleans[it.id] != false }
                     if (activeChildren.isEmpty()) {
-                        rawShares.add(TrackedShare(nodeId, nodeName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
+                        orderedShares.add(TrackedShare(nodeId, nodeName, fullName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
                         return
                     }
                     val isPercentage = type == DistributionType.PERCENTAGE
@@ -200,18 +205,17 @@ object DistributionEngine {
                             val childFraction = childrenWeights[index].divide(childrenSum, decimalMode)
                             val childAssignedWeight = nodeTotalWeight.multiply(childFraction)
                             val childName = if (child.name.isNotBlank()) child.name else "ناشناس"
-                            val fullName = "$childName (از $nodeName)"
                             processNodeChildren(
-                                child.id, fullName, childAssignedWeight, child.isDisplayOnly, child.predefinedTransfer,
+                                child.id, childName, fullName, childAssignedWeight, child.isDisplayOnly, child.predefinedTransfer,
                                 child.isSubDivided, child.subDistributionType, child.subCountInput, child.isSubBoyGirlSplit, child.subHeadcounts, child.subNodes
                             )
                         }
                     } else {
-                        rawShares.add(TrackedShare(nodeId, nodeName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
+                        orderedShares.add(TrackedShare(nodeId, nodeName, fullName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
                     }
                 }
             } else {
-                rawShares.add(TrackedShare(nodeId, nodeName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
+                orderedShares.add(TrackedShare(nodeId, nodeName, fullName, nodeTotalWeight, isDisplayOnly, predefinedTransfer))
             }
         }
 
@@ -225,7 +229,7 @@ object DistributionEngine {
                                     if (node.hasToggle && dynamicBooleans[node.id] == false) continue
                                     val bw = safeParseBigDecimal(node.weightInput, "1")
                                     val gf = if (node.isFemale) safeParseBigDecimal("0.5") else safeParseBigDecimal("1")
-                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, bw.multiply(gf), node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subNodes, node.subShareholders)
+                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, "", bw.multiply(gf), node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subNodes, node.subShareholders)
                                 }
                             }
                             DistributionType.GHIYAS_BASED, DistributionType.PERCENTAGE, DistributionType.CUSTOM_UNIT -> {
@@ -234,7 +238,7 @@ object DistributionEngine {
                                 for (node in list) {
                                     if (node.hasToggle && dynamicBooleans[node.id] == false) continue
                                     val tw = safeParseBigDecimal(node.shareInput, if(isPct) "0" else "1")
-                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, tw, node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subHeadcounts, node.subNodes)
+                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, "", tw, node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subHeadcounts, node.subNodes)
                                 }
                             }
                         }
@@ -247,7 +251,7 @@ object DistributionEngine {
                                     if (node.hasToggle && dynamicBooleans[node.id] == false) continue
                                     val bw = safeParseBigDecimal(node.weightInput, "1")
                                     val gf = if (node.isFemale) safeParseBigDecimal("0.5") else safeParseBigDecimal("1")
-                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, bw.multiply(gf), node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subNodes, node.subShareholders)
+                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, "", bw.multiply(gf), node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subNodes, node.subShareholders)
                                 }
                             }
                             DistributionType.GHIYAS_BASED, DistributionType.PERCENTAGE, DistributionType.CUSTOM_UNIT -> {
@@ -256,7 +260,7 @@ object DistributionEngine {
                                 for (node in list) {
                                     if (node.hasToggle && dynamicBooleans[node.id] == false) continue
                                     val tw = safeParseBigDecimal(node.shareInput, if(isPct) "0" else "1")
-                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, tw, node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subHeadcounts, node.subNodes)
+                                    processNodeChildren(node.id, node.name.ifEmpty {"ناشناس"}, "", tw, node.isDisplayOnly, node.predefinedTransfer, node.isSubDivided, node.subDistributionType, node.subCountInput, node.isSubBoyGirlSplit, node.subHeadcounts, node.subNodes)
                                 }
                             }
                         }
@@ -271,25 +275,31 @@ object DistributionEngine {
         }
 
         traverseBlocks(profile.rootBlocks)
-        if (rawShares.isEmpty()) return listOf(ResultItem("سهم ${profile.name} (بدون شریک فعال)", WalnutUnit(pool.doubleValue(false))))
+
+        if (orderedShares.isEmpty()) return listOf(ResultItem("سهم ${profile.name} (بدون شریک فعال)", WalnutUnit(pool.doubleValue(false))))
 
         var totalWeight = BigDecimal.ZERO
-        for (item in rawShares) {
-            if (!item.isDisplayOnly) totalWeight = totalWeight.add(item.weight)
+        for (item in orderedShares) {
+            // گره‌های پدر فقط برای نمایش هستند و در مجموع سهام اثری ندارند
+            if (!item.isParentNode && !item.isDisplayOnly) {
+                totalWeight = totalWeight.add(item.weight)
+            }
         }
 
         val sharesMap = mutableMapOf<String, BigDecimal>()
         if (totalWeight.compareTo(BigDecimal.ZERO) > 0) {
-            for (item in rawShares) {
-                val share = try { pool.multiply(item.weight).divide(totalWeight, decimalMode) } catch (e: Exception) { val p = pool.doubleValue(false); val w = item.weight.doubleValue(false); val t = totalWeight.doubleValue(false); BigDecimal.fromDouble((p * w) / t) }
-                sharesMap[item.id] = share
+            for (item in orderedShares) {
+                sharesMap[item.id] = pool.multiply(item.weight).divide(totalWeight, decimalMode)
             }
         } else {
-            for (item in rawShares) sharesMap[item.id] = BigDecimal.ZERO
+            for (item in orderedShares) sharesMap[item.id] = BigDecimal.ZERO
         }
 
         val transferNotes = mutableMapOf<String, String>()
-        for (item in rawShares) {
+        for (item in orderedShares) {
+            if (item.isParentNode) continue // انتقالات فقط روی برگ‌ها اعمال می‌شوند تا دو بار کسر نشود
+            
+            // اکشن زمان اجرا اولویت دارد بر انتقال قطعی بوم
             val action = dynamicAdvancedTransfers[item.id] ?: item.predefinedTransfer
             if (action != null && action.targets.isNotEmpty()) {
                 val currentBalance = sharesMap[item.id] ?: BigDecimal.ZERO
@@ -309,7 +319,7 @@ object DistributionEngine {
                             val tWeight = when (action.distributionRule) {
                                 TransferDistributionRule.EQUAL -> BigDecimal.ONE
                                 TransferDistributionRule.BOY_GIRL -> if (t.isFemale) safeParseBigDecimal("0.5") else BigDecimal.ONE
-                                TransferDistributionRule.BY_ORIGINAL_SHARE -> rawShares.find { r -> r.id == t.targetId }?.weight ?: BigDecimal.ZERO
+                                TransferDistributionRule.BY_ORIGINAL_SHARE -> orderedShares.find { r -> r.id == t.targetId && !r.isParentNode }?.weight ?: BigDecimal.ZERO
                                 TransferDistributionRule.CUSTOM_PERCENTAGE -> safeParseBigDecimal(t.customPercentage, "0")
                             }
                             targetsTotalWeight = targetsTotalWeight.add(tWeight)
@@ -321,13 +331,13 @@ object DistributionEngine {
                                 val tWeight = when (action.distributionRule) {
                                     TransferDistributionRule.EQUAL -> BigDecimal.ONE
                                     TransferDistributionRule.BOY_GIRL -> if (t.isFemale) safeParseBigDecimal("0.5") else BigDecimal.ONE
-                                    TransferDistributionRule.BY_ORIGINAL_SHARE -> rawShares.find { r -> r.id == t.targetId }?.weight ?: BigDecimal.ZERO
+                                    TransferDistributionRule.BY_ORIGINAL_SHARE -> orderedShares.find { r -> r.id == t.targetId && !r.isParentNode }?.weight ?: BigDecimal.ZERO
                                     TransferDistributionRule.CUSTOM_PERCENTAGE -> safeParseBigDecimal(t.customPercentage, "0")
                                 }
                                 val tAmount = unitShare.multiply(tWeight)
                                 sharesMap[t.targetId] = (sharesMap[t.targetId] ?: BigDecimal.ZERO).add(tAmount)
                                 val amountTypeStr = when(action.sourceAmountType) { TransferAmountType.FULL -> "کامل"; TransferAmountType.PERCENTAGE -> "درصدی"; TransferAmountType.FIXED -> "ثابت"; TransferAmountType.FORMULA -> "فرمولی" }
-                                val cleanSourceName = item.name.substringBefore(" (از")
+                                val cleanSourceName = item.name
                                 transferNotes[t.targetId] = (transferNotes[t.targetId] ?: "") + " [+انتقالی $amountTypeStr از $cleanSourceName]"
                             }
                             transferNotes[item.id] = (transferNotes[item.id] ?: "") + " [-انتقال داده شده]"
@@ -338,11 +348,25 @@ object DistributionEngine {
         }
 
         val results = mutableListOf<ResultItem>()
-        for (item in rawShares) {
+        for (item in orderedShares) {
             val finalShare = sharesMap[item.id] ?: BigDecimal.ZERO
             val isDisplayLabel = if (item.isDisplayOnly) " (محاسبه نمایشی)" else ""
-            val fullLabel = "${item.name}$isDisplayLabel${transferNotes[item.id] ?: ""}"
-            results.add(ResultItem(fullLabel, WalnutUnit(finalShare.roundToDigitPositionAfterDecimalPoint(3, RoundingMode.ROUND_HALF_AWAY_FROM_ZERO).doubleValue(false))))
+            val transferNote = transferNotes[item.id] ?: ""
+
+            if (!item.isParentNode && item.splitCount != null) {
+                val baseShare = finalShare.divide(BigDecimal.fromDouble(item.splitCount), decimalMode)
+                if (item.isBoyGirlSplit) {
+                    val boyShare = baseShare
+                    val girlShare = baseShare.multiply(safeParseBigDecimal("0.5"))
+                    results.add(ResultItem("سهم هر پسر (از ${item.fullName})$isDisplayLabel$transferNote", WalnutUnit(boyShare.roundToDigitPositionAfterDecimalPoint(3, RoundingMode.ROUND_HALF_AWAY_FROM_ZERO).doubleValue(false))))
+                    results.add(ResultItem("سهم هر دختر (از ${item.fullName})$isDisplayLabel$transferNote", WalnutUnit(girlShare.roundToDigitPositionAfterDecimalPoint(3, RoundingMode.ROUND_HALF_AWAY_FROM_ZERO).doubleValue(false))))
+                } else {
+                    results.add(ResultItem("سهم هر فرد (از ${item.fullName})$isDisplayLabel$transferNote", WalnutUnit(baseShare.roundToDigitPositionAfterDecimalPoint(3, RoundingMode.ROUND_HALF_AWAY_FROM_ZERO).doubleValue(false))))
+                }
+            } else {
+                val fullLabel = "${item.fullName}$isDisplayLabel$transferNote"
+                results.add(ResultItem(fullLabel, WalnutUnit(finalShare.roundToDigitPositionAfterDecimalPoint(3, RoundingMode.ROUND_HALF_AWAY_FROM_ZERO).doubleValue(false))))
+            }
         }
         return results
     }
