@@ -31,6 +31,7 @@ import ghiyas.alimaa.fa.core.pwa.PwaManager
 import ghiyas.alimaa.fa.core.pwa.UpdateState
 import ghiyas.alimaa.fa.ui.backup.BackupRestoreScreen
 import kotlinx.browser.window
+import kotlinx.coroutines.delay
 import org.w3c.dom.events.Event
 import ghiyas.alimaa.fa.domain.models.WorkCalendarProfile
 import ghiyas.alimaa.fa.data.WorkCalendarRepository
@@ -184,7 +185,7 @@ fun UpdatePromptWidget(updateState: UpdateState) {
     if (updateState == UpdateState.NONE) return
     
     var isMinimized by remember { mutableStateOf(false) }
-    var isWaitingForDownload by remember { mutableStateOf(false) } // وضعیت دکمه در زمان کلیک زودهنگام
+    var isWaitingForDownload by remember { mutableStateOf(false) }
 
     if (!isMinimized) {
         Div(attrs = { style { position(Position.Fixed); top(0.px); left(0.px); width(100.percent); height(100.vh); backgroundColor(Color("rgba(0,0,0,0.6)")); display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); property("z-index", "10000") } }) {
@@ -192,7 +193,6 @@ fun UpdatePromptWidget(updateState: UpdateState) {
                 Div(attrs = { style { textAlign("center"); fontSize(3.cssRem); marginBottom(16.px) } }) { Text("🚀") }
                 H3(attrs = { style { margin(0.px, 0.px, 12.px, 0.px); color(Color("#1B5E20")); textAlign("center") } }) { Text("نسخه جدید یافت شد") }
                 
-                // پیام پویا بر اساس وضعیت دانلود
                 P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#424242")); textAlign("center"); fontSize(0.95.cssRem); lineHeight("1.6") } }) { 
                     if (updateState == UpdateState.DETECTED_DOWNLOADING) {
                         Text("یک بروزرسانی جدید کشف شده و در حال دریافت در پس‌زمینه است. چگونه مایلید ادامه دهید؟")
@@ -241,6 +241,9 @@ fun App() {
     var isDrawerOpen by remember { mutableStateOf(false) }
     var clearFormRequested by remember { mutableStateOf(false) }
     var showExitDialog by remember { mutableStateOf(false) }
+    
+    // متغیر گلوبال برای پیام موفقیت
+    var globalToastMessage by remember { mutableStateOf<String?>(null) }
 
     val inputViewModel = remember { InputStageViewModel() }
     val expenseViewModel = remember { ExpenseStageViewModel() }
@@ -257,14 +260,29 @@ fun App() {
     var showCalendarDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     var showProfileDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     
-    // اشتراک در وضعیت ماشین حالت PWA
     val updateState by PwaManager.updateState.collectAsState()
     
     LaunchedEffect(Unit) { 
         PwaManager.initialize() 
+        
+        // چک کردن پرچم موفقیت پس از رفرش صفحه
+        val isUpdateSuccess = window.sessionStorage.getItem("PWA_UPDATE_SUCCESS")
+        if (isUpdateSuccess == "true") {
+            window.sessionStorage.removeItem("PWA_UPDATE_SUCCESS")
+            globalToastMessage = "نسخه جدید با موفقیت جایگزین شد 🚀"
+        }
+
         val savedCalcHistory = LocalStorageRepository.getCalculatorHistory()
         if (savedCalcHistory.isNotEmpty()) {
             calculatorViewModel.restoreHistory(savedCalcHistory)
+        }
+    }
+    
+    // پاک کردن خودکار پیام توست بعد از 4 ثانیه
+    LaunchedEffect(globalToastMessage) {
+        if (globalToastMessage != null) {
+            delay(4000)
+            globalToastMessage = null
         }
     }
 
@@ -569,8 +587,34 @@ fun App() {
         
         if (showExitDialog) { ExitConfirmDialog(onConfirm = { window.history.back() }, onCancel = { showExitDialog = false }) }
         
-        // نمایش پاپ‌آپ نسخه جدید با پاس دادن وضعیت
         UpdatePromptWidget(updateState = updateState)
+        
+        // رندر کامپوننت توست در بالاترین لایه
+        if (globalToastMessage != null) {
+            Div(attrs = {
+                style {
+                    position(Position.Fixed)
+                    bottom(90.px)
+                    left(50.percent)
+                    property("transform", "translateX(-50%)")
+                    backgroundColor(Color("#2E7D32"))
+                    color(Color("white"))
+                    padding(12.px, 24.px)
+                    borderRadius(24.px)
+                    property("box-shadow", "0 4px 12px rgba(0,0,0,0.3)")
+                    property("z-index", "10001")
+                    fontWeight("bold")
+                    fontSize(1.1.cssRem)
+                    property("white-space", "nowrap")
+                    display(DisplayStyle.Flex)
+                    alignItems(AlignItems.Center)
+                    gap(8.px)
+                }
+            }) {
+                Span(attrs = { style { fontSize(1.3.cssRem) } }) { Text("✅") }
+                Text(globalToastMessage!!)
+            }
+        }
         
         FloatingCalculatorWidget(calculatorViewModel)
     }

@@ -56,7 +56,6 @@ object PwaManager {
             nav.serviceWorker.register("./sw.js").then({ reg: dynamic ->
                 
                 // رویداد updatefound به محض اینکه مرورگر می‌فهمد sw.js در سرور تغییر کرده شلیک می‌شود
-                // این دقیقا همان "ابتدای ورود" است که نسخه جدید کشف شده است
                 reg.addEventListener("updatefound", {
                     val newWorker = reg.installing
                     if (newWorker != null) {
@@ -128,9 +127,6 @@ object PwaManager {
         })
     }
 
-    /**
-     * اگر هنوز در حال دانلود است، این متد را صدا می‌زنیم تا به محض اتمام دانلود، برنامه رفرش شود
-     */
     fun requestInstallWhenReady() {
         installRequestedAutomatically = true
     }
@@ -139,6 +135,9 @@ object PwaManager {
      * فعال‌سازی و اعمال فوری نسخه جدید
      */
     fun applyUpdate() {
+        // ثبت یک پرچم در حافظه سشن مرورگر قبل از اینکه صفحه رفرش و بسته شود
+        window.sessionStorage.setItem("PWA_UPDATE_SUCCESS", "true")
+        
         if (waitingWorker != null) {
             waitingWorker.postMessage(kotlin.js.json("type" to "SKIP_WAITING"))
         } else {

@@ -72,10 +72,10 @@ fun AboutScreen(onBack: () -> Unit) {
         }
 
         // بخش دانلود از بازار
+        // نکته معماری: حذف target(ATarget.Blank) برای جلوگیری از باگ لایه نامرئی (Phantom Tab) در WebView ایتا و اندروید
         A(
             href = "http://cafebazaar.ir/app/?id=ghiyas.alimaa.fa&ref=share",
             attrs = {
-                target(ATarget.Blank)
                 style { 
                     width(100.percent); maxWidth(400.px); backgroundColor(Color("#4CAF50")); color(Color("white")); 
                     padding(14.px); borderRadius(8.px); textAlign("center"); textDecoration("none"); 
@@ -97,11 +97,10 @@ fun AboutScreen(onBack: () -> Unit) {
                 Text("برای پیشنهاد، گزارش باگ و ساختن محاسبه و یا تقویم بوسیله‌ی برنامه‌نویس با شناسه من در ایتا تماس بگیرید:")
             }
             
-            // دکمه باز کردن ایتا
+            // دکمه باز کردن ایتا (بدون Target.Blank جهت هدایت صحیح WebView)
             A(
                 href = "https://eitaa.com/AlirezaMariki",
                 attrs = {
-                    target(ATarget.Blank)
                     style { 
                         display(DisplayStyle.InlineBlock); backgroundColor(Color("#FF9800")); color(Color("white")); 
                         padding(8.px, 16.px); borderRadius(6.px); textDecoration("none"); fontWeight("bold");
