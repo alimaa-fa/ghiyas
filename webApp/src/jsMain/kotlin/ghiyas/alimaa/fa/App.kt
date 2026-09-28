@@ -27,6 +27,7 @@ import ghiyas.alimaa.fa.domain.models.ResultItem
 import ghiyas.alimaa.fa.domain.models.ProfileIntegrationType
 import ghiyas.alimaa.fa.core.utils.toGhiyasFormat
 import ghiyas.alimaa.fa.core.pwa.PwaManager
+import ghiyas.alimaa.fa.core.pwa.UpdateState
 import ghiyas.alimaa.fa.ui.backup.BackupRestoreScreen
 import kotlinx.browser.window
 import org.w3c.dom.events.Event
@@ -80,7 +81,6 @@ fun ResultRowItem(label: String, rawValue: Double, baseUnit: String, isHighlight
         if (subLabels.isNotEmpty()) {
             Div(attrs = { style { marginTop(12.px); padding(10.px); backgroundColor(Color("#F1F8E9")); borderRadius(8.px); border(1.px, LineStyle.Dashed, Color("#C5E1A5")); fontSize(0.95.cssRem); color(Color("#558B2F")) } }) {
                 subLabels.forEach { subLine ->
-                    // تبدیل اعداد لاتین به فارسی در این بخش
                     val safeLine = subLine.replace("• ", "").toPersianDigits()
                     Div(attrs = { style { marginBottom(6.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center) } }) { 
                         Text("🔹 $safeLine $baseUnit") 
@@ -179,6 +179,61 @@ fun ExitConfirmDialog(onConfirm: () -> Unit, onCancel: () -> Unit) {
 }
 
 @Composable
+fun UpdatePromptWidget(updateState: UpdateState) {
+    if (updateState == UpdateState.NONE) return
+    
+    var isMinimized by remember { mutableStateOf(false) }
+    var isWaitingForDownload by remember { mutableStateOf(false) } // وضعیت دکمه در زمان کلیک زودهنگام
+
+    if (!isMinimized) {
+        Div(attrs = { style { position(Position.Fixed); top(0.px); left(0.px); width(100.percent); height(100.vh); backgroundColor(Color("rgba(0,0,0,0.6)")); display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); property("z-index", "10000") } }) {
+            Div(attrs = { dir(DirType.Rtl); style { backgroundColor(Color("white")); padding(24.px); borderRadius(16.px); width(85.percent); maxWidth(350.px); property("box-shadow", "0 4px 12px rgba(0,0,0,0.15)") } }) {
+                Div(attrs = { style { textAlign("center"); fontSize(3.cssRem); marginBottom(16.px) } }) { Text("🚀") }
+                H3(attrs = { style { margin(0.px, 0.px, 12.px, 0.px); color(Color("#1B5E20")); textAlign("center") } }) { Text("نسخه جدید یافت شد") }
+                
+                // پیام پویا بر اساس وضعیت دانلود
+                P(attrs = { style { margin(0.px, 0.px, 24.px, 0.px); color(Color("#424242")); textAlign("center"); fontSize(0.95.cssRem); lineHeight("1.6") } }) { 
+                    if (updateState == UpdateState.DETECTED_DOWNLOADING) {
+                        Text("یک بروزرسانی جدید کشف شده و در حال دریافت در پس‌زمینه است. چگونه مایلید ادامه دهید؟")
+                    } else {
+                        Text("بروزرسانی با موفقیت دانلود شد و آماده جایگزینی است.")
+                    }
+                }
+                
+                Div(attrs = { style { display(DisplayStyle.Flex); flexDirection(FlexDirection.Column); gap(12.px) } }) {
+                    Button(attrs = { 
+                        style { width(100.percent); padding(14.px); backgroundColor(if(isWaitingForDownload) Color("#9E9E9E") else Color("#4CAF50")); color(Color("white")); border(0.px); borderRadius(8.px); fontSize(1.cssRem); fontWeight("bold"); cursor("pointer") }
+                        onClick { 
+                            if (updateState == UpdateState.DOWNLOADED_READY) {
+                                PwaManager.applyUpdate()
+                            } else {
+                                isWaitingForDownload = true
+                                PwaManager.requestInstallWhenReady()
+                            }
+                        } 
+                    }) { 
+                        Text(if (isWaitingForDownload) "⏳ در حال آماده‌سازی..." else "دانلود و نصب نسخه جدید") 
+                    }
+                    
+                    Button(attrs = { 
+                        style { width(100.percent); padding(12.px); backgroundColor(Color("transparent")); color(Color("#757575")); border(1.px, LineStyle.Solid, Color("#E0E0E0")); borderRadius(8.px); fontSize(0.95.cssRem); cursor("pointer") }
+                        onClick { isMinimized = true } 
+                    }) { Text("فقط دانلود (پس‌زمینه) و نصب بعداً") }
+                }
+            }
+        }
+    } else {
+        Div(attrs = { 
+            style { position(Position.Fixed); bottom(100.px); left(20.px); backgroundColor(Color("#FF9800")); color(Color("white")); padding(10.px, 16.px); borderRadius(30.px); display(DisplayStyle.Flex); alignItems(AlignItems.Center); gap(8.px); property("box-shadow", "0 4px 8px rgba(0,0,0,0.2)"); property("z-index", "9998"); cursor("pointer"); fontWeight("bold") }
+            onClick { isMinimized = false }
+        }) {
+            Span(attrs = { style { fontSize(1.2.cssRem) } }) { Text("🚀") }
+            Span() { Text("نصب بروزرسانی") }
+        }
+    }
+}
+
+@Composable
 fun App() {
     var currentScreen by remember { mutableStateOf("main") }
     var currentMainTab by remember { mutableStateOf("default_pipeline") }
@@ -200,6 +255,9 @@ fun App() {
     
     var showCalendarDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     var showProfileDeleteConfirmId by remember { mutableStateOf<String?>(null) }
+    
+    // اشتراک در وضعیت ماشین حالت PWA
+    val updateState by PwaManager.updateState.collectAsState()
     
     LaunchedEffect(Unit) { 
         PwaManager.initialize() 
@@ -508,6 +566,10 @@ fun App() {
         }
         
         if (showExitDialog) { ExitConfirmDialog(onConfirm = { window.history.back() }, onCancel = { showExitDialog = false }) }
+        
+        // نمایش پاپ‌آپ نسخه جدید با پاس دادن وضعیت
+        UpdatePromptWidget(updateState = updateState)
+        
         FloatingCalculatorWidget(calculatorViewModel)
     }
 }

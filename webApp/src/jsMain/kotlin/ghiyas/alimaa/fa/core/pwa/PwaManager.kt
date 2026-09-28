@@ -7,6 +7,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.w3c.dom.events.Event
 
 /**
+ * وضعیت‌های مختلف فرآیند به‌روزرسانی PWA
+ */
+enum class UpdateState {
+    NONE,                   // نسخه‌ای نیست
+    DETECTED_DOWNLOADING,   // نسخه جدید پیدا شده و در حال دانلود در پس‌زمینه است
+    DOWNLOADED_READY        // دانلود تمام شده و آماده اعمال (نصب) است
+}
+
+/**
  * مدیریت یکپارچه چرخه حیات PWA، تشخیص به‌روزرسانی نسخه و SDK پیام‌رسان ایتا.
  */
 object PwaManager {
@@ -14,17 +23,19 @@ object PwaManager {
     private val _isInstallable = MutableStateFlow(false)
     val isInstallable: StateFlow<Boolean> = _isInstallable.asStateFlow()
 
-    private val _hasUpdateAvailable = MutableStateFlow(false)
-    val hasUpdateAvailable: StateFlow<Boolean> = _hasUpdateAvailable.asStateFlow()
+    private val _updateState = MutableStateFlow(UpdateState.NONE)
+    val updateState: StateFlow<UpdateState> = _updateState.asStateFlow()
 
     private var deferredPrompt: dynamic = null
     private var waitingWorker: dynamic = null
+    private var installRequestedAutomatically = false
 
     fun initialize() {
         initEitaaWebApp()
         registerServiceWorker()
         requestPersistentStorage()
         listenForInstallPrompt()
+        checkForUpdatesIfOnline()
     }
 
     private fun initEitaaWebApp() {
@@ -43,22 +54,33 @@ object PwaManager {
         val nav = window.navigator.asDynamic()
         if (nav.serviceWorker != null) {
             nav.serviceWorker.register("./sw.js").then({ reg: dynamic ->
-                // بررسی نسخه جدید هنگام لود
+                
+                // رویداد updatefound به محض اینکه مرورگر می‌فهمد sw.js در سرور تغییر کرده شلیک می‌شود
+                // این دقیقا همان "ابتدای ورود" است که نسخه جدید کشف شده است
                 reg.addEventListener("updatefound", {
                     val newWorker = reg.installing
                     if (newWorker != null) {
+                        _updateState.value = UpdateState.DETECTED_DOWNLOADING
+
                         newWorker.addEventListener("statechange", {
+                            // وقتی دانلود فایل‌های کش جدید تمام شد
                             if (newWorker.state == "installed" && nav.serviceWorker.controller != null) {
                                 waitingWorker = newWorker
-                                _hasUpdateAvailable.value = true
+                                _updateState.value = UpdateState.DOWNLOADED_READY
+                                
+                                // اگر کاربر در زمان دانلود روی "دانلود و نصب" کلیک کرده بود، الان نصب را تکمیل کن
+                                if (installRequestedAutomatically) {
+                                    applyUpdate()
+                                }
                             }
                         })
                     }
                 })
 
+                // اگر از قبل آپدیتی دانلود شده و منتظر است
                 if (reg.waiting != null && nav.serviceWorker.controller != null) {
                     waitingWorker = reg.waiting
-                    _hasUpdateAvailable.value = true
+                    _updateState.value = UpdateState.DOWNLOADED_READY
                 }
             })
 
@@ -73,6 +95,15 @@ object PwaManager {
         }
     }
 
+    private fun checkForUpdatesIfOnline() {
+        val nav = window.navigator.asDynamic()
+        if (nav.onLine == true && nav.serviceWorker != null) {
+            nav.serviceWorker.ready.then({ reg: dynamic ->
+                try { reg.update() } catch (_: Throwable) {}
+            })
+        }
+    }
+
     private fun requestPersistentStorage() {
         try {
             val storage = window.navigator.asDynamic().storage
@@ -80,7 +111,7 @@ object PwaManager {
                 storage.persist()
             }
         } catch (_: Throwable) {
-            // مرورگرهایی که پشتیبانی نمی‌کنند
+            // مرورگرها
         }
     }
 
@@ -97,16 +128,15 @@ object PwaManager {
         })
     }
 
-    fun promptInstall() {
-        if (deferredPrompt != null) {
-            deferredPrompt.prompt()
-            deferredPrompt = null
-            _isInstallable.value = false
-        }
+    /**
+     * اگر هنوز در حال دانلود است، این متد را صدا می‌زنیم تا به محض اتمام دانلود، برنامه رفرش شود
+     */
+    fun requestInstallWhenReady() {
+        installRequestedAutomatically = true
     }
 
     /**
-     * فعال‌سازی و اعمال نسخه جدید نرم‌افزار به درخواست کاربر
+     * فعال‌سازی و اعمال فوری نسخه جدید
      */
     fun applyUpdate() {
         if (waitingWorker != null) {
