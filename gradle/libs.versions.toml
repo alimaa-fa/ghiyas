@@ -1,12 +1,16 @@
 [versions]
-agp = "8.5.2"
-composeMultiplatform = "1.7.3"
+# نسخه پایدار AGP با پشتیبانی کامل از API 36 و API 37
+agp = "9.4.0"
+# آخرین نسخه کامپوز چندپلتفرمی با حفظ کامل معماری DOM در وب
+composeMultiplatform = "1.12.1"
 junit = "4.13.2"
-kotlin = "2.1.0"
-kotlin-wrappers = "1.0.0-pre.801"
-kotlinx-coroutines = "1.9.0"
-kotlinx-serialization = "1.7.3"
-bignum = "0.3.9"
+# آخرین نسخه پایدار کامپایلر کاتلین
+kotlin = "2.4.20"
+kotlin-wrappers = "1.0.0-pre.820"
+kotlinx-coroutines = "1.10.1"
+kotlinx-serialization = "1.8.0"
+# کتابخانه محاسبات ریاضی دقیق بدون ممیز شناور جهت حفظ دقت مالی
+bignum = "0.3.10"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }

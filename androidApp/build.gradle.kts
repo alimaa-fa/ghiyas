@@ -1,20 +1,20 @@
 plugins {
     alias(libs.plugins.androidApplication)
-    kotlin("android")
+    // در AGP 9.0 به بعد، پشتیبانی کاتلین به صورت بومی ادغام شده و نیازی به پلاگین مجزای kotlin("android") نیست
 }
 
 android {
     namespace = "ghiyas.alimaa.fa"
-    // تغییر به نسخه پایدار ۳۴ جهت رفع خطای سرور ابری گیت‌هاب
-    compileSdk = 34
+    // تنظیم کامپایل بر پایه اندروید ۱۶ (API 36) با پشتیبانی زیرساختی تا API 37
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ghiyas.alimaa.fa"
         minSdk = 21
-        // تغییر به نسخه پایدار ۳۴
-        targetSdk = 34
-        versionCode = 38
-        versionName = "1.1.11"
+        // هدف‌گذاری اندروید ۱۶ برای اجرای پایدار روی دستگاه‌های جدید
+        targetSdk = 36
+        versionCode = 39
+        versionName = "1.2.0"
     }
 
     buildTypes {
@@ -26,17 +26,21 @@ android {
             )
         }
     }
+
     compileOptions {
+        // استفاده از جاوا ۱۷ برای سازگاری کامل با کامپایلر مدرن اندروید
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+
+    kotlin {
+        jvmToolchain(17)
     }
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("androidx.webkit:webkit:1.10.0")
+    // کتابخانه‌های هسته اندروید هماهنگ با API 36
+    implementation("androidx.core:core-ktx:1.15.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("androidx.webkit:webkit:1.12.1")
 }

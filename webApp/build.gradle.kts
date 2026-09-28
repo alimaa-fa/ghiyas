@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    // فعال‌سازی پلاگین سریال‌سازی کاتلین جهت دسترسی به SerializerFactory
+    alias(libs.plugins.kotlinSerialization)
 }
 
 // تسک استخراج نسخه از ماژول اندروید و تزریق آن به کدهای وب
@@ -48,9 +50,12 @@ kotlin {
             implementation(projects.shared)
             implementation(compose.runtime)
             implementation(libs.kotlinx.coroutines.core) 
+            // اضافه شدن کتابخانه سریال‌سازی برای خواندن و نوشتن مستقیم مدل‌ها در وب
+            implementation(libs.kotlinx.serialization.json)
         }
 
         jsMain.dependencies {
+            // پایبندی ۱۰۰٪ به اصل DOM-Only و سبک بودن وب‌ویو برای پیام‌رسان‌ها
             implementation(compose.html.core)
         }
         

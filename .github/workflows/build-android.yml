@@ -31,18 +31,23 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build Web App (Compile KMP JS)
+        # کامپایل ماژول وب بر پایه DOM خالص جاوااسکریپت
         run: ./gradlew :webApp:jsBrowserDistribution
 
       - name: Inject Web Files into Android Assets
+        # تزریق خروجی وب آفلاین به پوشه دارایی‌های اندروید جهت استفاده در WebView
         run: |
           mkdir -p androidApp/src/main/assets
           cp -R webApp/build/dist/js/productionExecutable/* androidApp/src/main/assets/
 
+      - name: Accept Android Licenses & Pre-install SDK 36
+        # تأیید الزامی لایسنس‌ها و نصب بستر API 36 پیش از بیلد تا سرور ابری متوقف نشود
+        run: |
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
       - name: Build Android APK (Release)
         run: ./gradlew :androidApp:assembleRelease
-
-      - name: Install Android Build Tools 29.0.3
-        run: $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;29.0.3"
 
       - name: Sign APK with Keystore
         uses: r0adkll/sign-android-release@v1
