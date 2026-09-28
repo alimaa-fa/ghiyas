@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ghiyas-core-v52';
+const CACHE_NAME = 'ghiyas-core-v56';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './styles.css?v=52',
+  './styles.css?v=56',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
@@ -11,22 +11,16 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // دستور self.skipWaiting() حذف شد تا منتظر فرمان کاربر بمانیم
+  // خط طلایی: هیچ‌وقت در نسخه قدیمی منتظر تایید نمان، فوراً آپدیت را آماده کن
+  self.skipWaiting();
+  
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      // این خط طلایی است: به مرورگر می‌گوییم به هیچ وجه از کش داخلی (HTTP Cache) ایتا یا مرورگر
-      // استفاده نکن و حتماً نسخه تازه را از سرور دانلود کن.
+      // دور زدن کش مرورگر در زمان نصب برای دریافت تازه‌ترین فایل‌ها
       const requests = ASSETS_TO_CACHE.map(url => new Request(url, { cache: 'no-cache' }));
       return cache.addAll(requests);
     })
   );
-});
-
-// گوش دادن به پیامِ تایید کاربر از سمت رابط کاربری وب‌اپ برای جایگزینی ورکر جدید
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });
 
 self.addEventListener('activate', (event) => {
@@ -43,21 +37,40 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// استراتژی ترکیبی (هیبریدی) برای سرعت و اطمینان
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
 
-  event.respondWith(
-    fetch(event.request).then((networkResponse) => {
-      return caches.open(CACHE_NAME).then((cache) => {
-        cache.put(event.request, networkResponse.clone());
-        return networkResponse;
-      });
-    }).catch(() => {
-      return caches.match(event.request).then((cachedResponse) => {
-        return cachedResponse || caches.match('./index.html');
-      });
-    })
-  );
+  // ۱. برای فایل اصلی (HTML): اولویت با شبکه (Network-First) تا آپدیت‌ها را فوری بگیرد
+  if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('index.html')) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        return caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, networkResponse.clone());
+          return networkResponse;
+        });
+      }).catch(() => {
+        return caches.match(event.request).then((cachedResponse) => {
+          return cachedResponse || caches.match('./index.html');
+        });
+      })
+    );
+  } else {
+    // ۲. برای دارایی‌ها (CSS, JS): اولویت با کش (Cache-First) برای لود در کسری از ثانیه
+    event.respondWith(
+      caches.match(event.request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse; 
+        }
+        return fetch(event.request).then((networkResponse) => {
+          return caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, networkResponse.clone());
+            return networkResponse;
+          });
+        });
+      })
+    );
+  }
 });
