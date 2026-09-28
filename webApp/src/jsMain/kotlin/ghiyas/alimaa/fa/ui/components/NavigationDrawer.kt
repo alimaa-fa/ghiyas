@@ -55,6 +55,10 @@ fun NavigationDrawer(
                 Text("💾 پشتیبان‌گیری و بازیابی")
             }
             
+            Div(attrs = { classes(AppStyleSheet.drawerMenuItem); onClick { onNavigate("about") } }) {
+                Text("ℹ️ درباره ما")
+            }
+
             Div(attrs = { style { height(1.px); backgroundColor(Color("#E0E0E0")); margin(8.px, 0.px) } })
 
             Div(attrs = { classes(AppStyleSheet.drawerMenuItem); onClick { onNavigate("main") } }) {

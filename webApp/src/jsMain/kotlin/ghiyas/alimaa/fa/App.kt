@@ -15,6 +15,7 @@ import ghiyas.alimaa.fa.ui.stages.HistoryScreen
 import ghiyas.alimaa.fa.ui.stages.WorkCalendarScreen
 import ghiyas.alimaa.fa.ui.stages.CalendarManagerForm
 import ghiyas.alimaa.fa.ui.stages.WorkCalendarFormState
+import ghiyas.alimaa.fa.ui.stages.AboutScreen
 import ghiyas.alimaa.fa.presentation.stages.input.InputStageViewModel
 import ghiyas.alimaa.fa.presentation.stages.expense.ExpenseStageViewModel
 import ghiyas.alimaa.fa.presentation.stages.agriculture.AgricultureStageViewModel
@@ -519,6 +520,7 @@ fun App() {
                 }
                 "history" -> { HistoryScreen(onBack = { window.history.back() }) }
                 "builder" -> { ghiyas.alimaa.fa.ui.builder.BuilderScreen(viewModel = builderViewModel, onBack = { window.history.back() }) }
+                "about" -> { AboutScreen(onBack = { window.history.back() }) }
                 "dynamic_player" -> { 
                     ghiyas.alimaa.fa.ui.player.DynamicPlayerScreen(
                         viewModel = dynamicPlayerViewModel, 
