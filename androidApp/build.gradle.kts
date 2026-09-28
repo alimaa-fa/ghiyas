@@ -10,8 +10,8 @@ android {
         applicationId = "ghiyas.alimaa.fa"
         minSdk = 21
         targetSdk = 36
-        versionCode = 43
-        versionName = "1.2.4"
+        versionCode = 44
+        versionName = "1.2.5"
     }
 
     buildTypes {

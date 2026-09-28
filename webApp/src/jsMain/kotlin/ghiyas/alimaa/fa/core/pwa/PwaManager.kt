@@ -45,7 +45,11 @@ object PwaManager {
     private fun registerServiceWorker() {
         val nav = window.navigator.asDynamic()
         if (nav.serviceWorker != null) {
-            nav.serviceWorker.register("./sw.js").then({ reg: dynamic ->
+            
+            // جلوگیری قطعی از کش شدن فایل sw.js در مرورگر وWebView (حل باگ ماندن در نسخه قدیمی)
+            val options = kotlin.js.json("updateViaCache" to "none")
+
+            nav.serviceWorker.register("./sw.js", options).then({ reg: dynamic ->
                 reg.addEventListener("updatefound", {
                     val newWorker = reg.installing
                     if (newWorker != null) {
@@ -53,6 +57,7 @@ object PwaManager {
                         newWorker.addEventListener("statechange", {
                             if (newWorker.state == "installed") {
                                 waitingWorker = newWorker
+                                // اینجا دیگر به صورت خودکار دانلود شده در نظر نمی‌گیریم، منتظر کاربر می‌مانیم
                                 _updateState.value = UpdateState.DOWNLOADED_READY
                                 if (installRequestedAutomatically) {
                                     applyUpdate()
@@ -125,10 +130,6 @@ object PwaManager {
         }
     }
 
-    /**
-     * تولید آدرس امن برای قرارگیری مستقیم در href تگ <a>
-     * این کار Custom Tab کروم را دور می‌زند و جلوی سیاهی صفحه و قفل شدن لمس را می‌گیرد.
-     */
     fun getSafeUrl(url: String): String {
         val isAndroid = window.navigator.userAgent.contains("Android", ignoreCase = true)
         if (!isAndroid) return url
@@ -148,21 +149,15 @@ object PwaManager {
         }
     }
 
-    /**
-     * هندل کردن رویداد کلیک روی لینک‌ها با رعایت SRP.
-     * اگر داخل ایتا باشیم، رفتار پیش‌فرض مرورگر متوقف شده و SDK وارد عمل می‌شود.
-     * اگر در کروم باشیم، هیچ کاری نمی‌کند و اجازه می‌دهد سیستم‌عامل به صورت نیتیو Intent تگ A را باز کند.
-     */
     fun handleLinkClick(event: Event, originalUrl: String) {
         try {
             val eitaa = window.asDynamic().Eitaa
             if (eitaa != null && eitaa.WebApp != null && eitaa.WebApp.openLink != undefined) {
-                // محیط ایتا: جلوگیری از ناوبری مرورگر و استفاده از ابزار بومی
                 event.preventDefault()
                 eitaa.WebApp.openLink(originalUrl)
             }
         } catch (e: Throwable) {
-            // در مرورگر عادی، خطا را نادیده می‌گیریم تا رفتار نیتیو تگ A ادامه یابد
+            // در مرورگر عادی رفتار نیتیو ادامه یابد
         }
     }
 }
