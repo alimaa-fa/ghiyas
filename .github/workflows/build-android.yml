@@ -42,6 +42,8 @@ jobs:
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0"
+          # ساخت پیوند نمادین برای هدایت اکشن امضا به ابزارهای بیلد ۳۶ بدون دانلود ابزار قدیمی
+          ln -sf $ANDROID_HOME/build-tools/36.0.0 $ANDROID_HOME/build-tools/29.0.3
 
       - name: Build Android APK (Release)
         run: ./gradlew :androidApp:assembleRelease
@@ -55,8 +57,6 @@ jobs:
           alias: ${{ secrets.KEY_ALIAS }}
           keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
-          # ارجاع صریح به نسخه مدرن ابزار بیلد ۳۶ جهت اجرای zipalign و apksigner
-          buildToolsVersion: "36.0.0"
 
       - name: Rename Signed APK to Clean Name
         run: |
