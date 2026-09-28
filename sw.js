@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ghiyas-core-v57'; // نسخه کش برای اعمال تغییرات جدید
+const CACHE_NAME = 'ghiyas-core-v58'; // نسخه کش برای اعمال تغییرات جدید
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './styles.css?v=57',
+  './styles.css?v=58',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
