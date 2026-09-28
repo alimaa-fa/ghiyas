@@ -6,23 +6,26 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.ViewGroup
 import android.webkit.JavascriptInterface
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.webkit.WebViewAssetLoader
 
 class MainActivity : AppCompatActivity() {
 
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     
-    // متغیرهای جدید برای مدیریت حافظه و جلوگیری از سرریز شدن Binder Buffer در اندرویدهای قدیمی
     private var pendingFilename: String? = null
     private val backupBuffer = java.lang.StringBuilder()
     private var pendingBackupJson: String? = null
@@ -51,7 +54,6 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        // پاکسازی حافظه پس از ذخیره
         pendingBackupJson = null
         backupBuffer.setLength(0) 
     }
@@ -60,8 +62,31 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
+        // ۱. ساخت لایه پدر بومی (FrameLayout) جهت مهار قطعی ابعاد وب‌ویو
+        val rootLayout = FrameLayout(this)
+        rootLayout.layoutParams = ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT
+        )
+        
+        // ۲. ساخت وب‌ویو و کپسوله کردن آن داخل لایه پدر
         webView = WebView(this)
-        setContentView(webView)
+        webView.layoutParams = FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT
+        )
+        rootLayout.addView(webView)
+
+        // ۳. معرفی لایه پدر به عنوان ریشه اصلی رابط کاربری
+        setContentView(rootLayout)
+
+        // ۴. تزریق حاشیه امن (نوار باتری و ساعت) به لایه پدر
+        // این کار کل وب‌ویو را به صورت فیزیکی به پایین هل می‌دهد
+        ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.setPadding(insets.left, insets.top, insets.right, insets.bottom)
+            WindowInsetsCompat.CONSUMED
+        }
 
         val assetLoader = WebViewAssetLoader.Builder()
             .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
@@ -117,6 +142,8 @@ class MainActivity : AppCompatActivity() {
         val settings: WebSettings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+        
+        @Suppress("DEPRECATION")
         settings.databaseEnabled = true
         
         settings.textZoom = 100
@@ -152,7 +179,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class AndroidBridge {
-        // مرحله اول: آماده‌سازی حافظه برای دریافت تکه‌تکه فایل
         @JavascriptInterface
         fun initBackup(filename: String) {
             pendingFilename = filename
@@ -160,13 +186,11 @@ class MainActivity : AppCompatActivity() {
             pendingBackupJson = null
         }
 
-        // مرحله دوم: دریافت امن بسته‌های ۲۵۶ کیلوبایتی (جلوگیری از خطای ۰ بایتی)
         @JavascriptInterface
         fun appendBackupChunk(chunk: String) {
             backupBuffer.append(chunk)
         }
 
-        // مرحله سوم: پایان ارسال و شروع فرآیند ذخیره‌سازی بومی
         @JavascriptInterface
         fun saveBackupFile() {
             pendingBackupJson = backupBuffer.toString()
