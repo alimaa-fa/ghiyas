@@ -1,9 +1,9 @@
-const CACHE_NAME = 'ghiyas-core-v56';
+const CACHE_NAME = 'ghiyas-core-v57'; // نسخه کش برای اعمال تغییرات جدید
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './styles.css?v=56',
+  './styles.css?v=57',
   './webApp.js',
   './icon-192.png',
   './icon-512.png',
@@ -11,9 +11,7 @@ const ASSETS_TO_CACHE = [
 ];
 
 self.addEventListener('install', (event) => {
-  // خط طلایی: هیچ‌وقت در نسخه قدیمی منتظر تایید نمان، فوراً آپدیت را آماده کن
-  self.skipWaiting();
-  
+  // منتظر می‌مانیم تا کاربر دکمه آپدیت را در اپلیکیشن بزند
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       // دور زدن کش مرورگر در زمان نصب برای دریافت تازه‌ترین فایل‌ها
@@ -21,6 +19,13 @@ self.addEventListener('install', (event) => {
       return cache.addAll(requests);
     })
   );
+});
+
+// گوش دادن به پیامِ تایید کاربر از سمت رابط کاربری وب‌اپ برای جایگزینی ورکر جدید
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
@@ -43,7 +48,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== location.origin) return;
 
-  // ۱. برای فایل اصلی (HTML): اولویت با شبکه (Network-First) تا آپدیت‌ها را فوری بگیرد
+  // ۱. برای فایل اصلی (HTML): اولویت با شبکه (Network-First) تا آپدیت‌ها را کشف کند
   if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('index.html')) {
     event.respondWith(
       fetch(event.request).then((networkResponse) => {
