@@ -18,8 +18,11 @@ import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 
 class MainActivity : AppCompatActivity() {
@@ -60,28 +63,37 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
+        // فعال‌سازی اسپلش اسکرین بومی پیش از هرگونه چرخه حیات اکتیویتی
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         
-        // ۱. ساخت لایه پدر بومی (FrameLayout) جهت مهار قطعی ابعاد وب‌ویو
+        // ۱. ساخت لایه پدر بومی (Native Wrapper)
         val rootLayout = FrameLayout(this)
         rootLayout.layoutParams = ViewGroup.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT
         )
+        // تنظیم پس‌زمینه کادر پشت نوار وضعیت به رنگ سبز قیاس
+        rootLayout.setBackgroundColor(ContextCompat.getColor(this, R.color.ghiyas_primary))
         
-        // ۲. ساخت وب‌ویو و کپسوله کردن آن داخل لایه پدر
+        // ۲. ساخت وب‌ویو و کپسوله کردن آن
         webView = WebView(this)
         webView.layoutParams = FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
         )
+        // تنظیم پس‌زمینه وب‌ویو به رنگ سفید برای جلوگیری از پرش رنگ قبل از رندر HTML
+        webView.setBackgroundColor(ContextCompat.getColor(this, R.color.ghiyas_background))
         rootLayout.addView(webView)
 
-        // ۳. معرفی لایه پدر به عنوان ریشه اصلی رابط کاربری
+        // ۳. معرفی لایه پدر به عنوان ریشه رابط کاربری
         setContentView(rootLayout)
 
-        // ۴. تزریق حاشیه امن (نوار باتری و ساعت) به لایه پدر
-        // این کار کل وب‌ویو را به صورت فیزیکی به پایین هل می‌دهد
+        // ۴. مدیریت رنگ آیکون‌های نوار ساعت و باتری (آیکون‌های سفید روی نوار سبز)
+        val windowInsetsController = WindowInsetsControllerCompat(window, rootLayout)
+        windowInsetsController.isAppearanceLightStatusBars = false
+
+        // ۵. تزریق حاشیه امن سیستم (Edge-to-Edge Handler)
         ViewCompat.setOnApplyWindowInsetsListener(rootLayout) { view, windowInsets ->
             val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
             view.setPadding(insets.left, insets.top, insets.right, insets.bottom)

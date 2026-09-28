@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- تم اصلی برنامه که پس از اتمام اسپلش فعال می‌شود -->
+    <style name="Theme.Ghiyas" parent="Theme.AppCompat.NoActionBar">
+        <!-- پس‌زمینه پایه پنجره به رنگ سفید برای یکپارچگی با وب‌ویو -->
+        <item name="android:windowBackground">@color/ghiyas_background</item>
+        <item name="android:statusBarColor">@color/ghiyas_primary</item>
+    </style>
+
+    <!-- تم اسپلش اسکرین مبتنی بر استانداردهای Android 12+ -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <!-- اصلاح: رنگ پس‌زمینه اسپلش به رنگ سفید تغییر یافت تا با لوگوی دارای کادر سبز هم‌خوانی داشته باشد -->
+        <item name="windowSplashScreenBackground">@color/ghiyas_background</item>
+        
+        <!-- آیکون وسط اسپلش (همان آیکون اصلی اپلیکیشن شما) -->
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        
+        <!-- تمی که بعد از محو شدن اسپلش باید جایگزین شود -->
+        <item name="postSplashScreenTheme">@style/Theme.Ghiyas</item>
+    </style>
+</resources>
