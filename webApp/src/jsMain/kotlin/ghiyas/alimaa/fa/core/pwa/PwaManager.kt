@@ -6,18 +6,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.w3c.dom.events.Event
 
-/**
- * وضعیت‌های مختلف فرآیند به‌روزرسانی PWA
- */
 enum class UpdateState {
-    NONE,                   // نسخه‌ای نیست
-    DETECTED_DOWNLOADING,   // نسخه جدید پیدا شده و در حال دانلود در پس‌زمینه است
-    DOWNLOADED_READY        // دانلود تمام شده و آماده اعمال (نصب) است
+    NONE,
+    DETECTED_DOWNLOADING,
+    DOWNLOADED_READY
 }
 
-/**
- * مدیریت یکپارچه چرخه حیات PWA، تشخیص به‌روزرسانی نسخه و SDK پیام‌رسان ایتا.
- */
 object PwaManager {
 
     private val _isInstallable = MutableStateFlow(false)
@@ -45,45 +39,38 @@ object PwaManager {
                 eitaa.WebApp.ready()
                 eitaa.WebApp.expand()
             }
-        } catch (_: Throwable) {
-            // در مرورگرهای استاندارد بدون خطا رد می‌شود
-        }
+        } catch (_: Throwable) {}
     }
 
     private fun registerServiceWorker() {
         val nav = window.navigator.asDynamic()
         if (nav.serviceWorker != null) {
             nav.serviceWorker.register("./sw.js").then({ reg: dynamic ->
-                
-                // رویداد updatefound به محض اینکه مرورگر می‌فهمد sw.js در سرور تغییر کرده شلیک می‌شود
                 reg.addEventListener("updatefound", {
                     val newWorker = reg.installing
                     if (newWorker != null) {
                         _updateState.value = UpdateState.DETECTED_DOWNLOADING
-
                         newWorker.addEventListener("statechange", {
-                            // وقتی دانلود فایل‌های کش جدید تمام شد
-                            if (newWorker.state == "installed" && nav.serviceWorker.controller != null) {
+                            if (newWorker.state == "installed") {
                                 waitingWorker = newWorker
                                 _updateState.value = UpdateState.DOWNLOADED_READY
-                                
-                                // اگر کاربر در زمان دانلود روی "دانلود و نصب" کلیک کرده بود، الان نصب را تکمیل کن
                                 if (installRequestedAutomatically) {
                                     applyUpdate()
                                 }
+                            } else if (newWorker.state == "redundant") {
+                                _updateState.value = UpdateState.NONE
+                                installRequestedAutomatically = false
                             }
                         })
                     }
                 })
 
-                // اگر از قبل آپدیتی دانلود شده و منتظر است
-                if (reg.waiting != null && nav.serviceWorker.controller != null) {
+                if (reg.waiting != null) {
                     waitingWorker = reg.waiting
                     _updateState.value = UpdateState.DOWNLOADED_READY
                 }
             })
 
-            // بازنشانی ایمن پس از تعویض کنترلر
             var refreshing = false
             nav.serviceWorker.addEventListener("controllerchange", {
                 if (!refreshing) {
@@ -109,9 +96,7 @@ object PwaManager {
             if (storage != null && storage.persist != null) {
                 storage.persist()
             }
-        } catch (_: Throwable) {
-            // مرورگرها
-        }
+        } catch (_: Throwable) {}
     }
 
     private fun listenForInstallPrompt() {
@@ -131,17 +116,53 @@ object PwaManager {
         installRequestedAutomatically = true
     }
 
-    /**
-     * فعال‌سازی و اعمال فوری نسخه جدید
-     */
     fun applyUpdate() {
-        // ثبت یک پرچم در حافظه سشن مرورگر قبل از اینکه صفحه رفرش و بسته شود
         window.sessionStorage.setItem("PWA_UPDATE_SUCCESS", "true")
-        
         if (waitingWorker != null) {
             waitingWorker.postMessage(kotlin.js.json("type" to "SKIP_WAITING"))
         } else {
             window.location.reload()
+        }
+    }
+
+    /**
+     * تولید آدرس امن برای قرارگیری مستقیم در href تگ <a>
+     * این کار Custom Tab کروم را دور می‌زند و جلوی سیاهی صفحه و قفل شدن لمس را می‌گیرد.
+     */
+    fun getSafeUrl(url: String): String {
+        val isAndroid = window.navigator.userAgent.contains("Android", ignoreCase = true)
+        if (!isAndroid) return url
+
+        return try {
+            if (url.contains("eitaa.com")) {
+                val path = url.substringAfter("eitaa.com/")
+                "intent://eitaa.com/$path#Intent;scheme=https;package=ir.eitaa.messenger;end"
+            } else if (url.contains("cafebazaar.ir")) {
+                val id = url.substringAfter("id=").substringBefore("&")
+                "intent://details?id=$id#Intent;scheme=bazaar;package=com.farsitel.bazaar;end"
+            } else {
+                url
+            }
+        } catch (e: Throwable) {
+            url
+        }
+    }
+
+    /**
+     * هندل کردن رویداد کلیک روی لینک‌ها با رعایت SRP.
+     * اگر داخل ایتا باشیم، رفتار پیش‌فرض مرورگر متوقف شده و SDK وارد عمل می‌شود.
+     * اگر در کروم باشیم، هیچ کاری نمی‌کند و اجازه می‌دهد سیستم‌عامل به صورت نیتیو Intent تگ A را باز کند.
+     */
+    fun handleLinkClick(event: Event, originalUrl: String) {
+        try {
+            val eitaa = window.asDynamic().Eitaa
+            if (eitaa != null && eitaa.WebApp != null && eitaa.WebApp.openLink != undefined) {
+                // محیط ایتا: جلوگیری از ناوبری مرورگر و استفاده از ابزار بومی
+                event.preventDefault()
+                eitaa.WebApp.openLink(originalUrl)
+            }
+        } catch (e: Throwable) {
+            // در مرورگر عادی، خطا را نادیده می‌گیریم تا رفتار نیتیو تگ A ادامه یابد
         }
     }
 }

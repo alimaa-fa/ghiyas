@@ -36,6 +36,7 @@ import org.w3c.dom.events.Event
 import ghiyas.alimaa.fa.domain.models.WorkCalendarProfile
 import ghiyas.alimaa.fa.data.WorkCalendarRepository
 import ghiyas.alimaa.fa.data.LocalStorageRepository
+import kotlinx.coroutines.flow.collectLatest
 
 // مبدل اعداد لاتین به فارسی برای متن‌های توکار
 private fun String.toPersianDigits(): String {
@@ -260,7 +261,8 @@ fun App() {
     var showCalendarDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     var showProfileDeleteConfirmId by remember { mutableStateOf<String?>(null) }
     
-    val updateState by PwaManager.updateState.collectAsState()
+    // استیت محلی برای اطمینان از Recomposition در محیط Compose Web
+    var currentUpdateState by remember { mutableStateOf(UpdateState.NONE) }
     
     LaunchedEffect(Unit) { 
         PwaManager.initialize() 
@@ -275,6 +277,13 @@ fun App() {
         val savedCalcHistory = LocalStorageRepository.getCalculatorHistory()
         if (savedCalcHistory.isNotEmpty()) {
             calculatorViewModel.restoreHistory(savedCalcHistory)
+        }
+    }
+    
+    // جمع‌آوری استیت آپدیت به صورتی که Compose مجبور به رندر مجدد شود
+    LaunchedEffect(Unit) {
+        PwaManager.updateState.collectLatest { newState ->
+            currentUpdateState = newState
         }
     }
     
@@ -587,7 +596,8 @@ fun App() {
         
         if (showExitDialog) { ExitConfirmDialog(onConfirm = { window.history.back() }, onCancel = { showExitDialog = false }) }
         
-        UpdatePromptWidget(updateState = updateState)
+        // ارسال وضعیت جمع‌آوری‌شده و همگام با Compose به ویجت پاپ‌آپ
+        UpdatePromptWidget(updateState = currentUpdateState)
         
         // رندر کامپوننت توست در بالاترین لایه
         if (globalToastMessage != null) {

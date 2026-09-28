@@ -10,6 +10,7 @@ import ghiyas.alimaa.fa.domain.models.WorkCalendarProfile
 import ghiyas.alimaa.fa.domain.models.WorkTurn
 import ghiyas.alimaa.fa.data.WorkCalendarRepository
 import ghiyas.alimaa.fa.data.SampleCalendarData
+import ghiyas.alimaa.fa.core.pwa.PwaManager
 import org.w3c.files.FileReader
 import org.w3c.files.get
 import kotlinx.browser.window
@@ -149,17 +150,21 @@ fun CalendarManagerForm(
                 }) {
                     Text("اگر خود تخصص ساخت فایل جیسون زمانبندی تقویم آبیاری و کشاورزی و... را ندارید برای ساختش با من در ایتا با این آی دی تماس بگیرید:")
                     Br()
-                    // لینک استاندارد و ایمن بدون دستکاری‌های JS که باعث جلوگیری از فریز شدن PWA می‌شود
-                    A(href = "https://eitaa.com/AlirezaMariki", attrs = {
-                        target(ATarget.Blank)
+                    val eitaaUrl = "https://eitaa.com/AlirezaMariki"
+                    A(href = PwaManager.getSafeUrl(eitaaUrl), attrs = {
                         style { 
-                            display(DisplayStyle.InlineBlock); marginTop(10.px); 
+                            display(DisplayStyle.InlineBlock); marginTop(10.px); marginBottom(8.px);
                             padding(8.px, 20.px); backgroundColor(Color("#FF9800")); 
-                            color(Color("white")); borderRadius(20.px); 
-                            fontWeight("bold"); textDecoration("none"); 
+                            color(Color("white")); borderRadius(20.px); textDecoration("none");
+                            fontWeight("bold"); cursor("pointer"); 
                             property("direction", "ltr") 
                         }
+                        onClick { e -> PwaManager.handleLinkClick(e.nativeEvent, eitaaUrl) }
                     }) { Text("🆔 @AlirezaMariki") }
+
+                    P(attrs = { style { margin(0.px); color(Color("#E65100")); fontSize(0.8.cssRem) } }) {
+                        Text("نکته: به دلیل باگ ایتا، پس از بازگشت به برنامه برای کارکرد مجدد لمس، یک‌بار کلید بازگشت را بزنید.")
+                    }
                 }
             }
         }

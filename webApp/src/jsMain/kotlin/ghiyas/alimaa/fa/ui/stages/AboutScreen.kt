@@ -7,16 +7,15 @@ import org.jetbrains.compose.web.attributes.*
 import kotlinx.browser.window
 import kotlinx.coroutines.await
 import ghiyas.alimaa.fa.AppConfig
+import ghiyas.alimaa.fa.core.pwa.PwaManager
 
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     var swVersion by remember { mutableStateOf("در حال بررسی...") }
     var showCopyToast by remember { mutableStateOf(false) }
 
-    // واکشی شماره کش مستقیماً از فایل سرویس‌ورکر (بدون کش مرورگر)
     LaunchedEffect(Unit) {
         try {
-            // استفاده از پارامتر برای دور زدن کش مرورگر در زمان خواندن فایل
             val timestamp = kotlin.js.Date().getTime()
             val response = window.fetch("./sw.js?t=$timestamp").await()
             if (response.ok) {
@@ -39,7 +38,6 @@ fun AboutScreen(onBack: () -> Unit) {
             color(Color("#2E7D32")) 
         } 
     }) {
-        // آیکون دایره‌ای بدون پس‌زمینه
         Img(src = "./icon-512.png", attrs = {
             style {
                 width(120.px); height(120.px); borderRadius(50.percent);
@@ -53,7 +51,6 @@ fun AboutScreen(onBack: () -> Unit) {
             Text("(محاسبه‌گر محلی و تقویم آبیاری)") 
         }
 
-        // بخش نمایش نسخه‌ها
         Div(attrs = { 
             style { 
                 width(100.percent); maxWidth(400.px); backgroundColor(Color("white")); 
@@ -71,21 +68,17 @@ fun AboutScreen(onBack: () -> Unit) {
             }
         }
 
-        // بخش دانلود از بازار
-        // نکته معماری: حذف target(ATarget.Blank) برای جلوگیری از باگ لایه نامرئی (Phantom Tab) در WebView ایتا و اندروید
-        A(
-            href = "http://cafebazaar.ir/app/?id=ghiyas.alimaa.fa&ref=share",
-            attrs = {
-                style { 
-                    width(100.percent); maxWidth(400.px); backgroundColor(Color("#4CAF50")); color(Color("white")); 
-                    padding(14.px); borderRadius(8.px); textAlign("center"); textDecoration("none"); 
-                    fontWeight("bold"); fontSize(1.1.cssRem); marginBottom(24.px);
-                    display(DisplayStyle.Block)
-                }
+        val bazaarUrl = "http://cafebazaar.ir/app/?id=ghiyas.alimaa.fa&ref=share"
+        A(href = PwaManager.getSafeUrl(bazaarUrl), attrs = {
+            style { 
+                width(100.percent); maxWidth(400.px); backgroundColor(Color("#4CAF50")); color(Color("white")); 
+                padding(14.px); borderRadius(8.px); textAlign("center"); textDecoration("none");
+                fontWeight("bold"); fontSize(1.1.cssRem); marginBottom(24.px);
+                display(DisplayStyle.Block); cursor("pointer")
             }
-        ) { Text("دریافت اپلیکیشن از کافه بازار") }
+            onClick { e -> PwaManager.handleLinkClick(e.nativeEvent, bazaarUrl) }
+        }) { Text("دریافت اپلیکیشن از کافه بازار") }
 
-        // بخش پشتیبانی و ایتا
         Div(attrs = { 
             style { 
                 width(100.percent); maxWidth(400.px); backgroundColor(Color("#F1F8E9")); 
@@ -97,19 +90,20 @@ fun AboutScreen(onBack: () -> Unit) {
                 Text("برای پیشنهاد، گزارش باگ و ساختن محاسبه و یا تقویم بوسیله‌ی برنامه‌نویس با شناسه من در ایتا تماس بگیرید:")
             }
             
-            // دکمه باز کردن ایتا (بدون Target.Blank جهت هدایت صحیح WebView)
-            A(
-                href = "https://eitaa.com/AlirezaMariki",
-                attrs = {
-                    style { 
-                        display(DisplayStyle.InlineBlock); backgroundColor(Color("#FF9800")); color(Color("white")); 
-                        padding(8.px, 16.px); borderRadius(6.px); textDecoration("none"); fontWeight("bold");
-                        marginBottom(16.px)
-                    }
+            val eitaaUrl = "https://eitaa.com/AlirezaMariki"
+            A(href = PwaManager.getSafeUrl(eitaaUrl), attrs = {
+                style { 
+                    display(DisplayStyle.InlineBlock); backgroundColor(Color("#FF9800")); color(Color("white")); 
+                    padding(8.px, 16.px); borderRadius(6.px); textDecoration("none"); fontWeight("bold");
+                    marginBottom(8.px); cursor("pointer")
                 }
-            ) { Text("ارتباط مستقیم در ایتا") }
+                onClick { e -> PwaManager.handleLinkClick(e.nativeEvent, eitaaUrl) }
+            }) { Text("ارتباط مستقیم در ایتا") }
             
-            // شناسه قابل کپی
+            P(attrs = { style { margin(0.px, 0.px, 16.px, 0.px); color(Color("#E65100")); fontSize(0.85.cssRem) } }) {
+                Text("نکته: به دلیل باگ ایتا، پس از بازگشت به برنامه برای کارکرد مجدد لمس، یک‌بار کلید بازگشت (Back) را بزنید.")
+            }
+            
             Div(attrs = { style { display(DisplayStyle.Flex); justifyContent(JustifyContent.Center); alignItems(AlignItems.Center); gap(8.px) } }) {
                 Span(attrs = { style { color(Color("#555")); fontWeight("bold"); property("direction", "ltr") } }) { Text("@AlirezaMariki") }
                 Button(attrs = { 
