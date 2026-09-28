@@ -13,8 +13,8 @@ android {
         minSdk = 21
         // هدف‌گذاری اندروید ۱۶ برای اجرای پایدار روی دستگاه‌های جدید
         targetSdk = 36
-        versionCode = 39
-        versionName = "1.2.0"
+        versionCode = 40
+        versionName = "1.2.1"
     }
 
     buildTypes {

@@ -16,6 +16,9 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x gradlew
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -40,37 +43,54 @@ jobs:
 
       - name: Accept Android Licenses & Pre-install SDK 36
         run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1
           $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36" "build-tools;36.0.0"
-          # ساخت پیوند نمادین برای هدایت اکشن امضا به ابزارهای بیلد ۳۶ بدون دانلود ابزار قدیمی
-          ln -sf $ANDROID_HOME/build-tools/36.0.0 $ANDROID_HOME/build-tools/29.0.3
 
       - name: Build Android APK (Release)
         run: ./gradlew :androidApp:assembleRelease
 
-      - name: Sign APK with Keystore
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: androidApp/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.GHIYAS_KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-
-      - name: Rename Signed APK to Clean Name
+      - name: Align, Sign, and Verify APK using Native Build-Tools 36
+        env:
+          KEYSTORE_BASE64: ${{ secrets.GHIYAS_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          mv ${{ steps.sign_app.outputs.signedReleaseFile }} androidApp/build/outputs/apk/release/ghiyas-release.apk
+          # پاکسازی تضمینی کلید در صورت بروز هرگونه خطا یا توقف پایپ‌لاین
+          trap 'rm -f release.keystore aligned.apk' EXIT
+          
+          # بازیابی کلید امضا از متغیرهای امنیتی مخزن
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+          
+          # شناسایی دقیق فایل خروجی خام مرحله کامپایل
+          RAW_APK=$(find androidApp/build/outputs/apk/release -name "*.apk" ! -name "*-signed.apk" | head -n 1)
+          
+          # اجرای تراز بهینه حافظه نسخه ۳۶ با استاندارد چینش ۴ بایت
+          $ANDROID_HOME/build-tools/36.0.0/zipalign -v -p 4 "$RAW_APK" aligned.apk
+          
+          # امضای رسمی با استانداردهای امنیتی v2/v3/v4 گوگل
+          $ANDROID_HOME/build-tools/36.0.0/apksigner sign --ks release.keystore \
+            --ks-pass pass:"$KEYSTORE_PASSWORD" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --key-pass pass:"$KEY_PASSWORD" \
+            --out androidApp/build/outputs/apk/release/ghiyas-release.apk aligned.apk
+
+          # اعتبارسنجی رسمی ساختار و صحت امضای بسته
+          $ANDROID_HOME/build-tools/36.0.0/apksigner verify --verbose androidApp/build/outputs/apk/release/ghiyas-release.apk
 
       - name: Upload Signed Ghiyas APK (Artifact)
         uses: actions/upload-artifact@v5
         with:
           name: ghiyas-android-signed-apk
           path: androidApp/build/outputs/apk/release/ghiyas-release.apk
+          retention-days: 30
 
-      - name: Publish to GitHub Releases
+      - name: Publish to GitHub Releases (Native GitHub CLI)
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: androidApp/build/outputs/apk/release/ghiyas-release.apk
-          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} \
+            androidApp/build/outputs/apk/release/ghiyas-release.apk \
+            --title "نسخه ${{ github.ref_name }}" \
+            --generate-notes
