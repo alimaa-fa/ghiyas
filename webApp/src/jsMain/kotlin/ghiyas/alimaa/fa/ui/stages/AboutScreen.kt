@@ -75,7 +75,7 @@ fun AboutScreen(onBack: () -> Unit) {
         A(
             href = "http://cafebazaar.ir/app/?id=ghiyas.alimaa.fa&ref=share",
             attrs = {
-                target(Target.Blank)
+                target(ATarget.Blank)
                 style { 
                     width(100.percent); maxWidth(400.px); backgroundColor(Color("#4CAF50")); color(Color("white")); 
                     padding(14.px); borderRadius(8.px); textAlign("center"); textDecoration("none"); 
@@ -101,7 +101,7 @@ fun AboutScreen(onBack: () -> Unit) {
             A(
                 href = "https://eitaa.com/AlirezaMariki",
                 attrs = {
-                    target(Target.Blank)
+                    target(ATarget.Blank)
                     style { 
                         display(DisplayStyle.InlineBlock); backgroundColor(Color("#FF9800")); color(Color("white")); 
                         padding(8.px, 16.px); borderRadius(6.px); textDecoration("none"); fontWeight("bold");
